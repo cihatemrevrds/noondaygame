@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "502833844181",
+    "project_id": "noondaygame",
+    "storage_bucket": "noondaygame.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502833844181:android:ba8e4bb8c672c9fb4b775c",
+        "android_client_info": {
+          "package_name": "com.example.noondaygame"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQhwpV4NWNwqbNrg5CS85VPBeV3y2Ce_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
