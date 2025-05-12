@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LobbyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -162,30 +164,25 @@ class LobbyService {
 
   Future<bool> startGame(String lobbyCode, String hostId) async {
     try {
-      final lobbyRef = _firestore
-          .collection('lobbies')
-          .doc(lobbyCode.toUpperCase());
-      final doc = await lobbyRef.get();
+      final uri = Uri.parse(
+        'https://us-central1-noondaygame.cloudfunctions.net/startGame',
+      ); // Bölgen farklıysa düzenle
 
-      if (!doc.exists) {
-        print('Lobby not found');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'lobbyCode': lobbyCode, 'hostId': hostId}),
+      );
+
+      if (response.statusCode == 200) {
+        print("Game started!");
+        return true;
+      } else {
+        print("Start game failed: ${response.body}");
         return false;
       }
-
-      final data = doc.data()!;
-      if (data['hostUid'] != hostId) {
-        print('Only host can start the game');
-        return false;
-      }
-
-      await lobbyRef.update({
-        'status': 'started',
-        'startedAt': FieldValue.serverTimestamp(),
-      });
-
-      return true;
     } catch (e) {
-      print('Start game error: $e');
+      print("Start game error: $e");
       return false;
     }
   }
