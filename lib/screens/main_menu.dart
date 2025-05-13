@@ -125,11 +125,10 @@ class MainMenu extends StatelessWidget {
       ),
     );
 
-    try {
-      final success = await _lobbyService.joinLobby(
+    try {      final success = await _lobbyService.joinLobby(
         code,
         user.uid,
-        username.isNotEmpty ? username : user.email?.split('@')[0] ?? 'Player',
+        user.displayName ?? (username.isNotEmpty ? username : user.email?.split('@')[0] ?? 'Player'),
       );
 
       // Remove loading indicator

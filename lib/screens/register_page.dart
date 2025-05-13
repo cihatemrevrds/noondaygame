@@ -60,7 +60,11 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });    try {
       // Create user account
-      final result = await _authService.signUp(_emailController.text.trim(), _passwordController.text);
+      final result = await _authService.signUp(
+        _emailController.text.trim(), 
+        _passwordController.text,
+        _usernameController.text.trim()
+      );
       
       if (result['success'] == true) {
         // Successfully registered

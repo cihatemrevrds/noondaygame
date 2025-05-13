@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+import 'dart:developer' as developer;
 import '../widgets/menu_button.dart';
 import '../widgets/player_avatar.dart';
 import '../models/player.dart';
 import '../services/lobby_service.dart';
-import '../services/game_service.dart';
 import 'role_selection_page.dart';
 
 class LobbyRoomPage extends StatefulWidget {
@@ -23,23 +24,96 @@ class LobbyRoomPage extends StatefulWidget {
   State<LobbyRoomPage> createState() => _LobbyRoomPageState();
 }
 
-class _LobbyRoomPageState extends State<LobbyRoomPage> {
-  final LobbyService _lobbyService = LobbyService();
-  final GameService _gameService = GameService();
+class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserver {  final LobbyService _lobbyService = LobbyService();
   List<Player> players = [];
   bool _isLoading = false;
   bool _isHost = false;
   String _currentUserId = '';
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _lobbySubscription;
 
   @override
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    WidgetsBinding.instance.addObserver(this);
     _setupLobbyListener();
   }
-
+    @override
+  void dispose() {
+    // Clean up when this Widget is removed from the widget tree
+    _lobbySubscription?.cancel();
+    
+    // Try to clean up the lobby when leaving the page
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (_isHost) {
+        // Force delete the lobby if host is leaving
+        FirebaseFirestore.instance
+            .collection('lobbies')
+            .doc(widget.lobbyCode.toUpperCase())
+            .delete()
+            .catchError((e) {
+              developer.log("Error during dispose cleanup: $e", name: 'LobbyRoomPage');
+            });
+      }
+    }
+    
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Handle app lifecycle states
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+      // App is being killed or sent to background, try to leave lobby gracefully
+      _cleanupLobby();
+    }
+  }
+    void _cleanupLobby() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    
+    try {
+      developer.log("App lifecycle changed, cleaning up lobby", name: 'LobbyRoomPage');
+      
+      // Regardless of host status, try to remove player and lobby if needed
+      if (_isHost) {
+        // For host, always delete the entire lobby
+        developer.log("Host's app is closing, deleting lobby forcefully", name: 'LobbyRoomPage');
+        
+        // First try with the service
+        final success = await _lobbyService.deleteLobby(widget.lobbyCode, user.uid);
+        
+        // If that fails, try direct approach
+        if (!success) {
+          developer.log("Direct Firestore deletion attempt on app close", name: 'LobbyRoomPage');
+          await FirebaseFirestore.instance
+              .collection('lobbies')
+              .doc(widget.lobbyCode.toUpperCase())
+              .delete()
+              .timeout(const Duration(seconds: 5), onTimeout: () {
+                developer.log("Deletion timed out, app is probably closing", name: 'LobbyRoomPage');
+                return;
+              });
+        }
+      } else {
+        // For regular player, just leave the lobby
+        await _lobbyService.leaveLobby(widget.lobbyCode, user.uid);
+      }
+    } catch (e) {
+      developer.log("Error during lobby cleanup: $e", name: 'LobbyRoomPage');
+      // Last resort - direct deletion attempt with minimal error handling
+      try {
+        await FirebaseFirestore.instance
+            .collection('lobbies')
+            .doc(widget.lobbyCode.toUpperCase())
+            .delete();
+      } catch (_) {}
+    }
+  }
   void _setupLobbyListener() {
-    _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
+    _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
       if (!snapshot.exists) {
         // Lobi silinmiş, ana menüye geri dön
         if (mounted) {
@@ -58,33 +132,38 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> {
 
       // Host bilgisini kontrol et
       final hostUid = data['hostUid'] as String?;
-      final isHost = hostUid == _currentUserId;
-
-      // Oyuncuları güncelle
+      final isHost = hostUid == _currentUserId;      // Oyuncuları güncelle
       final playersList = (data['players'] as List<dynamic>? ?? [])
           .map((p) {
             final map = p as Map<String, dynamic>;
+            // Check for both 'id' and 'uid' for backward compatibility
+            final playerId = map['id'] as String? ?? map['uid'] as String? ?? '';
             return Player(
-              id: map['id'] as String? ?? '',
+              id: playerId,
               name: map['name'] as String? ?? 'Player',
-              isLeader: map['id'] == hostUid,
+              isLeader: playerId == hostUid,
             );
           })
-          .toList();
-
-      // Oyun başladıysa, rol seçim sayfasına git
+          .toList();      // Oyun başladıysa, rol seçim sayfasına git
       if (data['status'] == 'started' && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RoleSelectionPage(
-              players: playersList,
-              lobbyCode: widget.lobbyCode,
-              isHost: isHost,
+        developer.log("Game status is 'started', navigating to RoleSelectionPage", name: 'LobbyRoomPage');
+        // Prevent multiple navigations by adding a flag
+        if (!Navigator.of(context).canPop() || 
+            ModalRoute.of(context)?.settings.name != 'role_selection') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              settings: const RouteSettings(name: 'role_selection'),
+              builder: (context) => RoleSelectionPage(
+                players: playersList,
+                lobbyCode: widget.lobbyCode,
+                isHost: isHost,
+              ),
             ),
-          ),
-        );
-        return;
+          );
+        }
+        return;      } else {
+        developer.log("Current lobby status: ${data['status']}", name: 'LobbyRoomPage');
       }
 
       if (mounted) {
@@ -95,34 +174,60 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> {
       }
     });
   }
-
   Future<void> _leaveLobby() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        developer.log("Cannot leave lobby: User not logged in", name: 'LobbyRoomPage');
+        Navigator.pop(context);
+        return;
+      }
 
       if (_isHost) {
         // Eğer host ise, lobiyi sil
-        await _lobbyService.deleteLobby(widget.lobbyCode, user.uid);
+        developer.log("Host is leaving, attempting to delete lobby: ${widget.lobbyCode}", name: 'LobbyRoomPage');
+        final success = await _lobbyService.deleteLobby(widget.lobbyCode, user.uid);
+        
+        if (success) {
+          developer.log("Lobby successfully deleted", name: 'LobbyRoomPage');
+        } else {
+          // Try one more time with direct Firestore access if the service method failed
+          developer.log("Failed to delete lobby via service, trying direct Firestore access", name: 'LobbyRoomPage');
+          try {
+            await FirebaseFirestore.instance
+                .collection('lobbies')
+                .doc(widget.lobbyCode.toUpperCase())
+                .delete();
+            developer.log("Lobby deleted via direct Firestore access", name: 'LobbyRoomPage');
+          } catch (innerError) {
+            developer.log("Failed to delete lobby: $innerError", name: 'LobbyRoomPage');
+            // Continue with navigation even if deletion failed
+          }
+        }
       } else {
         // Değilse, sadece lobiyi terk et
+        developer.log("Non-host player leaving lobby", name: 'LobbyRoomPage');
         await _lobbyService.leaveLobby(widget.lobbyCode, user.uid);
       }
 
+      // Always return to the main menu, even if there was an error
       if (mounted) {
         Navigator.pop(context);
       }
     } catch (e) {
+      developer.log("Exception when leaving lobby: $e", name: 'LobbyRoomPage');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error leaving lobby: $e'),
+            duration: const Duration(seconds: 3),
           ),
         );
+        // Still return to the main menu
+        Navigator.pop(context);
       }
     }
   }
-
   Future<void> _startGame() async {
     if (!_isHost) return;
     
@@ -145,17 +250,29 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('User not logged in');
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RoleSelectionPage(
-            players: players,
-            lobbyCode: widget.lobbyCode,
-            isHost: _isHost,
+      
+      // Update lobby status to 'started' in Firestore
+      await FirebaseFirestore.instance
+        .collection('lobbies')
+        .doc(widget.lobbyCode)
+        .update({'status': 'started'});
+      
+      // The listener will automatically navigate to RoleSelectionPage for all players
+      developer.log("Game started, lobby status updated to 'started'", name: 'LobbyRoomPage');
+      
+      // Only navigate manually if the listener doesn't trigger
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RoleSelectionPage(
+              players: players,
+              lobbyCode: widget.lobbyCode,
+              isHost: _isHost,
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
