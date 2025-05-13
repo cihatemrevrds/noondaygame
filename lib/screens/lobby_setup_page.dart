@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/menu_button.dart';
 import '../widgets/input_field.dart';
+import '../services/lobby_service.dart';
 import 'lobby_room_page.dart';
 
 class LobbySetupPage extends StatefulWidget {
@@ -12,11 +14,78 @@ class LobbySetupPage extends StatefulWidget {
 
 class _LobbySetupPageState extends State<LobbySetupPage> {
   final TextEditingController _roomNameController = TextEditingController();
-
+  final LobbyService _lobbyService = LobbyService();
+  bool _isLoading = false;
+  
   @override
   void dispose() {
     _roomNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _createLobby() async {
+    if (_roomNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please enter a room name',
+            style: TextStyle(fontFamily: 'Rye'),
+          ),
+        ),
+      );
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      
+      if (user == null) {
+        throw Exception("You must be logged in to create a lobby");
+      }
+      
+      final lobbyCode = await _lobbyService.createLobby(
+        user.uid,
+        user.displayName ?? user.email?.split('@')[0] ?? 'Host',
+        6, // Default max players
+      );
+      
+      if (lobbyCode != null) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LobbyRoomPage(
+                roomName: _roomNameController.text,
+                lobbyCode: lobbyCode,
+              ),
+            ),
+          );
+        }
+      } else {
+        throw Exception("Failed to create lobby");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: ${e.toString()}',
+              style: const TextStyle(fontFamily: 'Rye'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -78,35 +147,17 @@ class _LobbySetupPageState extends State<LobbySetupPage> {
                     InputField(
                       controller: _roomNameController,
                       hintText: 'Enter room name',
-                    ),                    // Player count selection removed
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 30),
-              MenuButton(
-                text: 'CREATE LOBBY',
-                onPressed: () {
-                  if (_roomNameController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Please enter a room name',
-                          style: TextStyle(fontFamily: 'Rye'),
-                        ),
-                      ),
-                    );
-                    return;
-                  }                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LobbyRoomPage(
-                        roomName: _roomNameController.text,
-                        maxPlayers: 6, // Default to 6 players
-                      ),
-                    ),
-                  );
-                },
-              ),
+              _isLoading
+                ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
+                : MenuButton(
+                    text: 'CREATE LOBBY',
+                    onPressed: _createLobby,
+                  ),
             ],
           ),
         ),

@@ -4,9 +4,8 @@ class RoleCard extends StatelessWidget {
   final String name;
   final String imageName;
   final int count;
-  final String description;
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+  final String description;  final VoidCallback? onIncrement;
+  final VoidCallback? onDecrement;
   final VoidCallback? onTap;
 
   const RoleCard({
@@ -14,9 +13,8 @@ class RoleCard extends StatelessWidget {
     required this.name,
     required this.imageName,
     required this.count,
-    required this.description,
-    required this.onIncrement,
-    required this.onDecrement,
+    required this.description,    this.onIncrement,
+    this.onDecrement,
     this.onTap,
   });  @override
   Widget build(BuildContext context) {
@@ -75,9 +73,8 @@ class RoleCard extends StatelessWidget {
           // Role counter
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              InkWell(
-                onTap: onDecrement,
+            children: [              InkWell(
+                onTap: onDecrement != null ? onDecrement : null,
                 child: Container(
                   width: 28,
                   height: 28,
@@ -101,7 +98,7 @@ class RoleCard extends StatelessWidget {
                   ),
                 ),
               ),              InkWell(
-                onTap: onIncrement,
+                onTap: onIncrement != null ? onIncrement : null,
                 child: Container(
                   width: 28,
                   height: 28,

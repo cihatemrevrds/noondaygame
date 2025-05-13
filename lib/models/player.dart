@@ -1,23 +1,54 @@
 class Player {
+  final String id;
   final String name;
   final bool isLeader;
+  final String? role;
+  final bool isAlive;
 
   Player({
     required this.name, 
-    required this.isLeader,
+    this.isLeader = false,
+    this.id = '',
+    this.role,
+    this.isAlive = true,
   });
 
+  // Create Player from Firestore map
+  factory Player.fromMap(Map<String, dynamic> map) {
+    return Player(
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? 'Unknown',
+      isLeader: map['isHost'] as bool? ?? false,
+      role: map['role'] as String?,
+      isAlive: map['isAlive'] as bool? ?? true,
+    );
+  }
+
+  // Convert Player to Firestore map
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'name': name,
-      'isLeader': isLeader,
+      'isHost': isLeader,
+      'role': role,
+      'isAlive': isAlive,
     };
   }
 
-  factory Player.fromMap(Map<String, dynamic> map) {
+  // Create a copy with modified fields
+  Player copyWith({
+    String? id,
+    String? name,
+    bool? isLeader,
+    String? role,
+    bool? isAlive,
+  }) {
     return Player(
-      name: map['name'] ?? '',
-      isLeader: map['isLeader'] ?? false,
+      id: id ?? this.id,
+      name: name ?? this.name,
+      isLeader: isLeader ?? this.isLeader,
+      role: role ?? this.role,
+      isAlive: isAlive ?? this.isAlive,
     );
   }
 }

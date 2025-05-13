@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/menu_button.dart';
 import '../widgets/input_field.dart';
+import '../services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -14,6 +15,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -22,6 +25,104 @@ class _RegisterPageState extends State<RegisterPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _register() async {
+    // Validate fields
+    if (_usernameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please fill in all fields',
+            style: TextStyle(fontFamily: 'Rye'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Passwords do not match',
+            style: TextStyle(fontFamily: 'Rye'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });    try {
+      // Create user account
+      final result = await _authService.signUp(_emailController.text.trim(), _passwordController.text);
+      
+      if (result['success'] == true) {
+        // Successfully registered
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Registration successful! Please login with your credentials.',
+                style: TextStyle(fontFamily: 'Rye'),
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          // Navigate back to login screen after a short delay
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              Navigator.pop(context); // Go back to LoginOrRegisterMenu
+            }
+          });
+        }
+      } else {
+        // Registration failed with specific error
+        final errorMessage = result['errorMessage'] ?? 'Registration failed. Please try again.';
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                errorMessage,
+                style: const TextStyle(fontFamily: 'Rye'),
+              ),
+              duration: const Duration(seconds: 8),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          
+          // Log detailed error information
+          print('Registration failed: ${result['errorCode'] ?? 'Unknown error'} - $errorMessage');
+        }
+      }
+    } catch (e) {
+      print('Unexpected registration error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unexpected error: ${e.toString()}',
+              style: const TextStyle(fontFamily: 'Rye'),
+            ),
+            duration: const Duration(seconds: 8),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -97,6 +198,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     InputField(
                       controller: _emailController,
                       hintText: 'Enter your email',
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -132,53 +234,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
               const SizedBox(height: 30),
-              MenuButton(
-                text: 'REGISTER',
-                onPressed: () {
-                  // Validate fields
-                  if (_usernameController.text.isEmpty ||
-                      _emailController.text.isEmpty ||
-                      _passwordController.text.isEmpty ||
-                      _confirmPasswordController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Please fill in all fields',
-                          style: TextStyle(fontFamily: 'Rye'),
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (_passwordController.text != _confirmPasswordController.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Passwords do not match',
-                          style: TextStyle(fontFamily: 'Rye'),
-                        ),
-                      ),
-                    );
-                    return;
-                  }                  // In a real app, this would register the user with a backend
-                  // Show success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Registration successful! Please login with your credentials.',
-                        style: TextStyle(fontFamily: 'Rye'),
-                      ),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  
-                  // Navigate back to login screen after a short delay
-                  Future.delayed(const Duration(seconds: 2), () {
-                    Navigator.pop(context); // Go back to LoginOrRegisterMenu
-                  });
-                },
-              ),
+              _isLoading 
+                ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
+                : MenuButton(
+                    text: 'REGISTER',
+                    onPressed: _register,
+                  ),
             ],
           ),
         ),

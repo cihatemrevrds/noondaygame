@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/menu_button.dart';
 import '../widgets/input_field.dart';
+import '../services/auth_service.dart';
 import 'main_menu.dart';
 
 class LoginPage extends StatefulWidget {
@@ -11,14 +12,93 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please enter both email and password',
+            style: TextStyle(fontFamily: 'Rye'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });    try {
+      final result = await _authService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (result['success'] == true) {
+        // Successfully logged in, navigate to main menu
+        final user = result['user'];
+        if (mounted && user != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MainMenu(
+                username: user.email?.split('@')[0] ?? 'Player',
+              ),
+            ),
+          );
+        }
+      } else {
+        // Login failed with specific error
+        final errorMessage = result['errorMessage'] ?? 'Login failed. Please check your credentials.';
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                errorMessage,
+                style: const TextStyle(fontFamily: 'Rye'),
+              ),
+              duration: const Duration(seconds: 5),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          
+          // Log detailed error information
+          print('Login failed: ${result['errorCode'] ?? 'Unknown error'} - $errorMessage');
+        }
+      }
+    } catch (e) {
+      print('Unexpected login error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: ${e.toString()}',
+              style: const TextStyle(fontFamily: 'Rye'),
+            ),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -69,7 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Username',
+                      'Email',
                       style: TextStyle(
                         fontFamily: 'Rye',
                         fontSize: 16,
@@ -78,8 +158,9 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 8),
                     InputField(
-                      controller: _usernameController,
-                      hintText: 'Enter your username',
+                      controller: _emailController,
+                      hintText: 'Enter your email',
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -100,32 +181,12 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 30),
-              MenuButton(
-                text: 'LOGIN',
-                onPressed: () {
-                  if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Please enter both username and password',
-                          style: TextStyle(fontFamily: 'Rye'),
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-
-                  // In a real app, this would check credentials against a backend
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MainMenu(
-                        username: _usernameController.text,
-                      ),
-                    ),
-                  );
-                },
-              ),
+              _isLoading
+                ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
+                : MenuButton(
+                    text: 'LOGIN',
+                    onPressed: _login,
+                  ),
             ],
           ),
         ),

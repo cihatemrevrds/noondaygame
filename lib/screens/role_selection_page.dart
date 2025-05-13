@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/player.dart';
 import '../widgets/role_card.dart';
 import '../models/role.dart';
+import '../services/lobby_service.dart';
+import '../services/game_service.dart';
+import 'game_screen.dart';
 
 class RoleSelectionPage extends StatefulWidget {
   final List<Player> players;
+  final String lobbyCode;
+  final bool isHost;
 
-  const RoleSelectionPage({super.key, required this.players});
+  const RoleSelectionPage({
+    super.key, 
+    required this.players,
+    required this.lobbyCode,
+    required this.isHost,
+  });
 
   @override
   State<RoleSelectionPage> createState() => _RoleSelectionPageState();
@@ -17,6 +28,9 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   late int totalRolesSelected;
   bool _randomRolesEnabled = false;
   late List<bool> _roleIncluded;
+  bool _isLoading = false;
+  final LobbyService _lobbyService = LobbyService();
+  final GameService _gameService = GameService();
 
   @override
   void initState() {
@@ -126,6 +140,100 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     );
   }
 
+  Future<void> _startGame() async {
+    // Rol olmayan oyuncu varsa devam etme 
+    if (!_randomRolesEnabled && totalRolesSelected != widget.players.length) {
+      _showErrorSnackBar(
+        totalRolesSelected < widget.players.length
+          ? 'Need ${widget.players.length - totalRolesSelected} more roles to start'
+          : 'Remove ${totalRolesSelected - widget.players.length} roles to start'
+      );
+      return;
+    }
+    
+    if (_randomRolesEnabled && !_roleIncluded.contains(true)) {
+      _showErrorSnackBar('Please include at least one role');
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      if (_randomRolesEnabled) {
+        // Random modda, seçilen rolleri gönder
+        final selectedRoles = <String, int>{};
+        for (int i = 0; i < roles.length; i++) {
+          if (_roleIncluded[i]) {
+            selectedRoles[roles[i].name] = i == 0 ? 1 : roles[i].count; // Sheriff'i her zaman 1 tane ekle
+          }
+        }
+        
+        await _lobbyService.updateRoles(widget.lobbyCode, selectedRoles);
+      } else {
+        // Manuel modda, seçilen rolleri gönder
+        final selectedRoles = <String, int>{};
+        for (final role in roles) {
+          if (role.count > 0) {
+            selectedRoles[role.name] = role.count;
+          }
+        }
+        
+        await _lobbyService.updateRoles(widget.lobbyCode, selectedRoles);
+      }
+        // Oyunu başlat
+      final success = await _gameService.startGame(widget.lobbyCode, user.uid);
+      
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Game started successfully! Roles have been distributed.',
+                style: TextStyle(fontFamily: 'Rye'),
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          // Oyun sayfasına geçiş yap
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameScreen(
+                lobbyCode: widget.lobbyCode,
+                isHost: widget.isHost,
+              ),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to start game');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error starting game: ${e.toString()}',
+              style: const TextStyle(fontFamily: 'Rye'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,7 +291,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       ),
                       Switch(
                         value: _randomRolesEnabled,
-                        onChanged: (value) {
+                        onChanged: widget.isHost ? (value) {
                           setState(() {
                             _randomRolesEnabled = value;
                             // Reset role counts if switching to random mode
@@ -195,7 +303,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                               totalRolesSelected = roles.fold(0, (sum, role) => sum + role.count);
                             }
                           });
-                        },
+                        } : null,
                         activeColor: Colors.brown,
                       ),
                     ],
@@ -241,17 +349,17 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
               child: GridView.builder(
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3, // Changed to 3 roles per row
-                  crossAxisSpacing: 12, // Slightly reduced spacing to fit 3 cards
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.7, // Adjusted for taller cards
+                  childAspectRatio: 0.7,
                 ),
                 itemCount: roles.length,
                 itemBuilder: (context, index) {
                   if (_randomRolesEnabled) {
                     // In random mode, show a switch for including/excluding the role
                     return GestureDetector(
-                      onTap: () => _showRoleInfo(roles[index]), // Add tap to view role info
+                      onTap: () => _showRoleInfo(roles[index]),
                       child: Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFF4E2C0B),
@@ -303,28 +411,34 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                             ),
                             const SizedBox(height: 12),
                             // Include/exclude toggle
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  'Include',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
+                            if (widget.isHost)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'Include',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                                Switch(
-                                  value: _roleIncluded[index],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _roleIncluded[index] = value;
-                                    });
-                                  },
-                                  activeColor: Colors.brown[300],
-                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ],
-                            ),
+                                  Switch(
+                                    value: _roleIncluded[index],
+                                    onChanged: (value) {
+                                      // Sheriff'i asla devre dışı bırakma
+                                      if (index == 0 && !value) {
+                                        _showErrorSnackBar('Sheriff must be included');
+                                        return;
+                                      }
+                                      setState(() {
+                                        _roleIncluded[index] = value;
+                                      });
+                                    },
+                                    activeColor: Colors.brown[300],
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
@@ -336,9 +450,9 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       imageName: roles[index].imageName,
                       count: roles[index].count,
                       description: roles[index].description,
-                      onIncrement: () => updateRole(index, true),
-                      onDecrement: () => updateRole(index, false),
-                      onTap: () => _showRoleInfo(roles[index]), // Add tap to view role info
+                      onIncrement: widget.isHost ? () => updateRole(index, true) : null,
+                      onDecrement: widget.isHost ? () => updateRole(index, false) : null,
+                      onTap: () => _showRoleInfo(roles[index]),
                     );
                   }
                 },
@@ -362,52 +476,30 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                         ),
                       ),
                     ),
-                  ElevatedButton(
-                    onPressed: _randomRolesEnabled || totalRolesSelected == widget.players.length
-                        ? () {
-                            // In a real app, this would generate and distribute roles to players
-                            if (_randomRolesEnabled) {
-                              // Random mode logic: check if at least one role is included
-                              if (!_roleIncluded.contains(true)) {
-                                _showErrorSnackBar('Please include at least one role');
-                                return;
-                              }
-                            }
-                            // Show a success message about role distribution
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Roles have been distributed to all players!',
-                                  style: TextStyle(fontFamily: 'Rye'),
-                                ),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            
-                            // Navigate back after a short delay
-                            Future.delayed(const Duration(seconds: 2), () {
-                              Navigator.pop(context); // Go back to the previous screen
-                              // In a full implementation, you'd navigate to the game screen
-                              // Navigator.push(...)
-                            });
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4E2C0B),
-                      minimumSize: const Size(250, 60),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  _isLoading
+                    ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
+                    : ElevatedButton(
+                        onPressed: widget.isHost && 
+                                   (_randomRolesEnabled || totalRolesSelected == widget.players.length)
+                            ? _startGame
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4E2C0B),
+                          minimumSize: const Size(250, 60),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          disabledBackgroundColor: Colors.grey[400],
+                        ),
+                        child: const Text(
+                          'START GAME',
+                          style: TextStyle(
+                            fontFamily: 'Rye',
+                            fontSize: 20,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'START GAME',
-                      style: TextStyle(
-                        fontFamily: 'Rye',
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
