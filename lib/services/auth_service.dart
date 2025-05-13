@@ -54,14 +54,17 @@ class AuthService {
         'error': e.toString()
       };
     }
-  }
-  // Yeni kullanıcı oluştur
-  Future<Map<String, dynamic>> signUp(String email, String password) async {
+  }  // Yeni kullanıcı oluştur
+  Future<Map<String, dynamic>> signUp(String email, String password, String username) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      
+      // Save the username in the user's profile
+      await result.user?.updateDisplayName(username);
+      
       return {
         'success': true,
         'user': result.user

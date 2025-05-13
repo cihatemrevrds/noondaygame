@@ -47,13 +47,12 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success'] == true) {
         // Successfully logged in, navigate to main menu
-        final user = result['user'];
-        if (mounted && user != null) {
+        final user = result['user'];        if (mounted && user != null) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => MainMenu(
-                username: user.email?.split('@')[0] ?? 'Player',
+                username: user.displayName ?? user.email?.split('@')[0] ?? 'Player',
               ),
             ),
           );
