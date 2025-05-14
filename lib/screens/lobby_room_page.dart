@@ -113,66 +113,126 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
     }
   }
   void _setupLobbyListener() {
-    _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
-      if (!snapshot.exists) {
-        // Lobi silinmiş, ana menüye geri dön
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Lobby has been deleted'),
-            ),
-          );
-          Navigator.popUntil(context, (route) => route.isFirst);
-        }
-        return;
-      }
-
-      final data = snapshot.data();
-      if (data == null) return;
-
-      // Host bilgisini kontrol et
-      final hostUid = data['hostUid'] as String?;
-      final isHost = hostUid == _currentUserId;      // Oyuncuları güncelle
-      final playersList = (data['players'] as List<dynamic>? ?? [])
-          .map((p) {
-            final map = p as Map<String, dynamic>;
-            // Check for both 'id' and 'uid' for backward compatibility
-            final playerId = map['id'] as String? ?? map['uid'] as String? ?? '';
-            return Player(
-              id: playerId,
-              name: map['name'] as String? ?? 'Player',
-              isLeader: playerId == hostUid,
-            );
-          })
-          .toList();      // Oyun başladıysa, rol seçim sayfasına git
-      if (data['status'] == 'started' && mounted) {
-        developer.log("Game status is 'started', navigating to RoleSelectionPage", name: 'LobbyRoomPage');
-        // Prevent multiple navigations by adding a flag
-        if (!Navigator.of(context).canPop() || 
-            ModalRoute.of(context)?.settings.name != 'role_selection') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              settings: const RouteSettings(name: 'role_selection'),
-              builder: (context) => RoleSelectionPage(
-                players: playersList,
-                lobbyCode: widget.lobbyCode,
-                isHost: isHost,
-              ),
-            ),
-          );
-        }
-        return;      } else {
-        developer.log("Current lobby status: ${data['status']}", name: 'LobbyRoomPage');
-      }
-
-      if (mounted) {
-        setState(() {
-          players = playersList;
-          _isHost = isHost;
-        });
-      }
+    // Show loading indicator initially
+    setState(() {
+      _isLoading = true;
     });
+    
+    _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen(
+      (snapshot) {
+        if (!snapshot.exists) {
+          // Lobby has been deleted, return to main menu
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Lobby has been deleted'),
+              ),
+            );
+            Navigator.popUntil(context, (route) => route.isFirst);
+          }
+          return;
+        }
+
+        final data = snapshot.data();
+        if (data == null) {
+          developer.log("Received null data from lobby snapshot", name: 'LobbyRoomPage');
+          return;
+        }
+
+        developer.log("Received lobby data: ${data.toString()}", name: 'LobbyRoomPage');
+        
+        // Check host information
+        final hostUid = data['hostUid'] as String?;
+        if (hostUid == null) {
+          developer.log("Host UID is missing in lobby data", name: 'LobbyRoomPage');
+        }
+        
+        final isHost = hostUid == _currentUserId;
+        developer.log("Current user is host: $isHost", name: 'LobbyRoomPage');
+
+        // Update players
+        try {
+          final playersData = data['players'] as List<dynamic>? ?? [];
+          developer.log("Number of players in lobby: ${playersData.length}", name: 'LobbyRoomPage');
+          
+          final playersList = playersData
+              .map((p) {
+                final map = p as Map<String, dynamic>;
+                // Check for both 'id' and 'uid' for backward compatibility
+                final playerId = map['id'] as String? ?? map['uid'] as String? ?? '';
+                
+                // Log if this is the current player
+                if (playerId == _currentUserId) {
+                  developer.log("Found current user in players list", name: 'LobbyRoomPage');
+                }
+                
+                return Player(
+                  id: playerId,
+                  name: map['name'] as String? ?? 'Player',
+                  isLeader: playerId == hostUid,
+                  role: map['role'] as String?,
+                  isAlive: map['isAlive'] as bool? ?? true,
+                  team: map['team'] as String?,
+                );
+              })
+              .toList();
+              
+          // Check if game has started
+          if (data['status'] == 'started' && mounted) {
+            developer.log("Game status is 'started', navigating to RoleSelectionPage", name: 'LobbyRoomPage');
+            // Prevent multiple navigations by adding a flag
+            if (!Navigator.of(context).canPop() || 
+                ModalRoute.of(context)?.settings.name != 'role_selection') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: 'role_selection'),
+                  builder: (context) => RoleSelectionPage(
+                    players: playersList,
+                    lobbyCode: widget.lobbyCode,
+                    isHost: isHost,
+                  ),
+                ),
+              );
+            }
+            return;
+          } else {
+            developer.log("Current lobby status: ${data['status']}", name: 'LobbyRoomPage');
+          }
+
+          if (mounted) {
+            setState(() {
+              players = playersList;
+              _isHost = isHost;
+              _isLoading = false;  // Hide loading indicator once data is processed
+            });
+          }
+        } catch (e) {
+          developer.log("Error processing lobby data: $e", name: 'LobbyRoomPage');
+          if (mounted) {
+            setState(() {
+              _isLoading = false;  // Hide loading indicator on error
+            });
+            // Show error to user
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error loading lobby data: $e')),
+            );
+          }
+        }
+      },
+      onError: (e) {
+        developer.log("Error in lobby listener: $e", name: 'LobbyRoomPage');
+        if (mounted) {
+          setState(() {
+            _isLoading = false;  // Hide loading indicator on error
+          });
+          // Show error to user
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error listening to lobby updates: $e')),
+          );
+        }
+      },
+    );
   }
   Future<void> _leaveLobby() async {
     try {
@@ -293,6 +353,68 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
     );
   }
 
+  // Build a loading view with western style
+  Widget _buildLoadingView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage("assets/images/saloon_bg.png"),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Loading Lobby...',
+              style: TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 24,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    offset: Offset(2, 2),
+                    blurRadius: 3,
+                    color: Colors.black,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(
+              color: Colors.brown,
+              strokeWidth: 5,
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () {
+                // If loading takes too long, allow cancellation
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'CANCEL',
+                style: TextStyle(
+                  fontFamily: 'Rye',
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -314,7 +436,9 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
           ),
         ],
       ),
-      body: Container(
+      body: _isLoading
+        ? _buildLoadingView()
+        : Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(

@@ -44,13 +44,14 @@ class LobbyService {
       return null;
     }
   }
-
   Future<bool> joinLobby(
     String lobbyCode,
     String playerId,
     String playerName,
   ) async {
     try {
+      print('Player $playerName (ID: $playerId) attempting to join lobby: $lobbyCode');
+      
       final lobbyRef = FirebaseFirestore.instance
           .collection('lobbies')
           .doc(lobbyCode.toUpperCase());
@@ -64,6 +65,13 @@ class LobbyService {
 
       final data = doc.data()!;
       final players = List<Map<String, dynamic>>.from(data['players'] ?? []);
+      final lobbyStatus = data['status'] as String? ?? 'waiting';
+      
+      // Don't let players join if the game has already started
+      if (lobbyStatus != 'waiting') {
+        print('Cannot join: Game has already started');
+        return false;
+      }
 
       // Check if lobby is full
       final maxPlayers = data['maxPlayers'] ?? 20;
@@ -72,13 +80,50 @@ class LobbyService {
         return false;
       }
 
-      // Check if already in lobby
-      final alreadyIn = players.any((p) => p['id'] == playerId);
-      if (alreadyIn) {
-        print('Player already in lobby');
-        return true;
+      // Check if already in lobby - if yes, update any missing fields
+      final playerIndex = players.indexWhere((p) => 
+        p['id'] == playerId || p['uid'] == playerId);
+        
+      if (playerIndex >= 0) {
+        print('Player already in lobby, updating fields if needed');
+        
+        var existingPlayer = players[playerIndex];
+        bool needsUpdate = false;
+        
+        // Ensure all required fields are present
+        if (!existingPlayer.containsKey('role')) {
+          existingPlayer['role'] = null;
+          needsUpdate = true;
+        }
+        
+        if (!existingPlayer.containsKey('isAlive')) {
+          existingPlayer['isAlive'] = true;
+          needsUpdate = true;
+        }
+        
+        if (!existingPlayer.containsKey('team')) {
+          existingPlayer['team'] = null;
+          needsUpdate = true;
+        }
+        
+        // Update name if it has changed
+        if (existingPlayer['name'] != playerName) {
+          existingPlayer['name'] = playerName;
+          needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
+          players[playerIndex] = existingPlayer;
+          await lobbyRef.update({'players': players});
+          print('Updated existing player data in lobby');
+        }
+        
+        // Verify player can see the lobby
+        await Future.delayed(const Duration(milliseconds: 500));
+        return await verifyPlayerInLobby(lobbyCode, playerId);
       }
 
+      // Add new player with all required fields
       final newPlayer = {
         'id': playerId,
         'name': playerName,
@@ -91,12 +136,16 @@ class LobbyService {
       players.add(newPlayer);
 
       await lobbyRef.update({'players': players});
-      return true;
+      print('Player successfully added to lobby');
+      
+      // Wait briefly and verify the player was added correctly
+      await Future.delayed(const Duration(milliseconds: 500));
+      return await verifyPlayerInLobby(lobbyCode, playerId);
     } catch (e) {
       print('Join lobby error: $e');
       return false;
     }
-  }  Future<void> leaveLobby(String lobbyCode, String playerId) async {
+  }Future<void> leaveLobby(String lobbyCode, String playerId) async {
     try {
       print('Player $playerId leaving lobby: $lobbyCode');
       
@@ -436,6 +485,67 @@ class LobbyService {
       print('Player field updates completed');
     } catch (e) {
       print('Error during player field updates: $e');
+    }
+  }
+
+  // Verify that a player is properly added to a lobby and has all required fields
+  Future<bool> verifyPlayerInLobby(String lobbyCode, String playerId) async {
+    try {
+      print('Verifying player $playerId is properly in lobby $lobbyCode');
+      
+      final lobbyRef = _firestore
+          .collection('lobbies')
+          .doc(lobbyCode.toUpperCase());
+      
+      // Check if lobby exists
+      final lobbyDoc = await lobbyRef.get();
+      if (!lobbyDoc.exists) {
+        print('Cannot verify player: Lobby does not exist');
+        return false;
+      }
+      
+      final lobbyData = lobbyDoc.data()!;
+      final players = List<Map<String, dynamic>>.from(lobbyData['players'] ?? []);
+      
+      // Find player in the lobby
+      final playerIndex = players.indexWhere((p) => 
+        p['id'] == playerId || p['uid'] == playerId);
+      
+      if (playerIndex < 0) {
+        print('Player not found in lobby data');
+        return false;
+      }
+      
+      // Ensure player has all required fields
+      var player = players[playerIndex];
+      bool updatedFields = false;
+      
+      if (!player.containsKey('role')) {
+        player['role'] = null;
+        updatedFields = true;
+      }
+      
+      if (!player.containsKey('isAlive')) {
+        player['isAlive'] = true;
+        updatedFields = true;
+      }
+      
+      if (!player.containsKey('team')) {
+        player['team'] = null;
+        updatedFields = true;
+      }
+      
+      // If any fields were missing, update the player data
+      if (updatedFields) {
+        players[playerIndex] = player;
+        await lobbyRef.update({'players': players});
+        print('Updated player fields in lobby');
+      }
+      
+      return true;
+    } catch (e) {
+      print('Error verifying player in lobby: $e');
+      return false;
     }
   }
 }

@@ -123,19 +123,42 @@ class MainMenu extends StatelessWidget {
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
-    );
-
-    try {      final success = await _lobbyService.joinLobby(
+    );    try {
+      final playerName = user.displayName ?? 
+                        (username.isNotEmpty ? username : user.email?.split('@')[0] ?? 'Player');
+      
+      print('Attempting to join lobby with code: $code as $playerName');
+      
+      // First join attempt
+      bool success = await _lobbyService.joinLobby(
         code,
         user.uid,
-        user.displayName ?? (username.isNotEmpty ? username : user.email?.split('@')[0] ?? 'Player'),
+        playerName,
       );
+      
+      // If first attempt fails, try one more time after a short delay
+      if (!success) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+        print('First join attempt failed, retrying...');
+        success = await _lobbyService.joinLobby(
+          code,
+          user.uid,
+          playerName,
+        );
+      }
+      
+      // Verify player is in the lobby
+      if (success) {
+        print('Successfully joined lobby, verifying player data');
+        success = await _lobbyService.verifyPlayerInLobby(code, user.uid);
+      }
 
       // Remove loading indicator
       Navigator.pop(context);
 
       if (success) {
-        // Navigate to the lobby room
+        print('Verification successful, navigating to LobbyRoomPage');
+        // Navigate to the lobby room with loading state enabled
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -146,8 +169,9 @@ class MainMenu extends StatelessWidget {
           ),
         );
       } else {
+        print('Failed to join or verify lobby');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to join room. Check your code.')),
+          const SnackBar(content: Text('Failed to join room. Check your code and try again.')),
         );
       }
     } catch (e) {

@@ -4,6 +4,7 @@ class Player {
   final bool isLeader;
   final String? role;
   final bool isAlive;
+  final String? team;
 
   Player({
     required this.name, 
@@ -11,6 +12,7 @@ class Player {
     this.id = '',
     this.role,
     this.isAlive = true,
+    this.team,
   });
 
   // Create Player from Firestore map
@@ -21,6 +23,7 @@ class Player {
       isLeader: map['isHost'] as bool? ?? false,
       role: map['role'] as String?,
       isAlive: map['isAlive'] as bool? ?? true,
+      team: map['team'] as String?,
     );
   }
 
@@ -32,6 +35,7 @@ class Player {
       'isHost': isLeader,
       'role': role,
       'isAlive': isAlive,
+      'team': team,
     };
   }
 
@@ -42,6 +46,7 @@ class Player {
     bool? isLeader,
     String? role,
     bool? isAlive,
+    String? team,
   }) {
     return Player(
       id: id ?? this.id,
@@ -49,6 +54,7 @@ class Player {
       isLeader: isLeader ?? this.isLeader,
       role: role ?? this.role,
       isAlive: isAlive ?? this.isAlive,
+      team: team ?? this.team,
     );
   }
 }
