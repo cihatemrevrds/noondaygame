@@ -181,54 +181,41 @@ class _MainMenuState extends State<MainMenu> {
       } else {
         print('Join failed completely, skipping verification');
       }      if (success) {
-        print('Verification successful, waiting for sync before navigation...');
+        print('Verification successful, proceeding to navigation...');
+        print('Context mounted before navigation: ${context.mounted}');
         
-        // Firestore senkronizasyonu için biraz bekle
-        print('Waiting 2 seconds for Firestore sync...');
-        await Future.delayed(const Duration(milliseconds: 2000));
-        
-        // Son bir kez daha doğrula
-        print('Performing final verification...');
-        final finalVerification = await _lobbyService.verifyPlayerInLobby(code, user.uid);
-        print('Final verification result: $finalVerification');
-        print('Context mounted: ${context.mounted}');
-        
-        if (finalVerification && context.mounted) {
-          print('Final verification successful, navigating to LobbyRoomPage');
-          print('About to call Navigator.pushReplacement...');
+        if (context.mounted) {
+          print('Context is mounted, navigating to LobbyRoomPage');
           
           // Remove loading dialog safely before navigation
           print('Removing loading dialog before navigation...');
-          if (context.mounted && Navigator.canPop(context)) {
+          if (Navigator.canPop(context)) {
             Navigator.pop(context);
             print('Loading dialog removed');
           }
           
-          // Navigate to lobby room
-          if (context.mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => LobbyRoomPage(
-                  roomName: 'Room $code',
-                  lobbyCode: code,
-                ),
+          // Navigate to lobby room immediately
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LobbyRoomPage(
+                roomName: 'Room $code',
+                lobbyCode: code,
               ),
-            );
-            print('Navigation to LobbyRoomPage completed');
-          }
+            ),
+          );
+          print('Navigation to LobbyRoomPage completed');
         } else {
-          print('Final verification failed');
-          // Remove loading dialog safely
-          if (context.mounted && Navigator.canPop(context)) {
-            Navigator.pop(context);
+          print('Context is not mounted, cannot navigate');
+          // Try to remove loading dialog if possible
+          try {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          } catch (e) {
+            print('Failed to remove loading dialog: $e');
           }
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Connection issue. Please try again.')),
-            );
-          }
-        }      } else {
+        }} else {
         print('Failed to join or verify lobby');
         // Remove loading dialog safely
         if (context.mounted && Navigator.canPop(context)) {
