@@ -180,16 +180,7 @@ class _MainMenuState extends State<MainMenu> {
         print('Initial verification result: $success');
       } else {
         print('Join failed completely, skipping verification');
-      }
-
-      // Remove loading indicator BEFORE any navigation
-      print('Removing loading dialog...');
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-        print('Loading dialog removed');
-      }
-
-      if (success) {
+      }      if (success) {
         print('Verification successful, waiting for sync before navigation...');
         
         // Firestore senkronizasyonu için biraz bekle
@@ -205,34 +196,56 @@ class _MainMenuState extends State<MainMenu> {
         if (finalVerification && context.mounted) {
           print('Final verification successful, navigating to LobbyRoomPage');
           print('About to call Navigator.pushReplacement...');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LobbyRoomPage(
-                roomName: 'Room $code',
-                lobbyCode: code,
+          
+          // Remove loading dialog safely before navigation
+          print('Removing loading dialog before navigation...');
+          if (context.mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+            print('Loading dialog removed');
+          }
+          
+          // Navigate to lobby room
+          if (context.mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LobbyRoomPage(
+                  roomName: 'Room $code',
+                  lobbyCode: code,
+                ),
               ),
-            ),
-          );
+            );
+            print('Navigation to LobbyRoomPage completed');
+          }
         } else {
           print('Final verification failed');
+          // Remove loading dialog safely
+          if (context.mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Connection issue. Please try again.')),
             );
           }
-        }} else {
+        }      } else {
         print('Failed to join or verify lobby');
+        // Remove loading dialog safely
+        if (context.mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+          print('Loading dialog removed - join failed');
+        }
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Failed to join room. Check your code and try again.')),
           );
         }
-      }
-    } catch (e) {
+      }} catch (e) {
+      print('Exception caught in _joinRoom: $e');
       // Remove loading indicator safely
-      if (Navigator.canPop(context)) {
+      if (context.mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
+        print('Loading dialog removed in catch block');
       }
       
       if (context.mounted) {
@@ -242,6 +255,7 @@ class _MainMenuState extends State<MainMenu> {
       }
     } finally {
       _roomCodeController.clear();
+      print('_joinRoom completed - room code cleared');
     }
   }
 
