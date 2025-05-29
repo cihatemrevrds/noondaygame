@@ -30,13 +30,34 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
   bool _isHost = false;
   String _currentUserId = '';
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _lobbySubscription;
-
   @override
   void initState() {
     super.initState();
+    developer.log("=== LobbyRoomPage initState started ===", name: 'LobbyRoomPage');
+    
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    developer.log("Current user ID: $_currentUserId", name: 'LobbyRoomPage');
+    developer.log("Lobby code: ${widget.lobbyCode}", name: 'LobbyRoomPage');
+    developer.log("Room name: ${widget.roomName}", name: 'LobbyRoomPage');
+    
     WidgetsBinding.instance.addObserver(this);
+    developer.log("Added widget observer", name: 'LobbyRoomPage');
+    
+    // Add 5-second force-stop mechanism for debugging
+    Timer(const Duration(seconds: 5), () {
+      if (_isLoading && mounted) {
+        developer.log("!!! FORCE STOP: Still loading after 5 seconds !!!", name: 'LobbyRoomPage');
+        developer.log("Current state - isLoading: $_isLoading, isHost: $_isHost, players count: ${players.length}", name: 'LobbyRoomPage');
+        developer.log("Subscription active: ${_lobbySubscription != null}", name: 'LobbyRoomPage');
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+    
+    developer.log("About to call _setupLobbyListener", name: 'LobbyRoomPage');
     _setupLobbyListener();
+    developer.log("=== LobbyRoomPage initState completed ===", name: 'LobbyRoomPage');
   }
     @override
   void dispose() {
@@ -111,128 +132,163 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
             .delete();
       } catch (_) {}
     }
-  }
-  void _setupLobbyListener() {
+  }  void _setupLobbyListener() {
+    developer.log("=== _setupLobbyListener started ===", name: 'LobbyRoomPage');
+    
     // Show loading indicator initially
     setState(() {
       _isLoading = true;
     });
+    developer.log("Set loading state to true", name: 'LobbyRoomPage');
     
-    _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen(
-      (snapshot) {
-        if (!snapshot.exists) {
-          // Lobby has been deleted, return to main menu
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Lobby has been deleted'),
-              ),
-            );
-            Navigator.popUntil(context, (route) => route.isFirst);
-          }
-          return;
-        }
-
-        final data = snapshot.data();
-        if (data == null) {
-          developer.log("Received null data from lobby snapshot", name: 'LobbyRoomPage');
-          return;
-        }
-
-        developer.log("Received lobby data: ${data.toString()}", name: 'LobbyRoomPage');
-        
-        // Check host information
-        final hostUid = data['hostUid'] as String?;
-        if (hostUid == null) {
-          developer.log("Host UID is missing in lobby data", name: 'LobbyRoomPage');
-        }
-        
-        final isHost = hostUid == _currentUserId;
-        developer.log("Current user is host: $isHost", name: 'LobbyRoomPage');
-
-        // Update players
-        try {
-          final playersData = data['players'] as List<dynamic>? ?? [];
-          developer.log("Number of players in lobby: ${playersData.length}", name: 'LobbyRoomPage');
+    try {
+      developer.log("Creating lobby subscription for code: ${widget.lobbyCode}", name: 'LobbyRoomPage');
+      _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen(
+        (snapshot) {
+          developer.log("=== Lobby snapshot received ===", name: 'LobbyRoomPage');
+          developer.log("Snapshot exists: ${snapshot.exists}", name: 'LobbyRoomPage');
           
-          final playersList = playersData
-              .map((p) {
-                final map = p as Map<String, dynamic>;
-                // Check for both 'id' and 'uid' for backward compatibility
-                final playerId = map['id'] as String? ?? map['uid'] as String? ?? '';
-                
-                // Log if this is the current player
-                if (playerId == _currentUserId) {
-                  developer.log("Found current user in players list", name: 'LobbyRoomPage');
-                }
-                
-                return Player(
-                  id: playerId,
-                  name: map['name'] as String? ?? 'Player',
-                  isLeader: playerId == hostUid,
-                  role: map['role'] as String?,
-                  isAlive: map['isAlive'] as bool? ?? true,
-                  team: map['team'] as String?,
-                );
-              })
-              .toList();
-              
-          // Check if game has started
-          if (data['status'] == 'started' && mounted) {
-            developer.log("Game status is 'started', navigating to RoleSelectionPage", name: 'LobbyRoomPage');
-            // Prevent multiple navigations by adding a flag
-            if (!Navigator.of(context).canPop() || 
-                ModalRoute.of(context)?.settings.name != 'role_selection') {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  settings: const RouteSettings(name: 'role_selection'),
-                  builder: (context) => RoleSelectionPage(
-                    players: playersList,
-                    lobbyCode: widget.lobbyCode,
-                    isHost: isHost,
-                  ),
+          if (!snapshot.exists) {
+            developer.log("Lobby doesn't exist, navigating back to main menu", name: 'LobbyRoomPage');
+            // Lobby has been deleted, return to main menu
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Lobby has been deleted'),
                 ),
               );
+              Navigator.popUntil(context, (route) => route.isFirst);
             }
             return;
-          } else {
-            developer.log("Current lobby status: ${data['status']}", name: 'LobbyRoomPage');
           }
 
-          if (mounted) {
-            setState(() {
-              players = playersList;
-              _isHost = isHost;
-              _isLoading = false;  // Hide loading indicator once data is processed
-            });
+          final data = snapshot.data();
+          if (data == null) {
+            developer.log("Received null data from lobby snapshot", name: 'LobbyRoomPage');
+            return;
           }
-        } catch (e) {
-          developer.log("Error processing lobby data: $e", name: 'LobbyRoomPage');
+
+          developer.log("Received lobby data: ${data.toString()}", name: 'LobbyRoomPage');
+          
+          // Check host information
+          final hostUid = data['hostUid'] as String?;
+          if (hostUid == null) {
+            developer.log("Host UID is missing in lobby data", name: 'LobbyRoomPage');
+          } else {
+            developer.log("Host UID: $hostUid", name: 'LobbyRoomPage');
+          }
+          
+          final isHost = hostUid == _currentUserId;
+          developer.log("Current user is host: $isHost", name: 'LobbyRoomPage');
+
+          // Update players
+          try {
+            developer.log("Processing players data...", name: 'LobbyRoomPage');
+            final playersData = data['players'] as List<dynamic>? ?? [];
+            developer.log("Number of players in lobby: ${playersData.length}", name: 'LobbyRoomPage');
+            
+            // Check if current user is in the players list
+            bool currentUserFound = false;
+            final playersList = playersData
+                .map((p) {
+                  final map = p as Map<String, dynamic>;
+                  // Check for both 'id' and 'uid' for backward compatibility
+                  final playerId = map['id'] as String? ?? map['uid'] as String? ?? '';
+                  
+                  // Log if this is the current player
+                  if (playerId == _currentUserId) {
+                    developer.log("Found current user in players list", name: 'LobbyRoomPage');
+                    currentUserFound = true;
+                  }
+                  
+                  return Player(
+                    id: playerId,
+                    name: map['name'] as String? ?? 'Player',
+                    isLeader: playerId == hostUid,
+                    role: map['role'] as String?,
+                    isAlive: map['isAlive'] as bool? ?? true,
+                    team: map['team'] as String?,
+                  );
+                })
+                .toList();
+            
+            if (!currentUserFound) {
+              developer.log("!!! WARNING: Current user not found in players list !!!", name: 'LobbyRoomPage');
+            }
+                
+            // Check if game has started
+            final gameStatus = data['status'];
+            developer.log("Current lobby status: $gameStatus", name: 'LobbyRoomPage');
+            
+            if (gameStatus == 'started' && mounted) {
+              developer.log("Game status is 'started', navigating to RoleSelectionPage", name: 'LobbyRoomPage');
+              // Prevent multiple navigations by adding a flag
+              if (!Navigator.of(context).canPop() || 
+                  ModalRoute.of(context)?.settings.name != 'role_selection') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'role_selection'),
+                    builder: (context) => RoleSelectionPage(
+                      players: playersList,
+                      lobbyCode: widget.lobbyCode,
+                      isHost: isHost,
+                    ),
+                  ),
+                );
+              }
+              return;
+            }
+
+            developer.log("About to update UI state...", name: 'LobbyRoomPage');
+            if (mounted) {
+              setState(() {
+                players = playersList;
+                _isHost = isHost;
+                _isLoading = false;  // Hide loading indicator once data is processed
+              });
+              developer.log("UI state updated successfully - Loading: false, Players: ${players.length}, IsHost: $_isHost", name: 'LobbyRoomPage');
+            }
+          } catch (e) {
+            developer.log("Error processing lobby data: $e", name: 'LobbyRoomPage');
+            if (mounted) {
+              setState(() {
+                _isLoading = false;  // Hide loading indicator on error
+              });
+              // Show error to user
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error loading lobby data: $e')),
+              );
+            }
+          }
+        },
+        onError: (e) {
+          developer.log("Error in lobby listener: $e", name: 'LobbyRoomPage');
           if (mounted) {
             setState(() {
               _isLoading = false;  // Hide loading indicator on error
             });
             // Show error to user
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error loading lobby data: $e')),
+              SnackBar(content: Text('Error listening to lobby updates: $e')),
             );
           }
-        }
-      },
-      onError: (e) {
-        developer.log("Error in lobby listener: $e", name: 'LobbyRoomPage');
-        if (mounted) {
-          setState(() {
-            _isLoading = false;  // Hide loading indicator on error
-          });
-          // Show error to user
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error listening to lobby updates: $e')),
-          );
-        }
-      },
-    );
+        },
+      );
+      developer.log("Lobby subscription created successfully", name: 'LobbyRoomPage');
+    } catch (e) {
+      developer.log("Exception while setting up lobby listener: $e", name: 'LobbyRoomPage');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to connect to lobby: $e')),
+        );
+      }
+    }
+    
+    developer.log("=== _setupLobbyListener completed ===", name: 'LobbyRoomPage');
   }
   Future<void> _leaveLobby() async {
     try {
