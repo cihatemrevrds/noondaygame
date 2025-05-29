@@ -167,11 +167,17 @@ class _MainMenuState extends State<MainMenu> {
       }
 
       if (success) {
-        print('Verification successful, navigating to LobbyRoomPage');
+        print('Verification successful, waiting for sync before navigation...');
         
-        // Check if widget is still mounted before navigation
-        if (context.mounted) {
-          // Use pushReplacement instead of push to avoid stack issues
+        // Firestore senkronizasyonu için biraz bekle
+        await Future.delayed(const Duration(milliseconds: 2000));
+        
+        // Son bir kez daha doğrula
+        print('Performing final verification...');
+        final finalVerification = await _lobbyService.verifyPlayerInLobby(code, user.uid);
+        
+        if (finalVerification && context.mounted) {
+          print('Final verification successful, navigating to LobbyRoomPage');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -181,7 +187,14 @@ class _MainMenuState extends State<MainMenu> {
               ),
             ),
           );
-        }      } else {
+        } else {
+          print('Final verification failed');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Connection issue. Please try again.')),
+            );
+          }
+        }} else {
         print('Failed to join or verify lobby');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
