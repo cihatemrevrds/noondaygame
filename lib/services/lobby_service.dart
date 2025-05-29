@@ -12,6 +12,7 @@ class LobbyService {
     final rand = Random();
     return List.generate(5, (_) => chars[rand.nextInt(chars.length)]).join();
   }
+
   Future<String?> createLobby(
     String hostUid,
     String hostName,
@@ -20,20 +21,21 @@ class LobbyService {
     try {
       final lobbyCode = generateLobbyCode();
 
-      final lobbyRef = _firestore.collection('lobbies').doc(lobbyCode);      await lobbyRef.set({
+      final lobbyRef = _firestore.collection('lobbies').doc(lobbyCode);
+      await lobbyRef.set({
         'hostUid': hostUid,
         'hostName': hostName,
         'maxPlayers': maxPlayers,
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'waiting',  // Add status field for tracking lobby state
+        'status': 'waiting', // Add status field for tracking lobby state
         'players': [
           {
-            'id': hostUid, 
-            'name': hostName, 
+            'id': hostUid,
+            'name': hostName,
             'isHost': true,
-            'role': null,       // Host için de role değeri eklendi
-            'isAlive': true,    // Host için de isAlive değeri eklendi
-            'team': null        // Host için de team değeri eklendi
+            'role': null, // Host için de role değeri eklendi
+            'isAlive': true, // Host için de isAlive değeri eklendi
+            'team': null, // Host için de team değeri eklendi
           },
         ],
       });
@@ -44,14 +46,17 @@ class LobbyService {
       return null;
     }
   }
+
   Future<bool> joinLobby(
     String lobbyCode,
     String playerId,
     String playerName,
   ) async {
     try {
-      print('Player $playerName (ID: $playerId) attempting to join lobby: $lobbyCode');
-      
+      print(
+        'Player $playerName (ID: $playerId) attempting to join lobby: $lobbyCode',
+      );
+
       final lobbyRef = FirebaseFirestore.instance
           .collection('lobbies')
           .doc(lobbyCode.toUpperCase());
@@ -66,7 +71,7 @@ class LobbyService {
       final data = doc.data()!;
       final players = List<Map<String, dynamic>>.from(data['players'] ?? []);
       final lobbyStatus = data['status'] as String? ?? 'waiting';
-      
+
       // Don't let players join if the game has already started
       if (lobbyStatus != 'waiting') {
         print('Cannot join: Game has already started');
@@ -81,43 +86,44 @@ class LobbyService {
       }
 
       // Check if already in lobby - if yes, update any missing fields
-      final playerIndex = players.indexWhere((p) => 
-        p['id'] == playerId || p['uid'] == playerId);
-        
+      final playerIndex = players.indexWhere(
+        (p) => p['id'] == playerId || p['uid'] == playerId,
+      );
+
       if (playerIndex >= 0) {
         print('Player already in lobby, updating fields if needed');
-        
+
         var existingPlayer = players[playerIndex];
         bool needsUpdate = false;
-        
+
         // Ensure all required fields are present
         if (!existingPlayer.containsKey('role')) {
           existingPlayer['role'] = null;
           needsUpdate = true;
         }
-        
+
         if (!existingPlayer.containsKey('isAlive')) {
           existingPlayer['isAlive'] = true;
           needsUpdate = true;
         }
-        
+
         if (!existingPlayer.containsKey('team')) {
           existingPlayer['team'] = null;
           needsUpdate = true;
         }
-        
+
         // Update name if it has changed
         if (existingPlayer['name'] != playerName) {
           existingPlayer['name'] = playerName;
           needsUpdate = true;
         }
-        
+
         if (needsUpdate) {
           players[playerIndex] = existingPlayer;
           await lobbyRef.update({'players': players});
           print('Updated existing player data in lobby');
         }
-        
+
         // Verify player can see the lobby
         await Future.delayed(const Duration(milliseconds: 500));
         return await verifyPlayerInLobby(lobbyCode, playerId);
@@ -137,7 +143,7 @@ class LobbyService {
 
       await lobbyRef.update({'players': players});
       print('Player successfully added to lobby');
-      
+
       // Wait briefly and verify the player was added correctly
       await Future.delayed(const Duration(milliseconds: 500));
       return await verifyPlayerInLobby(lobbyCode, playerId);
@@ -145,10 +151,12 @@ class LobbyService {
       print('Join lobby error: $e');
       return false;
     }
-  }Future<void> leaveLobby(String lobbyCode, String playerId) async {
+  }
+
+  Future<void> leaveLobby(String lobbyCode, String playerId) async {
     try {
       print('Player $playerId leaving lobby: $lobbyCode');
-      
+
       final lobbyRef = FirebaseFirestore.instance
           .collection('lobbies')
           .doc(lobbyCode.toUpperCase());
@@ -161,21 +169,25 @@ class LobbyService {
 
       final data = doc.data()!;
       final players = List<Map<String, dynamic>>.from(data['players'] ?? []);
-      
+
       // Remove this player from the list
-      players.removeWhere((player) => player['id'] == playerId || player['uid'] == playerId);
-      
+      players.removeWhere(
+        (player) => player['id'] == playerId || player['uid'] == playerId,
+      );
+
       // If no players left, delete the entire lobby
       if (players.isEmpty) {
         print('No players left in lobby, deleting lobby: $lobbyCode');
         try {
           await lobbyRef.delete();
           print('Empty lobby deleted successfully: $lobbyCode');
-          
+
           // Verify deletion
           final verifyDoc = await lobbyRef.get();
           if (verifyDoc.exists) {
-            print('WARNING: Lobby still exists after deletion attempt! Trying again...');
+            print(
+              'WARNING: Lobby still exists after deletion attempt! Trying again...',
+            );
             await FirebaseFirestore.instance
                 .collection('lobbies')
                 .doc(lobbyCode.toUpperCase())
@@ -193,7 +205,7 @@ class LobbyService {
         }
         return;
       }
-      
+
       // Check if the host is leaving
       final hostUid = data['hostUid'];
       if (hostUid == playerId) {
@@ -202,11 +214,13 @@ class LobbyService {
         try {
           await lobbyRef.delete();
           print('Lobby deleted successfully after host left: $lobbyCode');
-          
+
           // Verify deletion
           final verifyDoc = await lobbyRef.get();
           if (verifyDoc.exists) {
-            print('WARNING: Lobby still exists after host left! Trying forced delete...');
+            print(
+              'WARNING: Lobby still exists after host left! Trying forced delete...',
+            );
             await FirebaseFirestore.instance
                 .collection('lobbies')
                 .doc(lobbyCode.toUpperCase())
@@ -232,6 +246,7 @@ class LobbyService {
       print('Leave lobby error: $e');
     }
   }
+
   Future<void> kickPlayer(
     String lobbyCode,
     String playerIdToKick,
@@ -252,10 +267,10 @@ class LobbyService {
       }
 
       final players = List<Map<String, dynamic>>.from(data['players'] ?? []);
-      
+
       // İlgili oyuncuyu çıkar
       players.removeWhere((player) => player['id'] == playerIdToKick);
-      
+
       // Tüm oyuncuların gerekli alanları var mı kontrol et
       for (int i = 0; i < players.length; i++) {
         final player = players[i];
@@ -263,7 +278,7 @@ class LobbyService {
         if (!player.containsKey('isAlive')) player['isAlive'] = true;
         if (!player.containsKey('team')) player['team'] = null;
       }
-      
+
       await lobbyRef.update({'players': players});
     } catch (e) {
       print('Kick player error: $e');
@@ -326,49 +341,53 @@ class LobbyService {
         .collection('lobbies')
         .doc(lobbyCode.toUpperCase());
     return lobbyRef.snapshots();
-  }  Future<bool> deleteLobby(String lobbyCode, String hostId) async {
+  }
+
+  Future<bool> deleteLobby(String lobbyCode, String hostId) async {
     print('Attempting to delete lobby: $lobbyCode by host: $hostId');
     bool success = false;
-    
+
     // Try multiple times to ensure deletion works
     for (int attempt = 1; attempt <= 3; attempt++) {
       try {
         print('Delete attempt #$attempt for lobby: $lobbyCode');
-        
+
         final lobbyRef = _firestore
             .collection('lobbies')
             .doc(lobbyCode.toUpperCase());
-        
+
         // First check if the lobby exists
         final doc = await lobbyRef.get();
-        
+
         if (!doc.exists) {
           print('Lobby already deleted or not found: $lobbyCode');
           return true; // Consider it a success if the lobby is already gone
         }
-        
+
         // Force delete regardless of host (for reliability)
         await lobbyRef.delete();
         print('Lobby deletion command sent: $lobbyCode');
-        
+
         // Verify the deletion worked with a small delay
         await Future.delayed(const Duration(milliseconds: 500));
         final verifyDoc = await lobbyRef.get();
-        
+
         if (!verifyDoc.exists) {
           print('Lobby deletion verified: $lobbyCode');
           success = true;
           break; // Successfully deleted
         } else {
-          print('Lobby still exists after attempt #$attempt, trying a different approach');
-          
+          print(
+            'Lobby still exists after attempt #$attempt, trying a different approach',
+          );
+
           // Try direct Firestore reference on last attempt
           if (attempt == 3) {
             await FirebaseFirestore.instance
                 .collection('lobbies')
                 .doc(lobbyCode.toUpperCase())
                 .delete();
-                
+
             // Final verification
             await Future.delayed(const Duration(milliseconds: 500));
             final finalCheck = await lobbyRef.get();
@@ -380,8 +399,10 @@ class LobbyService {
         // Continue to next attempt
       }
     }
-    
-    print('Final deletion status for lobby $lobbyCode: ${success ? "SUCCESS" : "FAILED"}');
+
+    print(
+      'Final deletion status for lobby $lobbyCode: ${success ? "SUCCESS" : "FAILED"}',
+    );
     return success;
   }
 
@@ -389,29 +410,31 @@ class LobbyService {
   Future<void> cleanupOldLobbies() async {
     try {
       print('Checking for abandoned lobbies to cleanup');
-      
+
       final lobbiesRef = _firestore.collection('lobbies');
       final now = DateTime.now();
-      
+
       // Get all lobbies
       final snapshot = await lobbiesRef.get();
-      
+
       for (var doc in snapshot.docs) {
         try {
           final data = doc.data();
           final lobbyCode = doc.id;
-          
+
           // Timestamp kontrolü için
           final createdAt = data['createdAt'] as Timestamp?;
           final createdTime = createdAt?.toDate();
-          
+
           // Eğer 12 saatten eski bir lobi ise veya timestamp yoksa
           if (createdTime == null || now.difference(createdTime).inHours > 12) {
-            print('Cleaning up old lobby: $lobbyCode (created: ${createdTime ?? "unknown time"})');
+            print(
+              'Cleaning up old lobby: $lobbyCode (created: ${createdTime ?? "unknown time"})',
+            );
             await doc.reference.delete();
             continue;
           }
-          
+
           // Oyuncular listesi boş olan veya 1'den az oyuncusu olan lobileri temizle
           final players = data['players'] as List<dynamic>?;
           if (players == null || players.isEmpty) {
@@ -422,7 +445,7 @@ class LobbyService {
           print('Error processing lobby during cleanup: $e');
         }
       }
-      
+
       print('Lobby cleanup completed');
     } catch (e) {
       print('Error during lobby cleanup: $e');
@@ -433,44 +456,46 @@ class LobbyService {
   Future<void> updatePlayerFields() async {
     try {
       print('Checking and updating missing player fields in lobbies');
-      
+
       final lobbiesRef = _firestore.collection('lobbies');
-      
+
       // Get all lobbies
       final snapshot = await lobbiesRef.get();
-      
+
       for (var doc in snapshot.docs) {
         try {
           final data = doc.data();
           final lobbyCode = doc.id;
-          
+
           bool needsUpdate = false;
           final List<Map<String, dynamic>> updatedPlayers = [];
-          
+
           final players = data['players'] as List<dynamic>?;
           if (players != null && players.isNotEmpty) {
             for (var playerData in players) {
-              final player = Map<String, dynamic>.from(playerData as Map<String, dynamic>);
-              
+              final player = Map<String, dynamic>.from(
+                playerData as Map<String, dynamic>,
+              );
+
               // Eksik alanları kontrol edip ekliyoruz
               if (!player.containsKey('role')) {
                 player['role'] = null;
                 needsUpdate = true;
               }
-              
+
               if (!player.containsKey('isAlive')) {
                 player['isAlive'] = true;
                 needsUpdate = true;
               }
-              
+
               if (!player.containsKey('team')) {
                 player['team'] = null;
                 needsUpdate = true;
               }
-              
+
               updatedPlayers.add(player);
             }
-            
+
             // Güncelleme gerekiyorsa veritabanını güncelle
             if (needsUpdate) {
               print('Updating player fields in lobby: $lobbyCode');
@@ -481,7 +506,7 @@ class LobbyService {
           print('Error updating player fields in lobby: $e');
         }
       }
-      
+
       print('Player field updates completed');
     } catch (e) {
       print('Error during player field updates: $e');
@@ -492,60 +517,82 @@ class LobbyService {
   Future<bool> verifyPlayerInLobby(String lobbyCode, String playerId) async {
     try {
       print('Verifying player $playerId is properly in lobby $lobbyCode');
-      
+
       final lobbyRef = _firestore
           .collection('lobbies')
           .doc(lobbyCode.toUpperCase());
-      
+
       // Check if lobby exists
       final lobbyDoc = await lobbyRef.get();
       if (!lobbyDoc.exists) {
         print('Cannot verify player: Lobby does not exist');
         return false;
       }
-      
+
       final lobbyData = lobbyDoc.data()!;
-      final players = List<Map<String, dynamic>>.from(lobbyData['players'] ?? []);
-      
+      final players = List<Map<String, dynamic>>.from(
+        lobbyData['players'] ?? [],
+      );
+
       // Find player in the lobby
-      final playerIndex = players.indexWhere((p) => 
-        p['id'] == playerId || p['uid'] == playerId);
-      
+      final playerIndex = players.indexWhere(
+        (p) => p['id'] == playerId || p['uid'] == playerId,
+      );
+
       if (playerIndex < 0) {
         print('Player not found in lobby data');
         return false;
       }
-      
+
       // Ensure player has all required fields
       var player = players[playerIndex];
       bool updatedFields = false;
-      
+
       if (!player.containsKey('role')) {
         player['role'] = null;
         updatedFields = true;
       }
-      
+
       if (!player.containsKey('isAlive')) {
         player['isAlive'] = true;
         updatedFields = true;
       }
-      
+
       if (!player.containsKey('team')) {
         player['team'] = null;
         updatedFields = true;
       }
-      
+
       // If any fields were missing, update the player data
       if (updatedFields) {
         players[playerIndex] = player;
         await lobbyRef.update({'players': players});
         print('Updated player fields in lobby');
       }
-      
+
       return true;
     } catch (e) {
       print('Error verifying player in lobby: $e');
       return false;
+    }
+  }
+
+  Future<void> transferHost(String lobbyCode, String newHostId) async {
+    try {
+      final lobbyRef = FirebaseFirestore.instance
+          .collection('lobbies')
+          .doc(lobbyCode.toUpperCase());
+
+      final doc = await lobbyRef.get();
+      if (!doc.exists) {
+        print('Lobby not found');
+        return;
+      }
+
+      await lobbyRef.update({'hostUid': newHostId});
+      print('Host transferred successfully');
+    } catch (e) {
+      print('Error transferring host: $e');
     }
   }
 }
