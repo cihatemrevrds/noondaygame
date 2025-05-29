@@ -74,7 +74,7 @@ class RoleCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [              InkWell(
-                onTap: onDecrement != null ? onDecrement : null,
+                onTap: onDecrement,
                 child: Container(
                   width: 28,
                   height: 28,
@@ -98,7 +98,7 @@ class RoleCard extends StatelessWidget {
                   ),
                 ),
               ),              InkWell(
-                onTap: onIncrement != null ? onIncrement : null,
+                onTap: onIncrement,
                 child: Container(
                   width: 28,
                   height: 28,
