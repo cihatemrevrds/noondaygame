@@ -157,8 +157,7 @@ class _MainMenuState extends State<MainMenu> {
         code,
         user.uid,
         playerName,
-      );
-      print('First join attempt result: $success');
+      );      print('First join attempt result: $success');
       
       // If first attempt fails, try one more time after a short delay
       if (!success) {
@@ -172,61 +171,38 @@ class _MainMenuState extends State<MainMenu> {
         );
         print('Retry attempt result: $success');
       }
-        // Verify player is in the lobby
-      if (success) {
-        print('Join successful, starting verification...');
-        print('Successfully joined lobby, verifying player data');
-        success = await _lobbyService.verifyPlayerInLobby(code, user.uid);
-        print('Initial verification result: $success');
-      } else {
-        print('Join failed completely, skipping verification');
-      }      if (success) {
-        print('Verification successful, proceeding to navigation...');
-        print('Context mounted before navigation: ${context.mounted}');
+      
+      // Remove loading indicator first
+      print('Removing loading dialog...');
+      if (context.mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        print('Loading dialog removed');
+      }
+
+      if (success && context.mounted) {
+        print('Join successful, navigating to LobbyRoomPage');
+        print('Context mounted: ${context.mounted}');
         
-        if (context.mounted) {
-          print('Context is mounted, navigating to LobbyRoomPage');
-          
-          // Remove loading dialog safely before navigation
-          print('Removing loading dialog before navigation...');
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-            print('Loading dialog removed');
-          }
-          
-          // Navigate to lobby room immediately
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LobbyRoomPage(
-                roomName: 'Room $code',
-                lobbyCode: code,
-              ),
+        // Navigate immediately after successful join
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LobbyRoomPage(
+              roomName: 'Room $code',
+              lobbyCode: code,
             ),
-          );
-          print('Navigation to LobbyRoomPage completed');
-        } else {
-          print('Context is not mounted, cannot navigate');
-          // Try to remove loading dialog if possible
-          try {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          } catch (e) {
-            print('Failed to remove loading dialog: $e');
-          }
-        }} else {
-        print('Failed to join or verify lobby');
-        // Remove loading dialog safely
-        if (context.mounted && Navigator.canPop(context)) {
-          Navigator.pop(context);
-          print('Loading dialog removed - join failed');
-        }
+          ),
+        );
+        print('Navigation to LobbyRoomPage completed');
+      } else if (!success) {
+        print('Failed to join lobby');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Failed to join room. Check your code and try again.')),
           );
         }
+      } else {
+        print('Context not mounted, cannot navigate');
       }} catch (e) {
       print('Exception caught in _joinRoom: $e');
       // Remove loading indicator safely
