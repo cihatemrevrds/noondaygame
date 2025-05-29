@@ -42,10 +42,9 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
     
     WidgetsBinding.instance.addObserver(this);
     developer.log("Added widget observer", name: 'LobbyRoomPage');
-    
-    // Add 5-second force-stop mechanism for debugging
+      // Add 5-second force-stop mechanism for debugging
     Timer(const Duration(seconds: 5), () {
-      if (_isLoading && mounted) {
+      if (mounted && _isLoading) {
         developer.log("!!! FORCE STOP: Still loading after 5 seconds !!!", name: 'LobbyRoomPage');
         developer.log("Current state - isLoading: $_isLoading, isHost: $_isHost, players count: ${players.length}", name: 'LobbyRoomPage');
         developer.log("Subscription active: ${_lobbySubscription != null}", name: 'LobbyRoomPage');
@@ -142,9 +141,14 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
     developer.log("Set loading state to true", name: 'LobbyRoomPage');
     
     try {
-      developer.log("Creating lobby subscription for code: ${widget.lobbyCode}", name: 'LobbyRoomPage');
-      _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen(
+      developer.log("Creating lobby subscription for code: ${widget.lobbyCode}", name: 'LobbyRoomPage');      _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen(
         (snapshot) {
+          // Her setState'den önce mounted kontrolü
+          if (!mounted) {
+            developer.log("Widget not mounted, skipping state update", name: 'LobbyRoomPage');
+            return;
+          }
+          
           developer.log("=== Lobby snapshot received ===", name: 'LobbyRoomPage');
           developer.log("Snapshot exists: ${snapshot.exists}", name: 'LobbyRoomPage');
           
@@ -179,12 +183,11 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
           }
           
           final isHost = hostUid == _currentUserId;
-          developer.log("Current user is host: $isHost", name: 'LobbyRoomPage');
-
-          // Update players
+          developer.log("Current user is host: $isHost", name: 'LobbyRoomPage');          // Update players
           try {
             developer.log("Processing players data...", name: 'LobbyRoomPage');
             final playersData = data['players'] as List<dynamic>? ?? [];
+            developer.log("Raw players data: $playersData", name: 'LobbyRoomPage'); // RAW DATA LOG
             developer.log("Number of players in lobby: ${playersData.length}", name: 'LobbyRoomPage');
             
             // Check if current user is in the players list
@@ -192,12 +195,19 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
             final playersList = playersData
                 .map((p) {
                   final map = p as Map<String, dynamic>;
-                  // Check for both 'id' and 'uid' for backward compatibility
-                  final playerId = map['id'] as String? ?? map['uid'] as String? ?? '';
+                  developer.log("Processing player data: $map", name: 'LobbyRoomPage'); // EACH PLAYER LOG
                   
-                  // Log if this is the current player
+                  // Check for all possible ID field names
+                  final playerId = map['id'] as String? ?? 
+                                  map['uid'] as String? ?? 
+                                  map['userId'] as String? ?? 
+                                  map['playerId'] as String? ?? '';
+                  
+                  developer.log("Player ID extracted: '$playerId', Current user: '$_currentUserId'", name: 'LobbyRoomPage');
+                  
+                  // Check if this is the current player
                   if (playerId == _currentUserId) {
-                    developer.log("Found current user in players list", name: 'LobbyRoomPage');
+                    developer.log("✅ FOUND CURRENT USER IN PLAYERS LIST!", name: 'LobbyRoomPage');
                     currentUserFound = true;
                   }
                   
@@ -213,7 +223,9 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
                 .toList();
             
             if (!currentUserFound) {
-              developer.log("!!! WARNING: Current user not found in players list !!!", name: 'LobbyRoomPage');
+              developer.log("❌ CRITICAL: Current user NOT FOUND in players list!", name: 'LobbyRoomPage');
+              developer.log("Current user ID: '$_currentUserId'", name: 'LobbyRoomPage');
+              developer.log("All player IDs found: ${playersList.map((p) => p.id).toList()}", name: 'LobbyRoomPage');
             }
                 
             // Check if game has started

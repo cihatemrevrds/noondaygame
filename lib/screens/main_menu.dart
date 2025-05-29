@@ -6,12 +6,24 @@ import 'lobby_setup_page.dart';
 import 'lobby_room_page.dart';
 import 'settings_page.dart';
 
-class MainMenu extends StatelessWidget {
+class MainMenu extends StatefulWidget {
   final String username;
+
+  const MainMenu({super.key, required this.username});
+
+  @override
+  State<MainMenu> createState() => _MainMenuState();
+}
+
+class _MainMenuState extends State<MainMenu> {
   final TextEditingController _roomCodeController = TextEditingController();
   final LobbyService _lobbyService = LobbyService();
 
-  MainMenu({super.key, required this.username});
+  @override
+  void dispose() {
+    _roomCodeController.dispose();
+    super.dispose();
+  }
 
   void _showJoinDialog(BuildContext context) {
     showDialog(
@@ -123,9 +135,8 @@ class MainMenu extends StatelessWidget {
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
-    );    try {
-      final playerName = user.displayName ?? 
-                        (username.isNotEmpty ? username : user.email?.split('@')[0] ?? 'Player');
+    );    try {      final playerName = user.displayName ?? 
+                        (widget.username.isNotEmpty ? widget.username : user.email?.split('@')[0] ?? 'Player');
       
       print('Attempting to join lobby with code: $code as $playerName');
       
@@ -151,36 +162,45 @@ class MainMenu extends StatelessWidget {
       if (success) {
         print('Successfully joined lobby, verifying player data');
         success = await _lobbyService.verifyPlayerInLobby(code, user.uid);
+      }      // Remove loading indicator BEFORE any navigation
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
       }
-
-      // Remove loading indicator
-      Navigator.pop(context);
 
       if (success) {
         print('Verification successful, navigating to LobbyRoomPage');
-        // Navigate to the lobby room with loading state enabled
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LobbyRoomPage(
-              roomName: 'Room $code',
-              lobbyCode: code,
+        
+        // Check if widget is still mounted before navigation
+        if (context.mounted) {
+          // Use pushReplacement instead of push to avoid stack issues
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LobbyRoomPage(
+                roomName: 'Room $code',
+                lobbyCode: code,
+              ),
             ),
-          ),
-        );
-      } else {
+          );
+        }      } else {
         print('Failed to join or verify lobby');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to join room. Check your code and try again.')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to join room. Check your code and try again.')),
+          );
+        }
       }
     } catch (e) {
-      // Remove loading indicator
-      Navigator.pop(context);
+      // Remove loading indicator safely
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     } finally {
       _roomCodeController.clear();
     }
@@ -217,9 +237,8 @@ class MainMenu extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Welcome, $username!',
+            const SizedBox(height: 20),            Text(
+              'Welcome, ${widget.username}!',
               style: const TextStyle(
                 fontFamily: 'Rye',
                 fontSize: 20,
