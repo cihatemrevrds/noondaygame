@@ -131,10 +131,6 @@ class _MainMenuState extends State<MainMenu> {
 
     print('Current user: ${user.uid}');
     
-    // Close dialog first
-    print('Closing join dialog...');
-    Navigator.pop(context);
-    
     // Set loading state like host does
     setState(() {
       _isLoading = true;
