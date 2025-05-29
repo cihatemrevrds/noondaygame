@@ -107,77 +107,104 @@ class _MainMenuState extends State<MainMenu> {
       ),
     );
   }
-
   Future<void> _joinRoom(BuildContext context) async {
     final code = _roomCodeController.text.trim();
+    print('=== JOIN ROOM STARTED ===');
+    print('Attempting to join room with code: $code');
+    
     if (code.isEmpty) {
+      print('ERROR: Empty room code');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a room code')),
       );
       return;
     }
 
-
+    // Close dialog first
+    print('Closing join dialog...');
+    Navigator.pop(context);
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
+      print('ERROR: User is null');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You need to be logged in')),
       );
       return;
     }
 
+    print('Current user: ${user.uid}');
+    
     // Show loading indicator
+    print('Showing loading dialog...');
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
-    );    try {      final playerName = user.displayName ?? 
+    );    try {
+      print('Starting join process...');
+      final playerName = user.displayName ?? 
                         (widget.username.isNotEmpty ? widget.username : user.email?.split('@')[0] ?? 'Player');
       
+      print('Player name: $playerName');
       print('Attempting to join lobby with code: $code as $playerName');
       
       // First join attempt
+      print('First join attempt starting...');
       bool success = await _lobbyService.joinLobby(
         code,
         user.uid,
         playerName,
       );
+      print('First join attempt result: $success');
       
       // If first attempt fails, try one more time after a short delay
       if (!success) {
+        print('First join attempt failed, waiting 1 second...');
         await Future.delayed(const Duration(milliseconds: 1000));
-        print('First join attempt failed, retrying...');
+        print('Starting retry attempt...');
         success = await _lobbyService.joinLobby(
           code,
           user.uid,
           playerName,
         );
+        print('Retry attempt result: $success');
       }
-      
-      // Verify player is in the lobby
+        // Verify player is in the lobby
       if (success) {
+        print('Join successful, starting verification...');
         print('Successfully joined lobby, verifying player data');
         success = await _lobbyService.verifyPlayerInLobby(code, user.uid);
-      }      // Remove loading indicator BEFORE any navigation
+        print('Initial verification result: $success');
+      } else {
+        print('Join failed completely, skipping verification');
+      }
+
+      // Remove loading indicator BEFORE any navigation
+      print('Removing loading dialog...');
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
+        print('Loading dialog removed');
       }
 
       if (success) {
         print('Verification successful, waiting for sync before navigation...');
         
         // Firestore senkronizasyonu için biraz bekle
+        print('Waiting 2 seconds for Firestore sync...');
         await Future.delayed(const Duration(milliseconds: 2000));
         
         // Son bir kez daha doğrula
         print('Performing final verification...');
         final finalVerification = await _lobbyService.verifyPlayerInLobby(code, user.uid);
+        print('Final verification result: $finalVerification');
+        print('Context mounted: ${context.mounted}');
         
         if (finalVerification && context.mounted) {
           print('Final verification successful, navigating to LobbyRoomPage');
+          print('About to call Navigator.pushReplacement...');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
