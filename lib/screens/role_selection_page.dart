@@ -199,11 +199,11 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
               duration: Duration(seconds: 2),
             ),
           );
-          
-          // Oyun sayfasına geçiş yap
+            // Navigate to game screen
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
+              settings: const RouteSettings(name: 'game_screen'),
               builder: (context) => GameScreen(
                 lobbyCode: widget.lobbyCode,
                 isHost: widget.isHost,

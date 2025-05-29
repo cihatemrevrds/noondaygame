@@ -58,37 +58,57 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
     _setupLobbyListener();
     developer.log("=== LobbyRoomPage initState completed ===", name: 'LobbyRoomPage');
   }
-    @override
+  @override
   void dispose() {
+    developer.log("=== LobbyRoomPage dispose() called ===", name: 'LobbyRoomPage');
+    
     // Clean up when this Widget is removed from the widget tree
     _lobbySubscription?.cancel();
     
-    // Try to clean up the lobby when leaving the page
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      if (_isHost) {
-        // Force delete the lobby if host is leaving
-        FirebaseFirestore.instance
-            .collection('lobbies')
-            .doc(widget.lobbyCode.toUpperCase())
-            .delete()
-            .catchError((e) {
-              developer.log("Error during dispose cleanup: $e", name: 'LobbyRoomPage');
-            });
+    // ONLY clean up lobby when truly leaving (not navigating to game)
+    // Check if we're navigating to role selection or game screen
+    final currentRoute = ModalRoute.of(context);
+    final isNavigatingToGame = currentRoute?.settings.name == 'role_selection' || 
+                               currentRoute?.settings.name == 'game_screen';
+    
+    developer.log("Is navigating to game: $isNavigatingToGame", name: 'LobbyRoomPage');
+    
+    if (!isNavigatingToGame) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        if (_isHost) {
+          developer.log("Host is truly leaving (not to game), cleaning up lobby", name: 'LobbyRoomPage');
+          // Only delete lobby if we're actually leaving, not going to game
+          FirebaseFirestore.instance
+              .collection('lobbies')
+              .doc(widget.lobbyCode.toUpperCase())
+              .delete()
+              .catchError((e) {
+                developer.log("Error during dispose cleanup: $e", name: 'LobbyRoomPage');
+              });
+        } else {
+          developer.log("Player is leaving lobby, removing from players list", name: 'LobbyRoomPage');
+          // For regular players, just leave the lobby
+          _lobbyService.leaveLobby(widget.lobbyCode, user.uid);
+        }
       }
+    } else {
+      developer.log("Navigating to game - NOT cleaning up lobby", name: 'LobbyRoomPage');
     }
     
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
-  
-  @override
+    @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Handle app lifecycle states
-    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
-      // App is being killed or sent to background, try to leave lobby gracefully
+    developer.log("App lifecycle state changed: $state", name: 'LobbyRoomPage');
+    
+    // Only clean up on app being completely detached/paused for extended time
+    if (state == AppLifecycleState.detached) {
+      developer.log("App is being detached, cleaning up lobby", name: 'LobbyRoomPage');
       _cleanupLobby();
     }
+    // Don't clean up on pause - user might just be switching apps temporarily
   }
     void _cleanupLobby() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -231,12 +251,14 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
             // Check if game has started
             final gameStatus = data['status'];
             developer.log("Current lobby status: $gameStatus", name: 'LobbyRoomPage');
-            
-            if (gameStatus == 'started' && mounted) {
+              if (gameStatus == 'started' && mounted) {
               developer.log("Game status is 'started', navigating to RoleSelectionPage", name: 'LobbyRoomPage');
-              // Prevent multiple navigations by adding a flag
-              if (!Navigator.of(context).canPop() || 
-                  ModalRoute.of(context)?.settings.name != 'role_selection') {
+              
+              // Check if we're already on the role selection page to prevent duplicate navigation
+              final currentRouteName = ModalRoute.of(context)?.settings.name;
+              if (currentRouteName != 'role_selection' && currentRouteName != 'game_screen') {
+                developer.log("Not already on game screens, navigating to RoleSelectionPage", name: 'LobbyRoomPage');
+                
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -248,6 +270,8 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
                     ),
                   ),
                 );
+              } else {
+                developer.log("Already on game screen, skipping navigation", name: 'LobbyRoomPage');
               }
               return;
             }
@@ -355,8 +379,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
         Navigator.pop(context);
       }
     }
-  }
-  Future<void> _startGame() async {
+  }  Future<void> _startGame() async {
     if (!_isHost) return;
     
     if (players.length < 4) {
@@ -379,20 +402,22 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('User not logged in');
       
+      developer.log("Starting game - updating lobby status to 'started'", name: 'LobbyRoomPage');
+      
       // Update lobby status to 'started' in Firestore
       await FirebaseFirestore.instance
         .collection('lobbies')
         .doc(widget.lobbyCode)
         .update({'status': 'started'});
       
-      // The listener will automatically navigate to RoleSelectionPage for all players
-      developer.log("Game started, lobby status updated to 'started'", name: 'LobbyRoomPage');
+      developer.log("Lobby status updated, navigating to RoleSelectionPage", name: 'LobbyRoomPage');
       
-      // Only navigate manually if the listener doesn't trigger
+      // Navigate with named route to prevent disposal cleanup
       if (mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
+            settings: const RouteSettings(name: 'role_selection'),
             builder: (context) => RoleSelectionPage(
               players: players,
               lobbyCode: widget.lobbyCode,
@@ -402,15 +427,18 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
         );
       }
     } catch (e) {
+      developer.log("Error starting game: $e", name: 'LobbyRoomPage');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error starting game: $e'),
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -602,7 +630,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage> with WidgetsBindingObserv
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  if (players.length < 4)
+                  if (players.length < 2)
                     const Padding(
                       padding: EdgeInsets.only(bottom: 8.0),
                       child: Text(

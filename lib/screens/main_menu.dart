@@ -171,11 +171,13 @@ class _MainMenuState extends State<MainMenu> {
         
         // Firestore senkronizasyonu için biraz bekle (host gibi)
         await Future.delayed(const Duration(milliseconds: 1500));
-        
-        if (mounted) {
+          if (mounted) {
           print('Navigating to LobbyRoomPage as player');
           
-          // HOST GİBİ PUSH KULLAN (pushReplacement değil)
+          // Make sure to close the join dialog first
+          Navigator.pop(context); // Close dialog
+          
+          // Then navigate to lobby room
           Navigator.push(
             context,
             MaterialPageRoute(
