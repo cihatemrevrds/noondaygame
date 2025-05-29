@@ -51,9 +51,14 @@ class _LobbySetupPageState extends State<LobbySetupPage> {
         user.displayName ?? (user.email?.split('@')[0] ?? 'Host'),
         6, // Default max players
       );
-      
-      if (lobbyCode != null) {
+        if (lobbyCode != null) {
+        print('Lobby created successfully, waiting for sync before navigation...');
+        
+        // Firestore senkronizasyonu için biraz bekle
+        await Future.delayed(const Duration(milliseconds: 1500));
+        
         if (mounted) {
+          print('Navigating to LobbyRoomPage as host');
           Navigator.push(
             context,
             MaterialPageRoute(
