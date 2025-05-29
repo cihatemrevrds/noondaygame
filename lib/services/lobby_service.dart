@@ -595,4 +595,63 @@ class LobbyService {
       print('Error transferring host: $e');
     }
   }
+
+  Future<void> leaveAsHostWithTransfer(String lobbyCode, String hostId) async {
+    try {
+      print(
+        'Host $hostId leaving lobby $lobbyCode, attempting to transfer host',
+      );
+
+      final lobbyRef = FirebaseFirestore.instance
+          .collection('lobbies')
+          .doc(lobbyCode.toUpperCase());
+
+      final doc = await lobbyRef.get();
+      if (!doc.exists) {
+        print('Lobby not found when host is leaving');
+        return;
+      }
+
+      final data = doc.data()!;
+      final players = List<Map<String, dynamic>>.from(data['players'] ?? []);
+
+      // Remove the current host from players list
+      players.removeWhere(
+        (player) => player['id'] == hostId || player['uid'] == hostId,
+      );
+
+      // If no other players left, delete the lobby
+      if (players.isEmpty) {
+        print('No other players left, deleting lobby: $lobbyCode');
+        await lobbyRef.delete();
+        return;
+      }
+
+      // Find the next player to become host (first player in the list)
+      final newHost = players.first;
+      final newHostId = newHost['id'] ?? newHost['uid'] ?? '';
+
+      if (newHostId.isEmpty) {
+        print('No valid player found to transfer host to, deleting lobby');
+        await lobbyRef.delete();
+        return;
+      }
+
+      // Update the lobby with new host and updated players list
+      await lobbyRef.update({'hostUid': newHostId, 'players': players});
+
+      print('Host successfully transferred from $hostId to $newHostId');
+    } catch (e) {
+      print('Error in leaveAsHostWithTransfer: $e');
+      // Fallback: try to delete the lobby if transfer fails
+      try {
+        await FirebaseFirestore.instance
+            .collection('lobbies')
+            .doc(lobbyCode.toUpperCase())
+            .delete();
+      } catch (deleteError) {
+        print('Error in fallback deletion: $deleteError');
+      }
+    }
+  }
 }
