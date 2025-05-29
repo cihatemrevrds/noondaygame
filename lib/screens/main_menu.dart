@@ -18,6 +18,7 @@ class MainMenu extends StatefulWidget {
 class _MainMenuState extends State<MainMenu> {
   final TextEditingController _roomCodeController = TextEditingController();
   final LobbyService _lobbyService = LobbyService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -106,8 +107,7 @@ class _MainMenuState extends State<MainMenu> {
         ],
       ),
     );
-  }
-  Future<void> _joinRoom(BuildContext context) async {
+  }  Future<void> _joinRoom(BuildContext context) async {
     final code = _roomCodeController.text.trim();
     print('=== JOIN ROOM STARTED ===');
     print('Attempting to join room with code: $code');
@@ -120,10 +120,6 @@ class _MainMenuState extends State<MainMenu> {
       return;
     }
 
-    // Close dialog first
-    print('Closing join dialog...');
-    Navigator.pop(context);
-
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       print('ERROR: User is null');
@@ -135,15 +131,16 @@ class _MainMenuState extends State<MainMenu> {
 
     print('Current user: ${user.uid}');
     
-    // Show loading indicator
-    print('Showing loading dialog...');
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );    try {
+    // Close dialog first
+    print('Closing join dialog...');
+    Navigator.pop(context);
+    
+    // Set loading state like host does
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
       print('Starting join process...');
       final playerName = user.displayName ?? 
                         (widget.username.isNotEmpty ? widget.username : user.email?.split('@')[0] ?? 'Player');
@@ -157,7 +154,8 @@ class _MainMenuState extends State<MainMenu> {
         code,
         user.uid,
         playerName,
-      );      print('First join attempt result: $success');
+      );
+      print('First join attempt result: $success');
       
       // If first attempt fails, try one more time after a short delay
       if (!success) {
@@ -171,52 +169,44 @@ class _MainMenuState extends State<MainMenu> {
         );
         print('Retry attempt result: $success');
       }
-      
-      // Remove loading indicator first
-      print('Removing loading dialog...');
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-        print('Loading dialog removed');
-      }
 
-      if (success && context.mounted) {
-        print('Join successful, navigating to LobbyRoomPage');
-        print('Context mounted: ${context.mounted}');
+      if (success) {
+        print('Lobby joined successfully, waiting for sync before navigation...');
         
-        // Navigate immediately after successful join
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LobbyRoomPage(
-              roomName: 'Room $code',
-              lobbyCode: code,
+        // Firestore senkronizasyonu için biraz bekle (host gibi)
+        await Future.delayed(const Duration(milliseconds: 1500));
+        
+        if (mounted) {
+          print('Navigating to LobbyRoomPage as player');
+          
+          // HOST GİBİ PUSH KULLAN (pushReplacement değil)
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LobbyRoomPage(
+                roomName: 'Room $code',
+                lobbyCode: code,
+              ),
             ),
-          ),
-        );
-        print('Navigation to LobbyRoomPage completed');
-      } else if (!success) {
-        print('Failed to join lobby');
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to join room. Check your code and try again.')),
           );
+          print('Navigation to LobbyRoomPage completed');
         }
       } else {
-        print('Context not mounted, cannot navigate');
-      }} catch (e) {
-      print('Exception caught in _joinRoom: $e');
-      // Remove loading indicator safely
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-        print('Loading dialog removed in catch block');
+        throw Exception("Failed to join lobby");
       }
-      
-      if (context.mounted) {
+    } catch (e) {
+      print('Exception caught in _joinRoom: $e');
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
       }
     } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       _roomCodeController.clear();
       print('_joinRoom completed - room code cleared');
     }
@@ -270,12 +260,13 @@ class _MainMenuState extends State<MainMenu> {
                   MaterialPageRoute(builder: (context) => const LobbySetupPage()),
                 );
               },
-            ),
-            const SizedBox(height: 20),
-            MenuButton(
-              text: 'JOIN ROOM',
-              onPressed: () => _showJoinDialog(context),
-            ),
+            ),            const SizedBox(height: 20),
+            _isLoading
+                ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
+                : MenuButton(
+                    text: 'JOIN ROOM',
+                    onPressed: () => _showJoinDialog(context),
+                  ),
             const SizedBox(height: 20),
             MenuButton(
               text: 'SETTINGS',
