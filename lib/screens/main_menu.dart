@@ -117,8 +117,7 @@ class _MainMenuState extends State<MainMenu> {
       return;
     }
 
-    // Close dialog first
-    Navigator.pop(context);
+
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
