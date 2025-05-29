@@ -8,6 +8,7 @@ import '../widgets/menu_button.dart';
 import '../models/player.dart';
 import '../services/lobby_service.dart';
 import 'role_selection_page.dart';
+import 'main_menu.dart';
 
 class LobbyRoomPage extends StatefulWidget {
   final String roomName;
@@ -54,7 +55,23 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
         .listenToLobbyUpdates(widget.lobbyCode)
         .listen((snapshot) {
           if (!snapshot.exists) {
-            Navigator.popUntil(context, (route) => route.isFirst);
+            // Lobby deleted, navigate to main menu since user is already logged in
+            final user = FirebaseAuth.instance.currentUser;
+            if (mounted && user != null) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => MainMenu(
+                        username:
+                            user.displayName ??
+                            user.email?.split('@')[0] ??
+                            'Player',
+                      ),
+                ),
+                (route) => false,
+              );
+            }
             return;
           }
 
@@ -109,11 +126,24 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     if (_isHost) {
-      await _lobbyService.deleteLobby(widget.lobbyCode, user.uid);
+      // If host is leaving, transfer host to another player instead of deleting lobby
+      await _lobbyService.leaveAsHostWithTransfer(widget.lobbyCode, user.uid);
     } else {
       await _lobbyService.leaveLobby(widget.lobbyCode, user.uid);
     }
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => MainMenu(
+                username:
+                    user.displayName ?? user.email?.split('@')[0] ?? 'Player',
+              ),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _startGame() async {
