@@ -2,9 +2,35 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class LobbyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static Timer? _cleanupTimer;
+
+  // Getter for testing purposes
+  static Timer? get cleanupTimer => _cleanupTimer;
+
+  // Start periodic cleanup - call this once when app starts
+  static void startPeriodicCleanup() {
+    _cleanupTimer?.cancel(); // Cancel any existing timer
+
+    // Run cleanup every 30 minutes
+    _cleanupTimer = Timer.periodic(const Duration(minutes: 30), (timer) {
+      LobbyService().cleanupOldLobbies().catchError((error) {
+        print('Periodic cleanup error: $error');
+      });
+    });
+
+    print('Started periodic lobby cleanup (every 30 minutes)');
+  }
+
+  // Stop periodic cleanup
+  static void stopPeriodicCleanup() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
+    print('Stopped periodic lobby cleanup');
+  }
 
   // Generate random 5-letter lobby code
   String generateLobbyCode() {
@@ -416,6 +442,7 @@ class LobbyService {
 
       // Get all lobbies
       final snapshot = await lobbiesRef.get();
+      int cleanedCount = 0;
 
       for (var doc in snapshot.docs) {
         try {
@@ -426,27 +453,58 @@ class LobbyService {
           final createdAt = data['createdAt'] as Timestamp?;
           final createdTime = createdAt?.toDate();
 
-          // Eğer 12 saatten eski bir lobi ise veya timestamp yoksa
-          if (createdTime == null || now.difference(createdTime).inHours > 12) {
-            print(
-              'Cleaning up old lobby: $lobbyCode (created: ${createdTime ?? "unknown time"})',
-            );
-            await doc.reference.delete();
-            continue;
+          // Clean up lobbies that are:
+          // 1. Older than 6 hours (reduced from 12 hours)
+          // 2. Have no timestamp (corrupted data)
+          // 3. Have empty players list
+          // 4. Are stuck in "waiting" status for too long
+
+          bool shouldCleanup = false;
+          String reason = '';
+
+          if (createdTime == null) {
+            shouldCleanup = true;
+            reason = 'missing timestamp';
+          } else if (now.difference(createdTime).inHours > 6) {
+            shouldCleanup = true;
+            reason = 'older than 6 hours';
           }
 
-          // Oyuncular listesi boş olan veya 1'den az oyuncusu olan lobileri temizle
+          // Check for empty or invalid players list
           final players = data['players'] as List<dynamic>?;
           if (players == null || players.isEmpty) {
-            print('Cleaning up empty lobby: $lobbyCode');
+            shouldCleanup = true;
+            reason = 'empty players list';
+          }
+
+          // Check for lobbies stuck in waiting state for more than 2 hours
+          final status = data['status'] as String? ?? 'waiting';
+          if (status == 'waiting' &&
+              createdTime != null &&
+              now.difference(createdTime).inHours > 2) {
+            shouldCleanup = true;
+            reason = 'stuck in waiting state for 2+ hours';
+          }
+
+          // Check for games that have been running for more than 4 hours
+          if (status == 'started' &&
+              createdTime != null &&
+              now.difference(createdTime).inHours > 4) {
+            shouldCleanup = true;
+            reason = 'game running for 4+ hours';
+          }
+
+          if (shouldCleanup) {
+            print('Cleaning up lobby: $lobbyCode ($reason)');
             await doc.reference.delete();
+            cleanedCount++;
           }
         } catch (e) {
           print('Error processing lobby during cleanup: $e');
         }
       }
 
-      print('Lobby cleanup completed');
+      print('Lobby cleanup completed - cleaned $cleanedCount lobbies');
     } catch (e) {
       print('Error during lobby cleanup: $e');
     }
@@ -652,6 +710,64 @@ class LobbyService {
       } catch (deleteError) {
         print('Error in fallback deletion: $deleteError');
       }
+    }
+  }
+
+  // Clean up any lobbies where a specific player is present (for app termination)
+  Future<void> cleanupPlayerLobbies(String playerId) async {
+    try {
+      print('Cleaning up lobbies for player: $playerId');
+
+      final lobbiesRef = _firestore.collection('lobbies');
+      final snapshot = await lobbiesRef.get();
+
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data();
+          final players = data['players'] as List<dynamic>? ?? [];
+
+          // Check if this player is in this lobby
+          final playerInLobby = players.any(
+            (player) => player['id'] == playerId || player['uid'] == playerId,
+          );
+
+          if (playerInLobby) {
+            final hostUid = data['hostUid'] as String?;
+
+            if (hostUid == playerId) {
+              // Player is host - delete the entire lobby
+              print('Deleting lobby ${doc.id} (player was host)');
+              await doc.reference.delete();
+            } else {
+              // Player is not host - just remove them from players list
+              final updatedPlayers =
+                  players
+                      .where(
+                        (player) =>
+                            player['id'] != playerId &&
+                            player['uid'] != playerId,
+                      )
+                      .toList();
+
+              if (updatedPlayers.isEmpty) {
+                // No players left - delete lobby
+                print('Deleting empty lobby ${doc.id}');
+                await doc.reference.delete();
+              } else {
+                // Update players list
+                print('Removing player from lobby ${doc.id}');
+                await doc.reference.update({'players': updatedPlayers});
+              }
+            }
+          }
+        } catch (e) {
+          print('Error cleaning up lobby ${doc.id}: $e');
+        }
+      }
+
+      print('Player lobby cleanup completed for: $playerId');
+    } catch (e) {
+      print('Error during player lobby cleanup: $e');
     }
   }
 }

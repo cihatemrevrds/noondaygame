@@ -17,7 +17,7 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final LobbyService _lobbyService = LobbyService();
   final GameService _gameService = GameService();
   List<Player> _players = [];
@@ -29,12 +29,52 @@ class _GameScreenState extends State<GameScreen> {
   bool _isLoading = false;
   String _currentUserId = '';
   Map<String, String> _votes = {};
-
   @override
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    WidgetsBinding.instance.addObserver(this);
     _setupLobbyListener();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Handle app lifecycle changes during game
+    switch (state) {
+      case AppLifecycleState.paused:
+        // Game went to background - player might return
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+        // App is being terminated - if host, try to end game gracefully
+        if (widget.isHost) {
+          _performEmergencyGameCleanup();
+        }
+        break;
+      case AppLifecycleState.resumed:
+        // Game resumed
+        break;
+      case AppLifecycleState.hidden:
+        // Game is hidden
+        break;
+    }
+  }
+
+  void _performEmergencyGameCleanup() {
+    // Emergency cleanup when app is terminated during game
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && widget.isHost) {
+      // Fire and forget - delete the lobby to end the game
+      _lobbyService.deleteLobby(widget.lobbyCode, user.uid);
+    }
   }
 
   void _setupLobbyListener() {
