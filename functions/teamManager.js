@@ -3,9 +3,9 @@ const db = admin.firestore();
 
 // Define team structures
 const teams = {
-    Town: ['Doctor', 'Sheriff', 'Mayor', 'Bodyguard', 'Vigilante', 'Jailor', 'Prostitute'],
-    Bandit: ['Gunman', 'Godfather', 'Framer', 'Blackmailer', 'Consigliere'],
-    Neutral: ['Jester', 'Serial Killer', 'Arsonist', 'Executioner', 'Witch']
+    Town: ['Doctor', 'Sheriff', 'Escort', 'Peeper', 'Gunslinger'],
+    Bandit: ['Gunman', 'Chieftain'],
+    Neutral: ['Jester']
 };
 
 // Get the team of a specific role
@@ -56,48 +56,21 @@ exports.checkWinConditions = async (req, res) => {
         });
 
         // Check win conditions
-        let winningTeam = null;
-
-        // Town wins if all bandits and harmful neutral roles are eliminated
+        let winningTeam = null;        // Town wins if all bandits are eliminated
         if (aliveCount.Bandit === 0 && aliveCount.Town > 0) {
-            // Check if any harmful neutral roles are alive
-            const harmfulNeutrals = players.filter(p =>
-                p.isAlive &&
-                exports.getTeamByRole(p.role) === 'Neutral' &&
-                ['Serial Killer', 'Arsonist', 'Witch'].includes(p.role)
-            );
-
-            if (harmfulNeutrals.length === 0) {
-                winningTeam = 'Town';
-            }
+            winningTeam = 'Town';
         }
 
-        // Bandits win if they equal or outnumber the town and no harmful neutrals
+        // Bandits win if they equal or outnumber the town
         if (aliveCount.Bandit > 0 && aliveCount.Bandit >= aliveCount.Town) {
-            const harmfulNeutrals = players.filter(p =>
-                p.isAlive &&
-                exports.getTeamByRole(p.role) === 'Neutral' &&
-                ['Serial Killer', 'Arsonist'].includes(p.role)
-            );
-
-            if (harmfulNeutrals.length === 0) {
-                winningTeam = 'Bandit';
-            }
-        }
-
-        // Neutral solo win conditions
+            winningTeam = 'Bandit';
+        }// Neutral solo win conditions
         const soloNeutralWinner = players.find(p => {
             if (!p.isAlive) return false;
 
-            // Serial Killer wins if they're the last one standing or only non-threatening players remain
-            if (p.role === 'Serial Killer' && aliveCount.Bandit === 0 && aliveCount.Town <= 1) {
-                return true;
-            }
-
-            // Arsonist wins if they're the last one standing or only non-threatening players remain
-            if (p.role === 'Arsonist' && aliveCount.Bandit === 0 && aliveCount.Town <= 1) {
-                return true;
-            }
+            // Jester wins if voted out during day phase (handled separately in voting logic)
+            // No other neutral solo win conditions in this game
+            return false;
 
             // Jester wins if they are eliminated by town vote
             if (p.role === 'Jester' && !p.isAlive && p.killedBy === 'Vote') {

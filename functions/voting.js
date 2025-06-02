@@ -3,11 +3,21 @@ const db = admin.firestore();
 
 // Submit a vote during day phase
 exports.submitVote = async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
     try {
         const { lobbyCode, voterId, targetId } = req.body;
 
-        if (!lobbyCode || !voterId || !targetId) {
-            return res.status(400).json({ error: "Missing lobbyCode, voterId, or targetId" });
+        if (!lobbyCode || !voterId) {
+            return res.status(400).json({ error: "Missing lobbyCode or voterId" });
         }
 
         const lobbyRef = db.collection("lobbies").doc(lobbyCode.toUpperCase());
@@ -18,9 +28,20 @@ exports.submitVote = async (req, res) => {
         }
 
         const lobbyData = lobbyDoc.data();
+
+        // Check if it's voting phase
+        if (lobbyData.gameState !== 'day_voting') {
+            return res.status(400).json({ error: "Not in voting phase" });
+        }
+
         const currentVotes = lobbyData.votes || {};
 
-        currentVotes[voterId] = targetId;
+        // Allow removing vote by passing null as targetId
+        if (targetId === null) {
+            delete currentVotes[voterId];
+        } else {
+            currentVotes[voterId] = targetId;
+        }
 
         await lobbyRef.update({
             votes: currentVotes
@@ -35,6 +56,16 @@ exports.submitVote = async (req, res) => {
 
 // Process votes at the end of day phase
 exports.processVotes = async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
     try {
         const { lobbyCode } = req.body;
 
