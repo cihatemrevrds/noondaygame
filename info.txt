@@ -1,0 +1,47 @@
+Town Team Roles
+
+Doctor
+  Can protect one player each night from being killed
+  Can only self-protect once per game
+  Belongs to the Town team
+
+Sheriff
+  Investigates players at night to determine if they're suspicious or innocent
+  Chieftain appears innocent to Sheriff despite being a Bandit
+  Belongs to the Town team
+
+Escort
+  Blocks another player from using their night ability
+  Target's role action won't be processed that night
+  Belongs to the Town team
+
+Peeper
+  Watches a player at night and sees who visits them
+  Doesn't learn the roles of visitors, just that they visited
+  Belongs to the Town team
+
+Gunslinger
+  Can kill a player during any phase (day or night)
+  Has 2 bullets total for the entire game
+  If kills a Town member, cannot use second bullet
+  Belongs to the Town team
+
+Bandit Team Roles
+
+Gunman
+  Can kill one player each night
+  Target can be overridden by Chieftain's orders
+  Belongs to the Bandit team
+
+Chieftain
+  Issues kill orders to Gunman, overriding their choice
+  Appears innocent to Sheriff investigations
+  Takes over killing if no Gunman remains
+  Belongs to the Bandit team
+
+Neutral Team Roles
+
+Jester
+  Has no night ability
+  Wins if voted out by the town during day phase
+  Belongs to the Neutral team
