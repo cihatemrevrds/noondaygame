@@ -4,10 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../widgets/menu_button.dart';
 import '../models/player.dart';
+import '../models/role.dart';
 import '../services/lobby_service.dart';
-import 'role_selection_page.dart';
+import '../widgets/role_management_dialog.dart';
+import 'game_screen.dart';
 import 'main_menu.dart';
 
 class LobbyRoomPage extends StatefulWidget {
@@ -31,6 +35,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
   bool _isLoading = false;
   bool _isHost = false;
   String _currentUserId = '';
+  Map<String, int> _currentRoles = {};
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _lobbySubscription;
 
@@ -74,21 +79,26 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             }
             return;
           }
-
           final data = snapshot.data();
           if (data == null) return;
 
           final hostUid = data['hostUid'] as String?;
           final isHost = hostUid == _currentUserId;
 
+          // Load current roles configuration
+          final rolesData = data['roles'] as Map<String, dynamic>? ?? {};
+          final currentRoles = <String, int>{};
+          rolesData.forEach((key, value) {
+            if (value is int && value > 0) {
+              currentRoles[key] = value;
+            }
+          });
           final playersData = data['players'] as List<dynamic>? ?? [];
-          bool currentUserFound = false;
 
           final playersList =
               playersData.map((p) {
                 final map = p as Map<String, dynamic>;
                 final playerId = map['id'] ?? map['uid'] ?? '';
-                if (playerId == _currentUserId) currentUserFound = true;
                 return Player(
                   id: playerId,
                   name: map['name'] ?? 'Player',
@@ -98,25 +108,21 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                   team: map['team'],
                 );
               }).toList();
-
           if (data['status'] == 'started') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder:
-                    (context) => RoleSelectionPage(
-                      players: playersList,
-                      lobbyCode: widget.lobbyCode,
-                      isHost: isHost,
-                    ),
+                    (context) =>
+                        GameScreen(lobbyCode: widget.lobbyCode, isHost: isHost),
               ),
             );
             return;
           }
-
           setState(() {
             players = playersList;
             _isHost = isHost;
+            _currentRoles = currentRoles;
             _isLoading = false;
           });
         });
@@ -147,13 +153,41 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
   }
 
   Future<void> _startGame() async {
-    if (!_isHost || players.length < 4) return;
+    if (!_isHost || players.length < 1) return;
+
     setState(() => _isLoading = true);
-    await FirebaseFirestore.instance
-        .collection('lobbies')
-        .doc(widget.lobbyCode)
-        .update({'status': 'started'});
-    setState(() => _isLoading = false);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+      final response = await http.post(
+        Uri.parse('https://startgame-uerylfny3q-uc.a.run.app'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'lobbyCode': widget.lobbyCode, 'hostId': user.uid}),
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to start game');
+      }
+
+      // Success - the lobby listener will handle navigation to RoleSelectionPage
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start game: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _copyCodeToClipboard() {
@@ -161,6 +195,44 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Room code copied to clipboard')),
     );
+  }
+
+  Future<void> _showRoleManagementDialog() async {
+    showDialog(
+      context: context,
+      builder:
+          (context) => RoleManagementDialog(
+            currentRoles: _currentRoles,
+            onRolesUpdated: _updateRoles,
+          ),
+    );
+  }
+
+  Future<void> _updateRoles(Map<String, int> newRoles) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('lobbies')
+          .doc(widget.lobbyCode.toUpperCase())
+          .update({'roles': newRoles});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Roles updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update roles: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -305,11 +377,299 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                       color: Colors.white.withOpacity(0.9),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: const Center(
-                                      child: Text(
-                                        "ROLES CONTAINER",
-                                        style: TextStyle(fontFamily: 'Rye'),
-                                      ),
+                                    child: Column(
+                                      children: [
+                                        // Header with manage button
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                            horizontal: 16,
+                                          ),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF8B4513),
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(10),
+                                              topRight: Radius.circular(10),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                'ROLES',
+                                                style: TextStyle(
+                                                  fontFamily: 'Rye',
+                                                  fontSize: 18,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              if (_isHost)
+                                                InkWell(
+                                                  onTap:
+                                                      _showRoleManagementDialog,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0xFFD2691E,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: Colors.white54,
+                                                      ),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.settings,
+                                                          color: Colors.white,
+                                                          size: 16,
+                                                        ),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          'MANAGE',
+                                                          style: TextStyle(
+                                                            fontFamily: 'Rye',
+                                                            fontSize: 12,
+                                                            color: Colors.white,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Roles list
+                                        Expanded(
+                                          child:
+                                              _currentRoles.isEmpty
+                                                  ? const Center(
+                                                    child: Padding(
+                                                      padding: EdgeInsets.all(
+                                                        16,
+                                                      ),
+                                                      child: Text(
+                                                        'No roles configured.\nHost can manage roles above.',
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                          fontFamily: 'Rye',
+                                                          fontSize: 14,
+                                                          color: Colors.black54,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  : ListView.builder(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          12,
+                                                        ),
+                                                    itemCount:
+                                                        _currentRoles.length,
+                                                    itemBuilder: (
+                                                      context,
+                                                      index,
+                                                    ) {
+                                                      final entry =
+                                                          _currentRoles.entries
+                                                              .elementAt(index);
+                                                      final roleName =
+                                                          entry.key;
+                                                      final roleCount =
+                                                          entry.value;
+                                                      final allRoles =
+                                                          Role.getAllRoles();
+                                                      final role = allRoles
+                                                          .firstWhere(
+                                                            (r) =>
+                                                                r.name ==
+                                                                roleName,
+                                                            orElse:
+                                                                () => Role(
+                                                                  name:
+                                                                      roleName,
+                                                                  imageName: '',
+                                                                  count:
+                                                                      roleCount,
+                                                                  description:
+                                                                      '',
+                                                                  team:
+                                                                      RoleTeam
+                                                                          .neutral,
+                                                                  shortDescription:
+                                                                      '',
+                                                                ),
+                                                          );
+
+                                                      return Container(
+                                                        margin:
+                                                            const EdgeInsets.only(
+                                                              bottom: 8,
+                                                            ),
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              8,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              Role.getTeamColor(
+                                                                role.team,
+                                                              ).withOpacity(
+                                                                0.1,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                6,
+                                                              ),
+                                                          border: Border.all(
+                                                            color:
+                                                                Role.getTeamColor(
+                                                                  role.team,
+                                                                ).withOpacity(
+                                                                  0.3,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        child: Row(
+                                                          children: [
+                                                            Container(
+                                                              width: 32,
+                                                              height: 32,
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    Role.getTeamColor(
+                                                                      role.team,
+                                                                    ).withOpacity(
+                                                                      0.2,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      4,
+                                                                    ),
+                                                              ),
+                                                              child: Icon(
+                                                                _getRoleIcon(
+                                                                  roleName,
+                                                                ),
+                                                                color:
+                                                                    Role.getTeamColor(
+                                                                      role.team,
+                                                                    ),
+                                                                size: 20,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            Expanded(
+                                                              child: Text(
+                                                                roleName,
+                                                                style: const TextStyle(
+                                                                  fontFamily:
+                                                                      'Rye',
+                                                                  fontSize: 14,
+                                                                  color:
+                                                                      Colors
+                                                                          .black87,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        8,
+                                                                    vertical: 4,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    Role.getTeamColor(
+                                                                      role.team,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      12,
+                                                                    ),
+                                                              ),
+                                                              child: Text(
+                                                                roleCount
+                                                                    .toString(),
+                                                                style: const TextStyle(
+                                                                  fontFamily:
+                                                                      'Rye',
+                                                                  fontSize: 12,
+                                                                  color:
+                                                                      Colors
+                                                                          .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                        ),
+
+                                        // Total count
+                                        if (_currentRoles.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF654321),
+                                              borderRadius: BorderRadius.only(
+                                                bottomLeft: Radius.circular(10),
+                                                bottomRight: Radius.circular(
+                                                  10,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Icon(
+                                                  Icons.group,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Total: ${_currentRoles.values.fold(0, (sum, count) => sum + count)}',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Rye',
+                                                    fontSize: 12,
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -346,7 +706,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                           child: MenuButton(
                                             text: 'START GAME',
                                             onPressed:
-                                                players.length >= 4
+                                                players.length >= 1
                                                     ? _startGame
                                                     : null,
                                           ),
@@ -364,5 +724,28 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                 },
               ),
     );
+  }
+
+  IconData _getRoleIcon(String roleName) {
+    switch (roleName.toLowerCase()) {
+      case 'doctor':
+        return Icons.local_hospital;
+      case 'sheriff':
+        return Icons.security;
+      case 'escort':
+        return Icons.block;
+      case 'peeper':
+        return Icons.visibility;
+      case 'gunslinger':
+        return Icons.gps_fixed;
+      case 'gunman':
+        return Icons.gps_off;
+      case 'chieftain':
+        return Icons.star;
+      case 'jester':
+        return Icons.theater_comedy;
+      default:
+        return Icons.person;
+    }
   }
 }

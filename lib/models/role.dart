@@ -1,78 +1,187 @@
+import 'package:flutter/material.dart';
+
+enum RoleTeam { town, bandit, neutral }
+
 class Role {
   final String name;
   final String imageName;
   int count;
   final String description;
+  final RoleTeam team;
+  final String shortDescription;
 
   Role({
     required this.name,
     required this.imageName,
     required this.count,
     required this.description,
+    required this.team,
+    required this.shortDescription,
   });
-  
+
   // Add copyWith method for easy modifications
   Role copyWith({
     String? name,
     String? imageName,
     int? count,
     String? description,
+    RoleTeam? team,
+    String? shortDescription,
   }) {
     return Role(
       name: name ?? this.name,
       imageName: imageName ?? this.imageName,
       count: count ?? this.count,
       description: description ?? this.description,
+      team: team ?? this.team,
+      shortDescription: shortDescription ?? this.shortDescription,
     );
   }
 
-  // Predefined roles as static getters
+  // Town Team Roles
+  static Role get doctor => Role(
+    name: 'Doctor',
+    imageName: 'doctor.png',
+    count: 0,
+    team: RoleTeam.town,
+    shortDescription: 'Can protect one player each night from being killed',
+    description:
+        'Can protect one player each night from being killed.\n'
+        'Can only self-protect once per game.\n'
+        'Belongs to the Town team.',
+  );
+
   static Role get sheriff => Role(
-        name: 'Sheriff',
-        imageName: 'sheriff.png',
-        count: 1,
-        description: 'Lead the town to capture all outlaws.\n\n'
-            'The Sheriff must protect the town and eliminate all Outlaws and the Renegade. '
-            'As the only player whose role is known to all from the start, the Sheriff is often targeted first.',
-      );
+    name: 'Sheriff',
+    imageName: 'sheriff.png',
+    count: 0,
+    team: RoleTeam.town,
+    shortDescription:
+        'Investigates players at night to determine if they\'re suspicious',
+    description:
+        'Investigates players at night to determine if they\'re suspicious or innocent.\n'
+        'Chieftain appears innocent to Sheriff despite being a Bandit.\n'
+        'Belongs to the Town team.',
+  );
 
-  static Role get deputy => Role(
-        name: 'Deputy',
-        imageName: 'deputy.png',
-        count: 1,
-        description: 'Help the sheriff capture all outlaws.\n\n'
-            'Deputies work with the Sheriff to eliminate all Outlaws and the Renegade. '
-            'Their loyalty is to the law and they must protect the Sheriff at all costs.',
-      );
+  static Role get escort => Role(
+    name: 'Escort',
+    imageName: 'escort.png',
+    count: 0,
+    team: RoleTeam.town,
+    shortDescription: 'Blocks another player from using their night ability',
+    description:
+        'Blocks another player from using their night ability.\n'
+        'Target\'s role action won\'t be processed that night.\n'
+        'Belongs to the Town team.',
+  );
 
-  static Role get outlaw => Role(
-        name: 'Outlaw',
-        imageName: 'outlaw.png',
-        count: 2,
-        description: 'Capture the sheriff and eliminate the deputies.\n\n'
-            'Outlaws seek to eliminate the Sheriff and anyone who stands in their way. '
-            'They often work together, but their primary goal is the Sheriff\'s demise.',
-      );
+  static Role get peeper => Role(
+    name: 'Peeper',
+    imageName: 'peeper.png',
+    count: 0,
+    team: RoleTeam.town,
+    shortDescription: 'Watches a player at night and sees who visits them',
+    description:
+        'Watches a player at night and sees who visits them.\n'
+        'Doesn\'t learn the roles of visitors, just that they visited.\n'
+        'Belongs to the Town team.',
+  );
 
-  static Role get renegade => Role(
-        name: 'Renegade',
-        imageName: 'renegade.png',
-        count: 1,
-        description: 'Be the last player standing. Work with both sides depending on the situation.\n\n'
-            'The Renegade plays a complex game of shifting alliances. They must be the last one standing, '
-            'which means helping the weaker side until the time is right to betray everyone.',
-      );
+  static Role get gunslinger => Role(
+    name: 'Gunslinger',
+    imageName: 'gunslinger.png',
+    count: 0,
+    team: RoleTeam.town,
+    shortDescription: 'Can kill a player during any phase (day or night)',
+    description:
+        'Can kill a player during any phase (day or night).\n'
+        'Has 2 bullets total for the entire game.\n'
+        'If kills a Town member, cannot use second bullet.\n'
+        'Belongs to the Town team.',
+  );
 
-  // Get all standard roles as a list
-  static List<Role> getStandardRoles() {
+  // Bandit Team Roles
+  static Role get gunman => Role(
+    name: 'Gunman',
+    imageName: 'gunman.png',
+    count: 0,
+    team: RoleTeam.bandit,
+    shortDescription: 'Can kill one player each night',
+    description:
+        'Can kill one player each night.\n'
+        'Target can be overridden by Chieftain\'s orders.\n'
+        'Belongs to the Bandit team.',
+  );
+
+  static Role get chieftain => Role(
+    name: 'Chieftain',
+    imageName: 'chieftain.png',
+    count: 0,
+    team: RoleTeam.bandit,
+    shortDescription: 'Issues kill orders to Gunman, overriding their choice',
+    description:
+        'Issues kill orders to Gunman, overriding their choice.\n'
+        'Appears innocent to Sheriff investigations.\n'
+        'Takes over killing if no Gunman remains.\n'
+        'Belongs to the Bandit team.',
+  );
+
+  // Neutral Team Roles
+  static Role get jester => Role(
+    name: 'Jester',
+    imageName: 'jester.png',
+    count: 0,
+    team: RoleTeam.neutral,
+    shortDescription: 'Has no night ability, wins if voted out by the town',
+    description:
+        'Has no night ability.\n'
+        'Wins if voted out by the town during day phase.\n'
+        'Belongs to the Neutral team.',
+  );
+
+  // Get all available roles grouped by team
+  static Map<RoleTeam, List<Role>> getAllRolesByTeam() {
+    return {
+      RoleTeam.town: [doctor, sheriff, escort, peeper, gunslinger],
+      RoleTeam.bandit: [gunman, chieftain],
+      RoleTeam.neutral: [jester],
+    };
+  }
+
+  // Get all roles as a flat list
+  static List<Role> getAllRoles() {
+    final rolesByTeam = getAllRolesByTeam();
     return [
-      sheriff,
-      deputy,
-      outlaw,
-      renegade,
+      ...rolesByTeam[RoleTeam.town]!,
+      ...rolesByTeam[RoleTeam.bandit]!,
+      ...rolesByTeam[RoleTeam.neutral]!,
     ];
   }
-  // The constructor is already defined at the top of the file
+
+  // Get team color for UI
+  static Color getTeamColor(RoleTeam team) {
+    switch (team) {
+      case RoleTeam.town:
+        return Colors.blue;
+      case RoleTeam.bandit:
+        return Colors.red;
+      case RoleTeam.neutral:
+        return Colors.orange;
+    }
+  }
+
+  // Get team name for display
+  static String getTeamName(RoleTeam team) {
+    switch (team) {
+      case RoleTeam.town:
+        return 'Town';
+      case RoleTeam.bandit:
+        return 'Bandit';
+      case RoleTeam.neutral:
+        return 'Neutral';
+    }
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -80,6 +189,8 @@ class Role {
       'imageName': imageName,
       'count': count,
       'description': description,
+      'team': team.toString(),
+      'shortDescription': shortDescription,
     };
   }
 
@@ -89,6 +200,11 @@ class Role {
       imageName: map['imageName'] ?? '',
       count: map['count'] ?? 0,
       description: map['description'] ?? '',
+      team: RoleTeam.values.firstWhere(
+        (e) => e.toString() == map['team'],
+        orElse: () => RoleTeam.town,
+      ),
+      shortDescription: map['shortDescription'] ?? '',
     );
   }
 }

@@ -13,7 +13,7 @@ class RoleSelectionPage extends StatefulWidget {
   final bool isHost;
 
   const RoleSelectionPage({
-    super.key, 
+    super.key,
     required this.players,
     required this.lobbyCode,
     required this.isHost,
@@ -31,84 +31,82 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   bool _isLoading = false;
   final LobbyService _lobbyService = LobbyService();
   final GameService _gameService = GameService();
-
   @override
   void initState() {
     super.initState();
     // Get standard roles from the Role model
-    roles = Role.getStandardRoles();
+    roles = Role.getAllRoles();
 
     // Initialize all roles as included for random mode
     _roleIncluded = List.generate(roles.length, (index) => true);
 
     totalRolesSelected = roles.fold(0, (sum, role) => sum + role.count);
   }
-  
+
   // Show role info dialog
   void _showRoleInfo(Role role) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          role.name,
-          style: const TextStyle(
-            fontFamily: 'Rye',
-            fontSize: 24,
-            color: Color(0xFF4E2C0B),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.brown[700]!, width: 3),
-                ),
-                child: Center(
-                  child: Text(
-                    role.name.substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.brown[800],
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
+      builder:
+          (context) => AlertDialog(
+            title: Text(
+              role.name,
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 24,
+                color: Color(0xFF4E2C0B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(color: Colors.brown[700]!, width: 3),
                     ),
+                    child: Center(
+                      child: Text(
+                        role.name.substring(0, 1).toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.brown[800],
+                          fontSize: 42,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    role.description,
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            backgroundColor: Colors.brown[100],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'CLOSE',
+                  style: TextStyle(
+                    color: Color(0xFF4E2C0B),
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                role.description,
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
             ],
           ),
-        ),
-        backgroundColor: Colors.brown[100],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'CLOSE',
-              style: TextStyle(
-                color: Color(0xFF4E2C0B),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -116,18 +114,14 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     setState(() {
       if (increment) {
         if (totalRolesSelected < widget.players.length) {
-          roles[index] = roles[index].copyWith(
-            count: roles[index].count + 1,
-          );
+          roles[index] = roles[index].copyWith(count: roles[index].count + 1);
           totalRolesSelected++;
         } else {
           _showErrorSnackBar('Cannot add more roles than players');
         }
       } else {
         if (roles[index].count > 0) {
-          roles[index] = roles[index].copyWith(
-            count: roles[index].count - 1,
-          );
+          roles[index] = roles[index].copyWith(count: roles[index].count - 1);
           totalRolesSelected--;
         }
       }
@@ -135,27 +129,27 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _startGame() async {
-    // Rol olmayan oyuncu varsa devam etme 
+    // Rol olmayan oyuncu varsa devam etme
     if (!_randomRolesEnabled && totalRolesSelected != widget.players.length) {
       _showErrorSnackBar(
         totalRolesSelected < widget.players.length
-          ? 'Need ${widget.players.length - totalRolesSelected} more roles to start'
-          : 'Remove ${totalRolesSelected - widget.players.length} roles to start'
+            ? 'Need ${widget.players.length - totalRolesSelected} more roles to start'
+            : 'Remove ${totalRolesSelected - widget.players.length} roles to start',
       );
       return;
     }
-    
+
     if (_randomRolesEnabled && !_roleIncluded.contains(true)) {
       _showErrorSnackBar('Please include at least one role');
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
     });
@@ -169,10 +163,11 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         final selectedRoles = <String, int>{};
         for (int i = 0; i < roles.length; i++) {
           if (_roleIncluded[i]) {
-            selectedRoles[roles[i].name] = i == 0 ? 1 : roles[i].count; // Sheriff'i her zaman 1 tane ekle
+            selectedRoles[roles[i].name] =
+                i == 0 ? 1 : roles[i].count; // Sheriff'i her zaman 1 tane ekle
           }
         }
-        
+
         await _lobbyService.updateRoles(widget.lobbyCode, selectedRoles);
       } else {
         // Manuel modda, seçilen rolleri gönder
@@ -182,12 +177,12 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
             selectedRoles[role.name] = role.count;
           }
         }
-        
+
         await _lobbyService.updateRoles(widget.lobbyCode, selectedRoles);
       }
-        // Oyunu başlat
+      // Oyunu başlat
       final success = await _gameService.startGame(widget.lobbyCode, user.uid);
-      
+
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -199,15 +194,16 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
               duration: Duration(seconds: 2),
             ),
           );
-          
+
           // Oyun sayfasına geçiş yap
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => GameScreen(
-                lobbyCode: widget.lobbyCode,
-                isHost: widget.isHost,
-              ),
+              builder:
+                  (context) => GameScreen(
+                    lobbyCode: widget.lobbyCode,
+                    isHost: widget.isHost,
+                  ),
             ),
           );
         }
@@ -291,19 +287,28 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       ),
                       Switch(
                         value: _randomRolesEnabled,
-                        onChanged: widget.isHost ? (value) {
-                          setState(() {
-                            _randomRolesEnabled = value;
-                            // Reset role counts if switching to random mode
-                            if (value) {
-                              // In random mode, we'll use included/excluded roles instead of counts
-                              _roleIncluded = List.generate(roles.length, (index) => true);
-                            } else {
-                              // Reset counts when switching back to manual mode
-                              totalRolesSelected = roles.fold(0, (sum, role) => sum + role.count);
-                            }
-                          });
-                        } : null,
+                        onChanged:
+                            widget.isHost
+                                ? (value) {
+                                  setState(() {
+                                    _randomRolesEnabled = value;
+                                    // Reset role counts if switching to random mode
+                                    if (value) {
+                                      // In random mode, we'll use included/excluded roles instead of counts
+                                      _roleIncluded = List.generate(
+                                        roles.length,
+                                        (index) => true,
+                                      );
+                                    } else {
+                                      // Reset counts when switching back to manual mode
+                                      totalRolesSelected = roles.fold(
+                                        0,
+                                        (sum, role) => sum + role.count,
+                                      );
+                                    }
+                                  });
+                                }
+                                : null,
                         activeColor: Colors.brown,
                       ),
                     ],
@@ -323,11 +328,14 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       totalRolesSelected == widget.players.length
                           ? 'All roles assigned!'
                           : totalRolesSelected < widget.players.length
-                              ? 'Add ${widget.players.length - totalRolesSelected} more roles'
-                              : 'Remove ${totalRolesSelected - widget.players.length} roles',
+                          ? 'Add ${widget.players.length - totalRolesSelected} more roles'
+                          : 'Remove ${totalRolesSelected - widget.players.length} roles',
                       style: TextStyle(
                         fontSize: 14,
-                        color: totalRolesSelected != widget.players.length ? Colors.red : Colors.green,
+                        color:
+                            totalRolesSelected != widget.players.length
+                                ? Colors.red
+                                : Colors.green,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -383,11 +391,16 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
-                                border: Border.all(color: Colors.brown[700]!, width: 2),
+                                border: Border.all(
+                                  color: Colors.brown[700]!,
+                                  width: 2,
+                                ),
                               ),
                               child: Center(
                                 child: Text(
-                                  roles[index].name.substring(0, 1).toUpperCase(),
+                                  roles[index].name
+                                      .substring(0, 1)
+                                      .toUpperCase(),
                                   style: TextStyle(
                                     color: Colors.brown[800],
                                     fontSize: 28,
@@ -427,7 +440,9 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                                     onChanged: (value) {
                                       // Sheriff'i asla devre dışı bırakma
                                       if (index == 0 && !value) {
-                                        _showErrorSnackBar('Sheriff must be included');
+                                        _showErrorSnackBar(
+                                          'Sheriff must be included',
+                                        );
                                         return;
                                       }
                                       setState(() {
@@ -435,7 +450,8 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                                       });
                                     },
                                     activeColor: Colors.brown[300],
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                 ],
                               ),
@@ -450,8 +466,10 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       imageName: roles[index].imageName,
                       count: roles[index].count,
                       description: roles[index].description,
-                      onIncrement: widget.isHost ? () => updateRole(index, true) : null,
-                      onDecrement: widget.isHost ? () => updateRole(index, false) : null,
+                      onIncrement:
+                          widget.isHost ? () => updateRole(index, true) : null,
+                      onDecrement:
+                          widget.isHost ? () => updateRole(index, false) : null,
                       onTap: () => _showRoleInfo(roles[index]),
                     );
                   }
@@ -462,7 +480,8 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  if (!_randomRolesEnabled && totalRolesSelected != widget.players.length)
+                  if (!_randomRolesEnabled &&
+                      totalRolesSelected != widget.players.length)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: Text(
@@ -477,12 +496,17 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       ),
                     ),
                   _isLoading
-                    ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
-                    : ElevatedButton(
-                        onPressed: widget.isHost && 
-                                   (_randomRolesEnabled || totalRolesSelected == widget.players.length)
-                            ? _startGame
-                            : null,
+                      ? const CircularProgressIndicator(
+                        color: Color(0xFF4E2C0B),
+                      )
+                      : ElevatedButton(
+                        onPressed:
+                            widget.isHost &&
+                                    (_randomRolesEnabled ||
+                                        totalRolesSelected ==
+                                            widget.players.length)
+                                ? _startGame
+                                : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4E2C0B),
                           minimumSize: const Size(250, 60),
