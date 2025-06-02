@@ -160,4 +160,54 @@ class GameService {
       return false;
     }
   }
+
+  // Doktor koruma aksiyonu
+  Future<String?> doctorProtect(String lobbyCode, String userId, String targetId) async {
+    return _performRoleAction('doctorProtect', lobbyCode, userId, targetId);
+  }
+
+  // Silahşör öldürme aksiyonu
+  Future<String?> gunmanKill(String lobbyCode, String userId, String targetId) async {
+    return _performRoleAction('gunmanKill', lobbyCode, userId, targetId);
+  }
+
+  // Şerif sorgulama aksiyonu
+  Future<String?> sheriffInvestigate(String lobbyCode, String userId, String targetId) async {
+    return _performRoleAction('sheriffInvestigate', lobbyCode, userId, targetId);
+  }
+
+  // Fahişe engelleme aksiyonu
+  Future<String?> prostituteBlock(String lobbyCode, String userId, String targetId) async {
+    return _performRoleAction('prostituteBlock', lobbyCode, userId, targetId);
+  }
+
+  // Gözcü gözetleme aksiyonu
+  Future<String?> peeperSpy(String lobbyCode, String userId, String targetId) async {
+    return _performRoleAction('peeperSpy', lobbyCode, userId, targetId);
+  }
+
+  // Ortak rol aksiyonu fonksiyonu
+  Future<String?> _performRoleAction(String action, String lobbyCode, String userId, String targetId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/$action'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'lobbyCode': lobbyCode,
+          'userId': userId,
+          'targetId': targetId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body)['result'] as String?;
+      } else {
+        print('Error performing $action: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception during $action: $e');
+      return null;
+    }
+  }
 }
