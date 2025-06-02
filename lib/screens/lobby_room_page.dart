@@ -56,6 +56,58 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Handle app lifecycle changes to prevent lobby leaks
+    switch (state) {
+      case AppLifecycleState.paused:
+        // App went to background - start cleanup timer
+        _scheduleCleanupOnBackground();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+        // App is being terminated or going inactive - immediate cleanup
+        _performEmergencyCleanup();
+        break;
+      case AppLifecycleState.resumed:
+        // App resumed - cancel any pending cleanup
+        _cancelBackgroundCleanup();
+        break;
+      case AppLifecycleState.hidden:
+        // App is hidden - prepare for potential cleanup
+        break;
+    }
+  }
+
+  Timer? _backgroundCleanupTimer;
+
+  void _scheduleCleanupOnBackground() {
+    // If user doesn't return within 30 seconds, leave the lobby
+    _backgroundCleanupTimer?.cancel();
+    _backgroundCleanupTimer = Timer(const Duration(seconds: 30), () {
+      _performEmergencyCleanup();
+    });
+  }
+
+  void _cancelBackgroundCleanup() {
+    _backgroundCleanupTimer?.cancel();
+    _backgroundCleanupTimer = null;
+  }
+
+  void _performEmergencyCleanup() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Don't wait for the result, just fire and forget
+      if (_isHost) {
+        _lobbyService.leaveAsHostWithTransfer(widget.lobbyCode, user.uid);
+      } else {
+        _lobbyService.leaveLobby(widget.lobbyCode, user.uid);
+      }
+    }
+  }
+
   void _setupLobbyListener() {
     setState(() => _isLoading = true);
     _lobbySubscription = _lobbyService
