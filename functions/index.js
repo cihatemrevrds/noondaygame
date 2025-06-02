@@ -12,11 +12,15 @@ const teamManager = require('./teamManager');
 exports.doctorProtect = functions.https.onRequest(roleActions.doctorProtect);
 exports.gunmanKill = functions.https.onRequest(roleActions.gunmanKill);
 exports.sheriffInvestigate = functions.https.onRequest(roleActions.sheriffInvestigate);
-exports.prostituteBlock = functions.https.onRequest(roleActions.prostituteBlock);
+exports.escortBlock = functions.https.onRequest(roleActions.escortBlock);
+exports.peeperSpy = functions.https.onRequest(roleActions.peeperSpy);
 
 // Expose game phase functions
 exports.startGame = functions.https.onRequest(gamePhase.startGame);
 exports.advancePhase = functions.https.onRequest(gamePhase.advancePhase);
+exports.autoAdvancePhase = functions.https.onRequest(gamePhase.autoAdvancePhase);
+exports.getGameState = functions.https.onRequest(gamePhase.getGameState);
+exports.getRoleInfo = functions.https.onRequest(gamePhase.getRoleInfo);
 
 // Expose voting functions
 exports.submitVote = functions.https.onRequest(voting.submitVote);
