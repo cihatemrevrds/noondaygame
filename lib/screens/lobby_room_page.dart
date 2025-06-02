@@ -11,6 +11,7 @@ import '../models/player.dart';
 import '../models/role.dart';
 import '../services/lobby_service.dart';
 import '../widgets/role_management_dialog.dart';
+import '../widgets/game_settings_dialog.dart';
 import 'game_screen.dart';
 import 'main_menu.dart';
 
@@ -36,6 +37,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
   bool _isHost = false;
   String _currentUserId = '';
   Map<String, int> _currentRoles = {};
+  Map<String, dynamic> _currentSettings = {};
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _lobbySubscription;
 
@@ -83,16 +85,28 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
           if (data == null) return;
 
           final hostUid = data['hostUid'] as String?;
-          final isHost = hostUid == _currentUserId;
-
-          // Load current roles configuration
+          final isHost =
+              hostUid == _currentUserId; // Load current roles configuration
           final rolesData = data['roles'] as Map<String, dynamic>? ?? {};
           final currentRoles = <String, int>{};
           rolesData.forEach((key, value) {
             if (value is int && value > 0) {
               currentRoles[key] = value;
             }
-          });
+          }); // Load current game settings
+          final settingsData =
+              data['gameSettings'] as Map<String, dynamic>? ?? {};
+          final currentSettings = <String, dynamic>{
+            'votingTime': settingsData['votingTime'] ?? 30,
+            'discussionTime': settingsData['discussionTime'] ?? 60,
+            'nightTime': settingsData['nightTime'] ?? 45,
+            'roleActionTime': settingsData['roleActionTime'] ?? 30,
+            'allowFirstNightKill': settingsData['allowFirstNightKill'] ?? false,
+            'showVoteCounts': settingsData['showVoteCounts'] ?? true,
+            'showVoteTargets': settingsData['showVoteTargets'] ?? false,
+            'showRoleOnDeath': settingsData['showRoleOnDeath'] ?? true,
+          };
+
           final playersData = data['players'] as List<dynamic>? ?? [];
 
           final playersList =
@@ -123,6 +137,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             players = playersList;
             _isHost = isHost;
             _currentRoles = currentRoles;
+            _currentSettings = currentSettings;
             _isLoading = false;
           });
         });
@@ -204,6 +219,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
           (context) => RoleManagementDialog(
             currentRoles: _currentRoles,
             onRolesUpdated: _updateRoles,
+            playerCount: players.length,
           ),
     );
   }
@@ -228,6 +244,44 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update roles: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showGameSettingsDialog() async {
+    showDialog(
+      context: context,
+      builder:
+          (context) => GameSettingsDialog(
+            currentSettings: _currentSettings,
+            onSettingsUpdated: _updateGameSettings,
+          ),
+    );
+  }
+
+  Future<void> _updateGameSettings(Map<String, dynamic> newSettings) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('lobbies')
+          .doc(widget.lobbyCode.toUpperCase())
+          .update({'gameSettings': newSettings});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Game settings updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update game settings: $error'),
             backgroundColor: Colors.red,
           ),
         );
@@ -688,13 +742,181 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                               10,
                                             ),
                                           ),
-                                          child: const Center(
-                                            child: Text(
-                                              "GAME SETTINGS",
-                                              style: TextStyle(
-                                                fontFamily: 'Rye',
+                                          child: Column(
+                                            children: [
+                                              // Header with manage button
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                      horizontal: 16,
+                                                    ),
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF8B4513),
+                                                  borderRadius:
+                                                      BorderRadius.only(
+                                                        topLeft:
+                                                            Radius.circular(10),
+                                                        topRight:
+                                                            Radius.circular(10),
+                                                      ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    const Text(
+                                                      'GAME SETTINGS',
+                                                      style: TextStyle(
+                                                        fontFamily: 'Rye',
+                                                        fontSize: 18,
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    if (_isHost)
+                                                      InkWell(
+                                                        onTap:
+                                                            _showGameSettingsDialog,
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 6,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(
+                                                              0xFFD2691E,
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
+                                                                ),
+                                                            border: Border.all(
+                                                              color:
+                                                                  Colors
+                                                                      .white54,
+                                                            ),
+                                                          ),
+                                                          child: const Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              Icon(
+                                                                Icons.tune,
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                                size: 16,
+                                                              ),
+                                                              SizedBox(
+                                                                width: 4,
+                                                              ),
+                                                              Text(
+                                                                'CHANGE RULES',
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      'Rye',
+                                                                  fontSize: 12,
+                                                                  color:
+                                                                      Colors
+                                                                          .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ), // Settings list
+                                              Expanded(
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    12,
+                                                  ),
+                                                  child: Column(
+                                                    children: [
+                                                      // Timer Settings
+                                                      _buildSettingItem(
+                                                        'Voting Time',
+                                                        '${_currentSettings['votingTime'] ?? 30}s',
+                                                        Icons.how_to_vote,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildSettingItem(
+                                                        'Discussion Time',
+                                                        '${_currentSettings['discussionTime'] ?? 60}s',
+                                                        Icons.chat,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildSettingItem(
+                                                        'Night Time',
+                                                        '${_currentSettings['nightTime'] ?? 45}s',
+                                                        Icons.nightlight_round,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildSettingItem(
+                                                        'Role Action Time',
+                                                        '${_currentSettings['roleActionTime'] ?? 30}s',
+                                                        Icons.sports_esports,
+                                                      ),
+
+                                                      // Divider between timer and rule settings
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                      Container(
+                                                        height: 1,
+                                                        color: Colors.black26,
+                                                        margin:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 16,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+
+                                                      // Game Rule Settings
+                                                      _buildBooleanSettingItem(
+                                                        'First Night Kill',
+                                                        _currentSettings['allowFirstNightKill'] ??
+                                                            false,
+                                                        Icons.nightlight_round,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Show Vote Counts',
+                                                        _currentSettings['showVoteCounts'] ??
+                                                            true,
+                                                        Icons.poll,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Show Vote Targets',
+                                                        _currentSettings['showVoteTargets'] ??
+                                                            false,
+                                                        Icons.visibility,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Show Role on Death',
+                                                        _currentSettings['showRoleOnDeath'] ??
+                                                            true,
+                                                        Icons.person_off,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -723,6 +945,99 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                   );
                 },
               ),
+    );
+  }
+
+  Widget _buildSettingItem(String title, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.black26),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.black87, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 12,
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B4513),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 10,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBooleanSettingItem(String title, bool value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.black26),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.black87, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 12,
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color:
+                  value
+                      ? const Color(0xFF228B22)
+                      : const Color(
+                        0xFF8B0000,
+                      ), // Green for true, Red for false
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              value ? 'ON' : 'OFF',
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 10,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/role.dart';
+import '../utils/recommended_roles.dart';
 
 class RoleManagementDialog extends StatefulWidget {
   final Map<String, int> currentRoles;
   final Function(Map<String, int>) onRolesUpdated;
+  final int playerCount;
 
   const RoleManagementDialog({
     super.key,
     required this.currentRoles,
     required this.onRolesUpdated,
+    required this.playerCount,
   });
 
   @override
@@ -35,6 +38,40 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
         _rolesCounts[roleName] = newCount;
       }
     });
+  }
+
+  void _applyRecommendedSettings() {
+    final recommended = RecommendedRoles.getClosestRecommended(
+      widget.playerCount,
+    );
+
+    if (recommended != null) {
+      setState(() {
+        _rolesCounts = Map<String, int>.from(recommended);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Applied recommended settings for ${widget.playerCount} players!',
+            style: const TextStyle(fontFamily: 'Rye'),
+          ),
+          backgroundColor: const Color(0xFF228B22),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No recommended settings available for this player count.',
+            style: TextStyle(fontFamily: 'Rye'),
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   int get _totalRolesCount {
@@ -180,9 +217,7 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
                   ],
                 ),
               ),
-            ),
-
-            // Action buttons
+            ), // Action buttons
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -192,21 +227,42 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
                   bottomRight: Radius.circular(12),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Column(
                 children: [
-                  _buildActionButton(
-                    'CANCEL',
-                    Colors.grey,
-                    () => Navigator.of(context).pop(),
-                  ),
-                  _buildActionButton(
-                    'SAVE ROLES',
-                    const Color(0xFF228B22), // Forest green
-                    () {
-                      widget.onRolesUpdated(_rolesCounts);
-                      Navigator.of(context).pop();
-                    },
+                  // Recommended settings button
+                  if (RecommendedRoles.getClosestRecommended(
+                        widget.playerCount,
+                      ) !=
+                      null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Center(
+                        child: _buildActionButton(
+                          'USE RECOMMENDED SETTINGS',
+                          const Color(0xFF4169E1), // Royal blue
+                          _applyRecommendedSettings,
+                        ),
+                      ),
+                    ),
+
+                  // Cancel and Save buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildActionButton(
+                        'CANCEL',
+                        Colors.grey,
+                        () => Navigator.of(context).pop(),
+                      ),
+                      _buildActionButton(
+                        'SAVE ROLES',
+                        const Color(0xFF228B22), // Forest green
+                        () {
+                          widget.onRolesUpdated(_rolesCounts);
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
