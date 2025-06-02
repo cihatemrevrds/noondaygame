@@ -3,6 +3,17 @@ const db = admin.firestore();
 
 // Start the game
 exports.startGame = async (req, res) => {
+    // CORS headers ekle
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    // OPTIONS request için
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
     try {
         const { lobbyCode, hostId } = req.body;
 
