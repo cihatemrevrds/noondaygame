@@ -5,6 +5,7 @@ import '../models/player.dart';
 import '../services/lobby_service.dart';
 import '../services/game_service.dart';
 import '../widgets/player_avatar.dart';
+import 'package:noondaygame/widgets/role_reveal_popup.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _isLoading = false;
   String _currentUserId = '';
   Map<String, String> _votes = {};
+  bool _hasShownRoleReveal = false;
   @override
   void initState() {
     super.initState();
@@ -115,10 +117,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       // Oyların durumunu al
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
-      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
-
-      // Faz bilgisini al
+      final votes = votesData.map(
+        (k, v) => MapEntry(k, v.toString()),
+      ); // Faz bilgisini al
       final phase = data['phase'] as String? ?? 'night';
+      final gameState = data['gameState'] as String? ?? '';
       final dayCount = data['dayCount'] as int? ?? 1;
 
       if (mounted) {
@@ -132,7 +135,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
           // Oy seçimini güncelle
           _votedPlayerId = votes[_currentUserId];
-        });
+        }); // Show role reveal popup when game starts
+        if (gameState == 'role_reveal' &&
+            !_hasShownRoleReveal &&
+            _myRole != null &&
+            _myRole!.isNotEmpty) {
+          _hasShownRoleReveal = true;
+          _showRoleRevealPopup();
+        }
       }
     });
   }
@@ -276,6 +286,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 child: const Text('END GAME'),
               ),
             ],
+          ),
+    );
+  }
+
+  void _showRoleRevealPopup() {
+    if (_myRole == null || _myRole!.isEmpty) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => RoleRevealPopup(
+            roleName: _myRole!,
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
           ),
     );
   }

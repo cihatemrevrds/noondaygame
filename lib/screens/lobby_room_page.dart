@@ -220,7 +220,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
   }
 
   Future<void> _startGame() async {
-    if (!_isHost || players.length < 1) return;
+    if (!_isHost || players.isEmpty) return;
 
     setState(() => _isLoading = true);
 
@@ -980,7 +980,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                           child: MenuButton(
                                             text: 'START GAME',
                                             onPressed:
-                                                players.length >= 1
+                                                players.isNotEmpty
                                                     ? _startGame
                                                     : null,
                                           ),

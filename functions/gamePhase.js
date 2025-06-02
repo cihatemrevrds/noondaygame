@@ -66,15 +66,14 @@ exports.startGame = async (req, res) => {
             isAlive: true,
             eliminatedBy: null,
             killedBy: null
-        }));
-
-        await lobbyRef.update({
+        }));        await lobbyRef.update({
             players: initializedPlayers,
             status: 'started',
             phase: 'night',
             dayCount: 1,
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-            startedAt: admin.firestore.FieldValue.serverTimestamp(), gameState: 'role_reveal', // Players see their roles first
+            startedAt: admin.firestore.FieldValue.serverTimestamp(),
+            gameState: 'role_reveal', // Players see their roles first
             phaseTimeLimit: 10000, // 10 seconds for role reveal
             votes: {},
             roleData: {},

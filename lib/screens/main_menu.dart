@@ -261,9 +261,7 @@ class _MainMenuState extends State<MainMenu> {
                 ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
                 : MenuButton(
                     text: 'JOIN ROOM',
-                    onPressed: () => _showJoinDialog(context),
-                  ),
-            const SizedBox(height: 20),
+                    onPressed: () => _showJoinDialog(context),                  ),            const SizedBox(height: 20),
             MenuButton(
               text: 'SETTINGS',
               onPressed: () {
