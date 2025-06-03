@@ -26,11 +26,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   List<Player> _players = [];
   String _currentPhase = 'night';
   String? _myRole;
-  String? _myRoleDesc; // Role description
-  String? _votedPlayerId;  bool _isLoading = false;
-  String _currentUserId = '';  String? _nightActionResult; // Night action result
+  String? _myRoleDesc; // Role description  String? _votedPlayerId;
+  bool _isLoading = false;
+  String _currentUserId = '';
+  String? _nightActionResult; // Night action result
   bool _hasShownRoleReveal = false; // Role reveal popup state
-
+  int _dayCount = 1; // Day/Night counter
+  
   int _nightPhaseDuration = 30; // Default value
   int _eventPhaseDuration = 5; // Default value
   int _dayPhaseDuration = 60; // Default value
@@ -47,6 +49,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _startGameLoop();
     });
   }
+
+  String? _votedPlayerId;
 
   @override
   void dispose() {
@@ -89,8 +93,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       widget.lobbyCode,
       widget.isHost,
     );
-  }
-  void _setupLobbyListener() {
+  }  void _setupLobbyListener() {
     print('📡 Connecting to lobby: ${widget.lobbyCode}');
 
     _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
@@ -118,7 +121,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       // Store lobby data for access in other methods
       _lobbyData = data;
 
-      // Oyuncuları güncelle
+      // Update players
       final playersList =
           (data['players'] as List<dynamic>? ?? [])
               .map((p) => Player.fromMap(p as Map<String, dynamic>))
@@ -443,6 +446,42 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // If manual control is enabled, host will manually advance phase
   }
 
+
+
+  Future<void> _endGame() async {
+    final gameStateManager = GameStateManager();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('End Game?'),
+        content: const Text('This will end the game for all players.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await gameStateManager.endGame(
+                widget.lobbyCode,
+                widget.isHost,
+                (message) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(message)));
+                  }
+                },
+              );
+            },
+            child: const Text('END GAME'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Manual advance method for host
   void _manualAdvancePhase() {
     if (!widget.isHost || !_manualPhaseControl) return;
@@ -466,6 +505,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         });
         _startGameLoop();
         break;
+    }
+  }
+
+  // Get text for manual advance button based on current phase
+  String _getManualAdvanceButtonText() {
+    switch (_currentPhase) {
+      case 'night':
+        return 'START EVENT PHASE';
+      case 'event':
+        return 'START DAY PHASE';
+      case 'day':
+        return 'START NIGHT PHASE';
+      default:
+        return 'ADVANCE PHASE';
     }
   }
 
@@ -514,18 +567,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               tooltip: 'End Game',
             ),
         ],
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/saloon_bg.png"),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child:            _currentPhase == 'night'
-                ? NightPhaseScreen(
+      ),      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage("assets/images/saloon_bg.png"),
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: _currentPhase == 'night'
+              ? NightPhaseScreen(
                   lobbyCode: widget.lobbyCode,
                   currentUserId: _currentUserId,
                   myRole: _myRole,
@@ -535,9 +589,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   isLoading: _isLoading,
                   onNightAction: _performNightAction,
                   onSetNightActionResult:
-                      (result) => setState(() => _nightActionResult = result),
+                    (result) => setState(() => _nightActionResult = result),
                   nightNumber: _dayCount,
-                )                : DayPhaseScreen(
+                )
+              : DayPhaseScreen(
                   currentUserId: _currentUserId,
                   myRole: _myRole,
                   myRoleDesc: _myRoleDesc,
@@ -546,130 +601,38 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   isLoading: _isLoading,
                   onVotePlayer: _submitVote,
                   onSetNightActionResult:
-                      (result) => setState(() => _nightActionResult = result),
+                    (result) => setState(() => _nightActionResult = result),
                   dayNumber: _dayCount,
                 ),
-
+          ),
+          
+          // Host controls for manual phase advancement
+          if (widget.isHost && _manualPhaseControl)
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _manualAdvancePhase,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E2C0B),
+                    minimumSize: const Size(250, 60),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 5,
+                  ),
+                  child: Text(
+                    _getManualAdvanceButtonText(),
+                    style: const TextStyle(
+                      fontFamily: 'Rye',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),            ),        ],
       ),
-    );
-  }
-
-  String _getPhaseDescription() {
-    switch (_currentPhase) {
-      case 'night':
-        return 'Night falls... Execute your role actions!';
-      case 'event':
-        return 'Morning events are being revealed...';
-      case 'day':
-        return 'Day phase - Discuss and vote to eliminate a suspect!';
-      default:
-        return 'Game in progress...';
-    }
-  }
-
-  Widget _buildPhaseContent() {
-    switch (_currentPhase) {
-      case 'night':
-        return NightPhaseScreen(
-          lobbyCode: widget.lobbyCode,
-          currentUserId: _currentUserId,
-          myRole: _myRole,
-          myRoleDesc: _myRoleDesc,
-          nightActionResult: _nightActionResult,
-          players: _players,
-          isLoading: _isLoading,
-          onNightAction: _performNightAction,
-          onSetNightActionResult: (result) {
-            setState(() {
-              _nightActionResult = result;
-            });
-          },
-        );
-      case 'day':
-        return DayPhaseScreen(
-          currentUserId: _currentUserId,
-          myRole: _myRole,
-          myRoleDesc: _myRoleDesc,
-          players: _players,
-          votedPlayerId: _votedPlayerId,
-          isLoading: _isLoading,
-          onVotePlayer: _submitVote,
-          onSetNightActionResult: (result) {
-            setState(() {
-              _nightActionResult = result;
-            });
-          },
-        );
-      default:
-        return const Center(
-          child: Text(
-            'Preparing next phase...',
-            style: TextStyle(
-              fontFamily: 'Rye',
-              fontSize: 16,
-              color: Colors.white,
-            ),
-          ),
-        );
-    }
-  }
-
-  Widget _buildHostControls() {
-    if (_isLoading) {
-      return const CircularProgressIndicator(color: Color(0xFF4E2C0B));
-    }
-
-    if (_manualPhaseControl) {
-      return ElevatedButton(
-        onPressed: _manualAdvancePhase,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4E2C0B),
-          minimumSize: const Size(250, 60),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          _getManualAdvanceButtonText(),
-          style: const TextStyle(
-            fontFamily: 'Rye',
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        ),
-      );
-    } else {
-      return ElevatedButton(
-        onPressed: _advancePhase,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4E2C0B),
-          minimumSize: const Size(250, 60),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          _currentPhase == 'day' ? 'END DAY & COUNT VOTES' : 'ADVANCE PHASE',
-          style: const TextStyle(
-            fontFamily: 'Rye',
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        ),
-      );
-    }
-  }
-
-  String _getManualAdvanceButtonText() {
-    switch (_currentPhase) {
-      case 'night':
-        return 'START EVENT PHASE';
-      case 'event':
-        return 'START DAY PHASE';
-      case 'day':
-        return 'START NIGHT PHASE';
-      default:
-        return 'ADVANCE PHASE';
-    }
-  }
+    );  }
 }
