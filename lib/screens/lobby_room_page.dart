@@ -156,6 +156,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             'showVoteCounts': settingsData['showVoteCounts'] ?? true,
             'showVoteTargets': settingsData['showVoteTargets'] ?? false,
             'showRoleOnDeath': settingsData['showRoleOnDeath'] ?? true,
+            'manualPhaseControl': settingsData['manualPhaseControl'] ?? false,
           };
 
           final playersData = data['players'] as List<dynamic>? ?? [];
@@ -956,6 +957,13 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                         _currentSettings['showRoleOnDeath'] ??
                                                             true,
                                                         Icons.person_off,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Manual Phase Control',
+                                                        _currentSettings['manualPhaseControl'] ??
+                                                            false,
+                                                        Icons.touch_app,
                                                       ),
                                                     ],
                                                   ),

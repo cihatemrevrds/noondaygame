@@ -21,6 +21,10 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
   void initState() {
     super.initState();
     _settings = Map<String, dynamic>.from(widget.currentSettings);
+    // Add default value for manual control if not present
+    if (!_settings.containsKey('manualPhaseControl')) {
+      _settings['manualPhaseControl'] = false;
+    }
   }
 
   void _updateSetting(String key, dynamic value) {
@@ -215,6 +219,15 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                       Icons.person_off,
                       _settings['showRoleOnDeath'] ?? true,
                       (value) => _updateSetting('showRoleOnDeath', value),
+                    ),
+
+                    // Manual Phase Control
+                    _buildToggleSetting(
+                      'Manual Phase Control',
+                      'Host manually controls phase transitions (disables automatic timers)',
+                      Icons.touch_app,
+                      _settings['manualPhaseControl'] ?? false,
+                      (value) => _updateSetting('manualPhaseControl', value),
                     ),
 
                     const SizedBox(height: 20),
