@@ -12,6 +12,7 @@ class NightPhaseScreen extends StatefulWidget {
   final bool isLoading;
   final Function(String, String) onNightAction;
   final Function(String?) onSetNightActionResult;
+  final Map<String, dynamic> settings; // Add settings parameter
 
   const NightPhaseScreen({
     super.key,
@@ -24,6 +25,7 @@ class NightPhaseScreen extends StatefulWidget {
     required this.isLoading,
     required this.onNightAction,
     required this.onSetNightActionResult,
+    required this.settings, // Add settings parameter
   });
 
   @override
@@ -385,6 +387,19 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: _buildNightActionUI());
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Display settings for debugging or informational purposes
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            'Settings: ${widget.settings}',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ),
+        Center(child: _buildNightActionUI()),
+      ],
+    );
   }
 }

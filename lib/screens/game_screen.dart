@@ -32,6 +32,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String _currentUserId = '';
   String? _nightActionResult; // Gece aksiyonu sonucu
   bool _hasShownRoleReveal = false; // Role reveal popup state
+  Map<String, dynamic> _currentSettings = {}; // Current game settings
   @override
   void initState() {
     super.initState();
@@ -150,6 +151,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _showRoleRevealPopup();
           }
         }
+      });
+
+      // Update current settings
+      setState(() {
+        _currentSettings = data['settings'] as Map<String, dynamic>? ?? {};
       });
     });
   }
@@ -385,6 +391,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onNightAction: _performNightAction,
                   onSetNightActionResult:
                       (result) => setState(() => _nightActionResult = result),
+                  settings: _currentSettings, // Pass settings here
                 )
                 : DayPhaseScreen(
                   currentUserId: _currentUserId,
@@ -396,6 +403,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onVotePlayer: _submitVote,
                   onSetNightActionResult:
                       (result) => setState(() => _nightActionResult = result),
+                  dayPhaseDuration: _currentSettings['discussionTime'] ?? 60, // Example: discussion time
+                  settings: _currentSettings, // Pass settings here
                 ),
       ),
     );
