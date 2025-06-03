@@ -11,7 +11,7 @@ class DayPhaseScreen extends StatelessWidget {
   final bool isLoading;
   final Function(String) onVotePlayer;
   final Function(String?) onSetNightActionResult;
-  final int dayNumber; // Gün numarası
+  final int dayNumber; // Day number
 
   const DayPhaseScreen({
     super.key,

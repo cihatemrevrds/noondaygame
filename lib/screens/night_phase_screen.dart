@@ -12,7 +12,7 @@ class NightPhaseScreen extends StatefulWidget {
   final bool isLoading;
   final Function(String, String) onNightAction;
   final Function(String?) onSetNightActionResult;
-  final int nightNumber; // Gece numarası
+  final int nightNumber; // Night number
 
   const NightPhaseScreen({
     super.key,
@@ -69,7 +69,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
             ),
             const SizedBox(height: 40),
 
-            // Role logo - daha büyük ve belirgin
+            // Role logo - larger and more prominent
             Container(
               width: 140,
               height: 140,
@@ -96,7 +96,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Role name - daha büyük font
+            // Role name - larger font
             Text(
               widget.myRole ?? 'Unknown',
               style: const TextStyle(
@@ -113,7 +113,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 30),            // Player selection area - daha düzenli
+            const SizedBox(height: 30),            // Player selection area - more organized
             if (widget.players.where((p) => p.isAlive).isNotEmpty)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -178,7 +178,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                     ),
                   ),
                 ),
-            const SizedBox(height: 40),            // Action buttons - dikdörtgen kahverengi butonlar yan yana
+            const SizedBox(height: 40),            // Action buttons - rectangular brown buttons side by side
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30),
               child: Row(
@@ -215,9 +215,9 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                     ),
                   ),
 
-                  const SizedBox(width: 30), // Butonlar arası mesafe
+                  const SizedBox(width: 30), // Space between buttons
 
-                  // Role action button - sağa
+                  // Role action button - right side
                   SizedBox(
                     width: 140,
                     child: ElevatedButton(

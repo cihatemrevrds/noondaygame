@@ -22,16 +22,16 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final LobbyService _lobbyService = LobbyService();
-  final GameService _gameService = GameService();  List<Player> _players = [];
+  final GameService _gameService = GameService();
+  List<Player> _players = [];
   String _currentPhase = 'night';
   String? _myRole;
   String? _myRoleDesc; // Role description
-  String? _votedPlayerId;
-  bool _isLoading = false;
-  String _currentUserId = '';
-  String? _nightActionResult; // Night action result
+  String? _votedPlayerId;  bool _isLoading = false;
+  String _currentUserId = '';  String? _nightActionResult; // Night action result
   bool _hasShownRoleReveal = false; // Role reveal popup state
   int _dayCount = 1; // Day/Night counter
+
   @override
   void initState() {
     super.initState();
@@ -78,7 +78,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       widget.isHost,
     );
   }
-
   void _setupLobbyListener() {
     print('📡 Connecting to lobby: ${widget.lobbyCode}');
 
@@ -101,34 +100,37 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
         }
         return;
-      }
+      }      final data = snapshot.data() as Map<String, dynamic>;
 
-      final data = snapshot.data() as Map<String, dynamic>;
-
-      // Oyuncuları güncelle
+      // Update players
       final playersList =
           (data['players'] as List<dynamic>? ?? [])
               .map((p) => Player.fromMap(p as Map<String, dynamic>))
               .toList();
 
-      // Kendi rolümü bul
+      // Find my role
       final myPlayer = playersList.firstWhere(
         (p) => p.id == _currentUserId,
         orElse: () => Player(name: 'Unknown'),
-      ); // Oyların durumunu al
+      );
+
+      // Get votes status
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
-      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));      // Faz bilgisini al
+      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
+
+      // Get phase info
       final phase = data['phase'] as String? ?? 'night';
       final gameState = data['gameState'] as String? ?? '';
       final dayCount = data['dayCount'] as int? ?? 1;
 
-      // Kalan süre ve gece aksiyonu sonucu (varsa)
+      // Get remaining time and night action result (if any)
       final nightActionResult =
           data['nightActionResult']?[_currentUserId] as String?;
 
-      // Rol açıklaması getir
+      // Get role description
       _getRoleDescription(myPlayer.role).then((roleDesc) {
-        if (mounted) {          setState(() {
+        if (mounted) {
+          setState(() {
             _players = playersList;
             _myRole = myPlayer.role;
             _myRoleDesc = roleDesc;
@@ -136,7 +138,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _nightActionResult = nightActionResult;
             _dayCount = dayCount;
 
-            // Oy seçimini güncelle
+            // Update vote selection
             _votedPlayerId = votes[_currentUserId];
           });
 
@@ -150,40 +152,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
         }
       });
-    });
-  }
-
-  // Rol açıklamasını getir
+    });  }  
+  
+  // Get role description
   Future<String> _getRoleDescription(String? role) async {
     return RoleUtils.getRoleDescription(role);
-  }
-
-  Future<void> _advancePhase() async {
-    final gameStateManager = GameStateManager();
-    await gameStateManager.advancePhase(
-      widget.lobbyCode,
-      widget.isHost,
-      _currentPhase,
-      () => setState(() => _isLoading = true),
-      (message) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message, style: const TextStyle(fontFamily: 'Rye')),
-            ),
-          );
-          setState(() => _isLoading = false);
-        }
-      },
-    );
   }
 
   Future<void> _submitVote(String targetId) async {
     if (_currentPhase != 'day' || targetId == _currentUserId) return;
 
-    setState(() {
-      _isLoading = true;
-      _votedPlayerId = targetId; // Hemen UI'ı güncelle
+    setState(() {      _isLoading = true;
+      _votedPlayerId = targetId; // Update UI immediately
     });
 
     try {
@@ -218,7 +198,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
         );
         setState(() {
-          _votedPlayerId = null; // Hata durumunda seçimi sıfırla
+          _votedPlayerId = null; // Reset selection on error
         });
       }
     } finally {
@@ -226,44 +206,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         setState(() {
           _isLoading = false;
         });
-      }
-    }
-  }
-
-  Future<void> _endGame() async {
-    final gameStateManager = GameStateManager();
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('End Game?'),
-            content: const Text('This will end the game for all players.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await gameStateManager.endGame(
-                    widget.lobbyCode,
-                    widget.isHost,
-                    (message) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(message)));
-                      }
-                    },
-                  );
-                },
-                child: const Text('END GAME'),
-              ),
-            ],
-          ),
-    );
+      }    }
   }
 
   void _showRoleRevealPopup() {
