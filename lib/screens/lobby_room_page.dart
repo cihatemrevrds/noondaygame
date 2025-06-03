@@ -147,12 +147,10 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             }
           }); // Load current game settings
           final settingsData =
-              data['gameSettings'] as Map<String, dynamic>? ?? {};
-          final currentSettings = <String, dynamic>{
+              data['gameSettings'] as Map<String, dynamic>? ?? {};          final currentSettings = <String, dynamic>{
             'votingTime': settingsData['votingTime'] ?? 30,
             'discussionTime': settingsData['discussionTime'] ?? 60,
             'nightTime': settingsData['nightTime'] ?? 45,
-            'roleActionTime': settingsData['roleActionTime'] ?? 30,
             'allowFirstNightKill': settingsData['allowFirstNightKill'] ?? false,
             'showVoteCounts': settingsData['showVoteCounts'] ?? true,
             'showVoteTargets': settingsData['showVoteTargets'] ?? false,
@@ -907,17 +905,10 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                         '${_currentSettings['discussionTime'] ?? 60}s',
                                                         Icons.chat,
                                                       ),
-                                                      const SizedBox(height: 8),
-                                                      _buildSettingItem(
+                                                      const SizedBox(height: 8),                                                      _buildSettingItem(
                                                         'Night Time',
                                                         '${_currentSettings['nightTime'] ?? 45}s',
                                                         Icons.nightlight_round,
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      _buildSettingItem(
-                                                        'Role Action Time',
-                                                        '${_currentSettings['roleActionTime'] ?? 30}s',
-                                                        Icons.sports_esports,
                                                       ),
 
                                                       // Divider between timer and rule settings

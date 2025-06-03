@@ -138,24 +138,13 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                       Icons.chat,
                       _settings['discussionTime'] ?? 60,
                       (value) => _updateSetting('discussionTime', value),
-                    ),
-
-                    // Night Time
+                    ),                    // Night Time
                     _buildTimerSetting(
                       'Night Time',
                       'Duration for night phase',
                       Icons.nightlight_round,
                       _settings['nightTime'] ?? 45,
                       (value) => _updateSetting('nightTime', value),
-                    ),
-
-                    // Role Action Time
-                    _buildTimerSetting(
-                      'Role Action Time',
-                      'Time limit for role actions',
-                      Icons.sports_esports,
-                      _settings['roleActionTime'] ?? 30,
-                      (value) => _updateSetting('roleActionTime', value),
                     ),
 
                     const SizedBox(height: 20),
