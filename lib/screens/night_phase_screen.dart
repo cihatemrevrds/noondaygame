@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../widgets/role_utils.dart';
-import '../services/lobby_service.dart';
-import 'dart:async';
 
 class NightPhaseScreen extends StatefulWidget {
   final String lobbyCode;
@@ -14,6 +12,7 @@ class NightPhaseScreen extends StatefulWidget {
   final bool isLoading;
   final Function(String, String) onNightAction;
   final Function(String?) onSetNightActionResult;
+  final int nightNumber; // Night number
 
   const NightPhaseScreen({
     super.key,
@@ -26,6 +25,7 @@ class NightPhaseScreen extends StatefulWidget {
     required this.isLoading,
     required this.onNightAction,
     required this.onSetNightActionResult,
+    required this.nightNumber,
   });
 
   @override
@@ -33,437 +33,234 @@ class NightPhaseScreen extends StatefulWidget {
 }
 
 class _NightPhaseScreenState extends State<NightPhaseScreen> {
-  late int nightPhaseDuration;
-  late Timer timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLobbySettings();
-  }
-
-  void _fetchLobbySettings() async {
-    final settings = await LobbyService().getLobbySettings(widget.lobbyCode);
-    setState(() {
-      nightPhaseDuration = settings['nightPhaseDuration'];
-    });
-  }
+  String? _selectedPlayerId; // Track the selected player
 
   Widget _buildNightActionUI() {
     // Rol rengini ve ikonunu belirle
     Color roleColor = RoleUtils.getRoleColor(widget.myRole ?? 'Unknown');
     IconData roleIcon = RoleUtils.getRoleIcon(widget.myRole ?? 'Unknown');
 
-    // Rol aksiyonu adını belirle
-    String actionName;
-    String actionType;
-
-    switch (widget.myRole) {
-      case 'Doctor':
-        actionName = 'Koru';
-        actionType = 'doctorProtect';
-        break;
-      case 'Gunman':
-        actionName = 'Öldür';
-        actionType = 'gunmanKill';
-        break;
-      case 'Sheriff':
-        actionName = 'Araştır';
-        actionType = 'sheriffInvestigate';
-        break;
-      case 'Prostitute':
-        actionName = 'Engelle';
-        actionType = 'prostituteBlock';
-        break;
-      case 'Peeper':
-        actionName = 'Gözetle';
-        actionType = 'peeperSpy';
-        break;
-      default:
-        actionName = 'Aksiyon';
-        actionType = '';
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Üst kısım - Rol bilgisi ve ikonu
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Rol ikonu
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: roleColor,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Icon(roleIcon, size: 40, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-
-                // Rol adı
-                Text(
-                  widget.myRole ?? 'Unknown',
-                  style: const TextStyle(
-                    fontFamily: 'Rye',
-                    fontSize: 24,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Rol açıklaması
-                Text(
-                  widget.myRoleDesc ?? 'Rol açıklaması yükleniyor...',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontStyle: FontStyle.italic,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-
-                // Aksiyon sonucu (varsa)
-                if (widget.nightActionResult != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      widget.nightActionResult!,
-                      style: const TextStyle(fontSize: 16, color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                const SizedBox(height: 20),
-
-                // Aksiyon butonları
-                RoleUtils.hasNightAction(widget.myRole ?? '')
-                    ? Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Pas geç butonu
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: ElevatedButton(
-                              onPressed:
-                                  widget.isLoading
-                                      ? null
-                                      : () {
-                                        // Pas geçme işlemi
-                                        widget.onSetNightActionResult(
-                                          "Bu gece aksiyon yapmamayı seçtin.",
-                                        );
-                                      },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[700],
-                                minimumSize: const Size(0, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                'Pas Geç',
-                                style: TextStyle(
-                                  fontFamily: 'Rye',
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Rol aksiyonu butonu
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: ElevatedButton(
-                              onPressed:
-                                  widget.isLoading
-                                      ? null
-                                      : () {
-                                        // Oyuncu seçim modunu aç
-                                        _showPlayerSelectionModal(
-                                          actionName,
-                                          actionType,
-                                        );
-                                      },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: roleColor,
-                                minimumSize: const Size(0, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                actionName,
-                                style: const TextStyle(
-                                  fontFamily: 'Rye',
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                    : const Text(
-                      'Gece aksiyonu bulunmuyor',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-              ],
-            ),
+    return Stack(
+      children: [
+        // Background image
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/western_town_bg.png',
+            fit: BoxFit.cover,
           ),
-        ],
-      ),
-    );
-  }
-
-  // Oyuncu seçim modalını göster
-  void _showPlayerSelectionModal(String actionName, String actionType) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Color(0xFF2D1B0E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: RoleUtils.getRoleColor(widget.myRole ?? ''),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+        ),        // Foreground content
+        Column(
+          children: [
+            // Night bar at the top
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.brown,
+              child: Text(
+                'Night: ${widget.nightNumber}',
+                style: const TextStyle(
+                  fontFamily: 'Rye',
+                  fontSize: 22,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      RoleUtils.getRoleIcon(widget.myRole ?? ''),
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      "$actionName - Oyuncu Seç",
-                      style: const TextStyle(
-                        fontFamily: 'Rye',
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+                textAlign: TextAlign.center,
               ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: widget.players.where((p) => p.isAlive).length,
-                  itemBuilder: (context, index) {
-                    final player =
-                        widget.players.where((p) => p.isAlive).toList()[index];
+            ),
+            const SizedBox(height: 40),
 
-                    // Rolüne göre bazı oyuncuları hariç tutma
-                    bool canTarget = true;
+            // Role logo - larger and more prominent
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(
+                  color: Colors.black,
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                roleIcon,
+                size: 80,
+                color: roleColor,
+              ),
+            ),
+            const SizedBox(height: 20),
 
-                    switch (widget.myRole) {
-                      case 'Gunman':
-                      case 'Sheriff':
-                      case 'Prostitute':
-                      case 'Peeper':
-                        canTarget =
-                            player.id !=
-                            widget.currentUserId; // Kendisi hedeflenemez
-                        break;
-                    }
-
-                    if (!canTarget) return const SizedBox.shrink();
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: Card(
-                        color: Colors.brown.withValues(alpha: 0.7),
-                        elevation: 4,
-                        child: InkWell(
-                          onTap:
-                              widget.isLoading
-                                  ? null
-                                  : () {
-                                    Navigator.pop(context);
-                                    widget.onNightAction(actionType, player.id);
-                                  },
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
+            // Role name - larger font
+            Text(
+              widget.myRole ?? 'Unknown',
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 32,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                    color: Colors.black,
+                    offset: Offset(2, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),            // Player selection area - more organized
+            if (widget.players.where((p) => p.isAlive).isNotEmpty)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 20,
+                    runSpacing: 20,
+                    alignment: WrapAlignment.start,
+                    children: widget.players
+                      .where((p) => p.isAlive)
+                      .map((player) => GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedPlayerId = player.id;
+                              });
+                            },                            child: Column(
                               children: [
-                                CircleAvatar(
-                                  backgroundColor: Colors.grey[400],
-                                  child: Text(
-                                    player.name.isNotEmpty
-                                        ? player.name[0].toUpperCase()
-                                        : "?",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _selectedPlayerId == player.id
+                                        ? Colors.green.withOpacity(0.8)
+                                        : Colors.grey[300],
+                                    border: Border.all(
+                                      color: _selectedPlayerId == player.id
+                                          ? Colors.white
+                                          : Colors.grey[400]!,
+                                      width: 3,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    player.name,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontFamily: 'Rye',
-                                      color: Colors.white,
-                                    ),
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 45,
+                                    color: _selectedPlayerId == player.id
+                                        ? Colors.white
+                                        : Colors.grey[600],
                                   ),
                                 ),
-                                const Icon(
-                                  Icons.arrow_forward_ios,
-                                  color: Colors.white70,
-                                  size: 18,
+                                const SizedBox(height: 8),
+                                Text(
+                                  player.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              // İptal butonu
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[800],
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'İptal',
-                      style: TextStyle(
-                        fontFamily: 'Rye',
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
+                            ),                          ))                      .toList(),
                     ),
                   ),
                 ),
+            const SizedBox(height: 40),            // Action buttons - rectangular brown buttons side by side
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Skip button - sola
+                  SizedBox(
+                    width: 140,
+                    child: ElevatedButton(
+                      onPressed: widget.isLoading
+                          ? null
+                          : () {                              widget.onSetNightActionResult(
+                                "You chose to skip this night.",
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.brown[600],
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),                      child: const Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 30), // Space between buttons
+
+                  // Role action button - right side
+                  SizedBox(
+                    width: 140,
+                    child: ElevatedButton(
+                      onPressed: widget.isLoading || _selectedPlayerId == null
+                          ? null
+                          : () {
+                              widget.onNightAction(
+                                'sheriffInvestigate',
+                                _selectedPlayerId!,
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.brown[600],
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),                      child: const Text(
+                        'Action',
+                        style: TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Timer Section
-          Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: TimerWidget(nightPhaseDuration: nightPhaseDuration),
-          ),
-
-          _buildNightActionUI(),
-        ],
-      ),
-    );
-  }
-}
-
-class TimerWidget extends StatefulWidget {
-  final int nightPhaseDuration;
-
-  const TimerWidget({super.key, required this.nightPhaseDuration});
-
-  @override
-  _TimerWidgetState createState() => _TimerWidgetState();
-}
-
-class _TimerWidgetState extends State<TimerWidget> {
-  late int remainingTime;
-  late Timer timer;
-
-  @override
-  void initState() {
-    super.initState();
-    remainingTime = widget.nightPhaseDuration;
-    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (remainingTime > 0) {
-        setState(() {
-          remainingTime--;
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    timer.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      'Kalan Süre: ${remainingTime}s',
-      style: const TextStyle(
-        fontFamily: 'Rye',
-        fontSize: 20,
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-      ),
-    );
+    return Center(child: _buildNightActionUI());
   }
 }

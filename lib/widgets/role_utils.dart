@@ -55,27 +55,26 @@ class RoleUtils {
         return false;
     }
   }
-
   static Future<String> getRoleDescription(String? role) async {
-    if (role == null) return 'Rol henüz atanmamış';
+    if (role == null) return 'Role not assigned yet';
 
     switch (role) {
       case 'Doctor':
-        return 'Her gece bir kişiyi ölümden koruyabilirsin. Kendini de koruyabilirsin.';
+        return 'Each night you can protect one person from death. You can protect yourself.';
       case 'Gunman':
-        return 'Her gece bir kişiyi öldürebilirsin. Dikkatli seç!';
+        return 'Each night you can kill one person. Choose carefully!';
       case 'Sheriff':
-        return 'Her gece bir kişinin hangi takımda olduğunu öğrenebilirsin.';
+        return 'Each night you can learn which team a person belongs to.';
       case 'Prostitute':
-        return 'Her gece bir kişinin gece aksiyonunu engelleyebilirsin.';
+        return 'Each night you can block someone\'s night action.';
       case 'Peeper':
-        return 'Her gece bir kişinin rolünü öğrenebilirsin.';
+        return 'Each night you can learn someone\'s role.';
       case 'Chieftain':
-        return 'Bandit takımının liderisin. Şerif seni kasabalı olarak görür.';
+        return 'You are the leader of the bandit team. Sheriff sees you as a townsperson.';
       case 'Townsperson':
-        return 'Kasabalısın. Gece aksiyonu yok, gündüz oylamasında banditleri bulmaya çalış.';
+        return 'You are a townsperson. No night action, try to find bandits in day voting.';
       default:
-        return 'Bilinmeyen rol';
+        return 'Unknown role';
     }
   }
 }
