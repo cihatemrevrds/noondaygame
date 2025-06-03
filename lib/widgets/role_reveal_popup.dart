@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../utils/role_icons.dart';
 
 class RoleRevealPopup extends StatefulWidget {
   final String roleName;
@@ -98,30 +99,6 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
     }
   }
 
-  IconData _getRoleIcon(String role) {
-    switch (role) {
-      case 'Doctor':
-        return Icons.healing;
-      case 'Sheriff':
-        return Icons.star;
-      case 'Escort':
-        return Icons.favorite;
-      case 'Peeper':
-        return Icons.visibility;
-      case 'Gunslinger':
-        return Icons.gps_fixed;
-      case 'Gunman':
-        return Icons.dangerous;
-      case 'Chieftain':
-        return Icons.verified_user;
-      case 'Jester':
-        return Icons.theater_comedy;
-      case 'Townsperson':
-        return Icons.person;
-      default:
-        return Icons.help;
-    }
-  }
 
   String _getRoleDescription(String role) {
     switch (role) {
@@ -147,11 +124,9 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
         return 'A mysterious role with unknown abilities.';
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final roleColor = _getRoleColor(widget.roleName);
-    final roleIcon = _getRoleIcon(widget.roleName);
     final roleDescription = _getRoleDescription(widget.roleName);
 
     return Material(
@@ -182,13 +157,12 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Role Icon
+                      children: [                        // Role Icon
                         Container(
                           width: 120,
                           height: 120,
                           decoration: BoxDecoration(
-                            color: roleColor,
+                            color: Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -198,10 +172,9 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                               ),
                             ],
                           ),
-                          child: Icon(
-                            roleIcon,
-                            size: 60,
-                            color: Colors.white,
+                          child: RoleIcons.buildRoleIcon(
+                            roleName: widget.roleName,
+                            size: 80,
                           ),
                         ),
                         

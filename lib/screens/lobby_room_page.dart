@@ -9,6 +9,7 @@ import 'dart:convert';
 import '../widgets/menu_button.dart';
 import '../models/player.dart';
 import '../models/role.dart';
+import '../utils/role_icons.dart';
 import '../services/lobby_service.dart';
 import '../widgets/role_management_dialog.dart';
 import '../widgets/game_settings_dialog.dart';
@@ -657,15 +658,8 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                                     BorderRadius.circular(
                                                                       4,
                                                                     ),
-                                                              ),
-                                                              child: Icon(
-                                                                _getRoleIcon(
-                                                                  roleName,
-                                                                ),
-                                                                color:
-                                                                    Role.getTeamColor(
-                                                                      role.team,
-                                                                    ),
+                                                              ),                                                              child: RoleIcons.buildRoleIcon(
+                                                                roleName: roleName,
                                                                 size: 20,
                                                               ),
                                                             ),
@@ -1076,32 +1070,8 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
+          ),        ],
       ),
     );
-  }
-
-  IconData _getRoleIcon(String roleName) {
-    switch (roleName.toLowerCase()) {
-      case 'doctor':
-        return Icons.local_hospital;
-      case 'sheriff':
-        return Icons.security;
-      case 'escort':
-        return Icons.block;
-      case 'peeper':
-        return Icons.visibility;
-      case 'gunslinger':
-        return Icons.gps_fixed;
-      case 'gunman':
-        return Icons.gps_off;
-      case 'chieftain':
-        return Icons.star;
-      case 'jester':
-        return Icons.theater_comedy;
-      default:
-        return Icons.person;
-    }
   }
 }
