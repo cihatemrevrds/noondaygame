@@ -52,20 +52,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // Handle app lifecycle changes during game
     switch (state) {
       case AppLifecycleState.paused:
-        // Game went to background - player might return
+        // Game went to background (Alt+Tab, minimized, etc.) - do nothing
+        // Players should stay in game when switching between apps
         break;
       case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
         // App is being terminated - if host, try to end game gracefully
         if (widget.isHost) {
           _performEmergencyGameCleanup();
         }
         break;
+      case AppLifecycleState.inactive:
+        // App is inactive but not necessarily closing - do nothing
+        // This can happen during transitions, system dialogs, or Alt+Tab
+        break;
       case AppLifecycleState.resumed:
-        // Game resumed
+        // Game resumed - everything is fine
         break;
       case AppLifecycleState.hidden:
-        // Game is hidden
+        // Game is hidden - do nothing
         break;
     }
   }

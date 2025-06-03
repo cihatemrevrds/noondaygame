@@ -68,18 +68,22 @@ class _NoondayAppState extends State<NoondayApp> with WidgetsBindingObserver {
 
     switch (state) {
       case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
         // App is being terminated - perform emergency cleanup
         _performGlobalCleanup();
         break;
+      case AppLifecycleState.inactive:
+        // App is inactive but not necessarily closing - do nothing
+        // This can happen during transitions, system dialogs, or Alt+Tab
+        break;
       case AppLifecycleState.paused:
-        // App went to background - user might return, but prepare for cleanup
+        // App went to background (Alt+Tab, minimized, etc.) - do nothing
+        // Users should stay in lobby when switching between apps
         break;
       case AppLifecycleState.resumed:
         // App resumed - everything is fine
         break;
       case AppLifecycleState.hidden:
-        // App is hidden
+        // App is hidden - do nothing
         break;
     }
   }

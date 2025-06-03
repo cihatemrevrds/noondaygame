@@ -63,37 +63,25 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
     // Handle app lifecycle changes to prevent lobby leaks
     switch (state) {
       case AppLifecycleState.paused:
-        // App went to background - start cleanup timer
-        _scheduleCleanupOnBackground();
+        // App went to background (Alt+Tab, minimized, etc.) - do nothing
+        // Users should stay in lobby when switching between apps
         break;
       case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
-        // App is being terminated or going inactive - immediate cleanup
+        // App is being terminated - immediate cleanup
         _performEmergencyCleanup();
         break;
+      case AppLifecycleState.inactive:
+        // App is inactive but not necessarily closing - do nothing
+        // This can happen during transitions or when system dialogs appear
+        break;
       case AppLifecycleState.resumed:
-        // App resumed - cancel any pending cleanup
-        _cancelBackgroundCleanup();
+        // App resumed - nothing to do since we don't schedule cleanup on pause
         break;
       case AppLifecycleState.hidden:
-        // App is hidden - prepare for potential cleanup
+        // App is hidden - do nothing for now
+        // This is a newer state that indicates the app is not visible
         break;
     }
-  }
-
-  Timer? _backgroundCleanupTimer;
-
-  void _scheduleCleanupOnBackground() {
-    // If user doesn't return within 30 seconds, leave the lobby
-    _backgroundCleanupTimer?.cancel();
-    _backgroundCleanupTimer = Timer(const Duration(seconds: 30), () {
-      _performEmergencyCleanup();
-    });
-  }
-
-  void _cancelBackgroundCleanup() {
-    _backgroundCleanupTimer?.cancel();
-    _backgroundCleanupTimer = null;
   }
 
   void _performEmergencyCleanup() {
@@ -156,6 +144,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             'showVoteCounts': settingsData['showVoteCounts'] ?? true,
             'showVoteTargets': settingsData['showVoteTargets'] ?? false,
             'showRoleOnDeath': settingsData['showRoleOnDeath'] ?? true,
+            'manualPhaseControl': settingsData['manualPhaseControl'] ?? false,
           };
 
           final playersData = data['players'] as List<dynamic>? ?? [];
@@ -956,6 +945,13 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                         _currentSettings['showRoleOnDeath'] ??
                                                             true,
                                                         Icons.person_off,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Manual Phase Control',
+                                                        _currentSettings['manualPhaseControl'] ??
+                                                            false,
+                                                        Icons.touch_app,
                                                       ),
                                                     ],
                                                   ),
