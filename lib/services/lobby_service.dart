@@ -783,17 +783,17 @@ class LobbyService {
       final gameSettings = data['gameSettings'] as Map<String, dynamic>? ?? {};
 
       return {
-        'nightPhaseDuration': data['nightPhaseDuration'] ?? 30,
-        'eventPhaseDuration': data['eventPhaseDuration'] ?? 5,
-        'dayPhaseDuration': data['dayPhaseDuration'] ?? 60,
+        'nightPhaseDuration': gameSettings['nightTime'] ?? 30,
+        'eventPhaseDuration': gameSettings['eventPhaseDuration'] ?? 5,
+        'dayPhaseDuration': gameSettings['discussionTime'] ?? 60,
         'manualPhaseControl': gameSettings['manualPhaseControl'] ?? false,
       };
     } catch (e) {
       print('Error fetching lobby settings: $e');
       return {
-        'nightPhaseDuration': 30,
+        'nightTime': 30,
         'eventPhaseDuration': 5,
-        'dayPhaseDuration': 60,
+        'discussionTime': 60,
         'manualPhaseControl': false,
       };
     }

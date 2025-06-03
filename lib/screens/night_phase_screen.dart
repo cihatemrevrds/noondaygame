@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../widgets/role_utils.dart';
+import '../services/lobby_service.dart';
+import 'dart:async';
 
 class NightPhaseScreen extends StatefulWidget {
   final String lobbyCode;
@@ -31,6 +33,22 @@ class NightPhaseScreen extends StatefulWidget {
 }
 
 class _NightPhaseScreenState extends State<NightPhaseScreen> {
+  late int nightPhaseDuration;
+  late Timer timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLobbySettings();
+  }
+
+  void _fetchLobbySettings() async {
+    final settings = await LobbyService().getLobbySettings(widget.lobbyCode);
+    setState(() {
+      nightPhaseDuration = settings['nightPhaseDuration'];
+    });
+  }
+
   Widget _buildNightActionUI() {
     // Rol rengini ve ikonunu belirle
     Color roleColor = RoleUtils.getRoleColor(widget.myRole ?? 'Unknown');
@@ -385,6 +403,67 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: _buildNightActionUI());
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Timer Section
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: TimerWidget(nightPhaseDuration: nightPhaseDuration),
+          ),
+
+          _buildNightActionUI(),
+        ],
+      ),
+    );
+  }
+}
+
+class TimerWidget extends StatefulWidget {
+  final int nightPhaseDuration;
+
+  const TimerWidget({super.key, required this.nightPhaseDuration});
+
+  @override
+  _TimerWidgetState createState() => _TimerWidgetState();
+}
+
+class _TimerWidgetState extends State<TimerWidget> {
+  late int remainingTime;
+  late Timer timer;
+
+  @override
+  void initState() {
+    super.initState();
+    remainingTime = widget.nightPhaseDuration;
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (remainingTime > 0) {
+        setState(() {
+          remainingTime--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Kalan Süre: ${remainingTime}s',
+      style: const TextStyle(
+        fontFamily: 'Rye',
+        fontSize: 20,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 }
