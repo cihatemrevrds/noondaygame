@@ -11,6 +11,7 @@ class DayPhaseScreen extends StatelessWidget {
   final bool isLoading;
   final Function(String) onVotePlayer;
   final Function(String?) onSetNightActionResult;
+  final int dayNumber; // Day number
 
   const DayPhaseScreen({
     super.key,
@@ -22,12 +23,33 @@ class DayPhaseScreen extends StatelessWidget {
     required this.isLoading,
     required this.onVotePlayer,
     required this.onSetNightActionResult,
+    required this.dayNumber,
   });
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Day bar at the top
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          color: Colors.brown,
+          child: Text(
+            'Day: $dayNumber',
+            style: const TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 20,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        // Main content
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
         // Üst kısım: Rol bilgisi
         Padding(
           padding: const EdgeInsets.only(top: 20), // Reduced from 50 to 20
@@ -81,7 +103,7 @@ class DayPhaseScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  myRoleDesc ?? 'Rol açıklaması yükleniyor...',
+                  myRoleDesc ?? 'Loading role description...',
                   style: const TextStyle(
                     fontSize: 16,
                     color: Colors.white,
@@ -172,9 +194,8 @@ class DayPhaseScreen extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (player.isAlive == false)
-                        const Text(
-                          'ÖLDÜ',
+                      if (player.isAlive == false)                        const Text(
+                          'DEAD',
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.red,
@@ -198,9 +219,8 @@ class DayPhaseScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed:
                     isLoading
-                        ? null
-                        : () {
-                          onSetNightActionResult("Oylamada pas geçtin.");
+                        ? null                        : () {
+                          onSetNightActionResult("You skipped voting.");
                         },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey[700],
@@ -211,9 +231,8 @@ class DayPhaseScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                child: const Text(
-                  'Pas Geç',
+                ),                child: const Text(
+                  'Skip',
                   style: TextStyle(
                     fontFamily: 'Rye',
                     fontSize: 18,
@@ -240,16 +259,17 @@ class DayPhaseScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                child: const Text(
-                  'Oy Ver',
+                ),                child: const Text(
+                  'Vote',
                   style: TextStyle(
                     fontFamily: 'Rye',
                     fontSize: 18,
                     color: Colors.white,
                   ),
-                ),
-              ),
+                ),),
+            ],
+          ),
+        ),
             ],
           ),
         ),

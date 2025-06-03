@@ -26,12 +26,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   List<Player> _players = [];
   String _currentPhase = 'night';
   String? _myRole;
-  String? _myRoleDesc; // Rol açıklaması
-  String? _votedPlayerId;
-  bool _isLoading = false;
-  String _currentUserId = '';
-  String? _nightActionResult; // Gece aksiyonu sonucu
+  String? _myRoleDesc; // Role description
+  String? _votedPlayerId;  bool _isLoading = false;
+  String _currentUserId = '';  String? _nightActionResult; // Night action result
   bool _hasShownRoleReveal = false; // Role reveal popup state
+
   int _nightPhaseDuration = 30; // Default value
   int _eventPhaseDuration = 5; // Default value
   int _dayPhaseDuration = 60; // Default value
@@ -91,13 +90,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       widget.isHost,
     );
   }
-
   void _setupLobbyListener() {
-    print('📡 Lobiye bağlanılıyor: ${widget.lobbyCode}');
+    print('📡 Connecting to lobby: ${widget.lobbyCode}');
 
     _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
       if (!snapshot.exists) {
-        // Lobi silinmiş, ana menüye geri dön
+        // Lobby deleted, return to main menu
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -126,23 +124,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               .map((p) => Player.fromMap(p as Map<String, dynamic>))
               .toList();
 
-      // Kendi rolümü bul
+      // Find my role
       final myPlayer = playersList.firstWhere(
         (p) => p.id == _currentUserId,
         orElse: () => Player(name: 'Unknown'),
-      ); // Oyların durumunu al
+      );
+
+      // Get votes status
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
       final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
 
-      // Faz bilgisini al
+      // Get phase info
       final phase = data['phase'] as String? ?? 'night';
       final gameState = data['gameState'] as String? ?? '';
+      final dayCount = data['dayCount'] as int? ?? 1;
 
-      // Kalan süre ve gece aksiyonu sonucu (varsa)
+      // Get remaining time and night action result (if any)
       final nightActionResult =
           data['nightActionResult']?[_currentUserId] as String?;
 
-      // Rol açıklaması getir
+      // Get role description
       _getRoleDescription(myPlayer.role).then((roleDesc) {
         if (mounted) {
           setState(() {
@@ -151,8 +152,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _myRoleDesc = roleDesc;
             _currentPhase = phase;
             _nightActionResult = nightActionResult;
+            _dayCount = dayCount;
 
-            // Oy seçimini güncelle
+            // Update vote selection
             _votedPlayerId = votes[_currentUserId];
           });
 
@@ -166,40 +168,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
         }
       });
-    });
-  }
-
-  // Rol açıklamasını getir
+    });  }  
+  
+  // Get role description
   Future<String> _getRoleDescription(String? role) async {
     return RoleUtils.getRoleDescription(role);
-  }
-
-  Future<void> _advancePhase() async {
-    final gameStateManager = GameStateManager();
-    await gameStateManager.advancePhase(
-      widget.lobbyCode,
-      widget.isHost,
-      _currentPhase,
-      () => setState(() => _isLoading = true),
-      (message) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message, style: const TextStyle(fontFamily: 'Rye')),
-            ),
-          );
-          setState(() => _isLoading = false);
-        }
-      },
-    );
   }
 
   Future<void> _submitVote(String targetId) async {
     if (_currentPhase != 'day' || targetId == _currentUserId) return;
 
-    setState(() {
-      _isLoading = true;
-      _votedPlayerId = targetId; // Hemen UI'ı güncelle
+    setState(() {      _isLoading = true;
+      _votedPlayerId = targetId; // Update UI immediately
     });
 
     try {
@@ -234,7 +214,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
         );
         setState(() {
-          _votedPlayerId = null; // Hata durumunda seçimi sıfırla
+          _votedPlayerId = null; // Reset selection on error
         });
       }
     } finally {
@@ -242,44 +222,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         setState(() {
           _isLoading = false;
         });
-      }
-    }
-  }
-
-  Future<void> _endGame() async {
-    final gameStateManager = GameStateManager();
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('End Game?'),
-            content: const Text('This will end the game for all players.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await gameStateManager.endGame(
-                    widget.lobbyCode,
-                    widget.isHost,
-                    (message) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(message)));
-                      }
-                    },
-                  );
-                },
-                child: const Text('END GAME'),
-              ),
-            ],
-          ),
-    );
+      }    }
   }
 
   void _showRoleRevealPopup() {
@@ -581,63 +524,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             fit: BoxFit.cover,
           ),
         ),
-        child: Column(
-          children: [
-            // Phase info container
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    spreadRadius: 1,
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    _getPhaseDescription(),
-                    style: const TextStyle(
-                      fontFamily: 'Rye',
-                      fontSize: 18,
-                      color: Colors.brown,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_manualPhaseControl && widget.isHost) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Manual Control Mode',
-                      style: TextStyle(
-                        fontFamily: 'Rye',
-                        fontSize: 12,
-                        color: Colors.brown[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+        child:            _currentPhase == 'night'
+                ? NightPhaseScreen(
+                  lobbyCode: widget.lobbyCode,
+                  currentUserId: _currentUserId,
+                  myRole: _myRole,
+                  myRoleDesc: _myRoleDesc,
+                  nightActionResult: _nightActionResult,
+                  players: _players,
+                  isLoading: _isLoading,
+                  onNightAction: _performNightAction,
+                  onSetNightActionResult:
+                      (result) => setState(() => _nightActionResult = result),
+                  nightNumber: _dayCount,
+                )                : DayPhaseScreen(
+                  currentUserId: _currentUserId,
+                  myRole: _myRole,
+                  myRoleDesc: _myRoleDesc,
+                  players: _players,
+                  votedPlayerId: _votedPlayerId,
+                  isLoading: _isLoading,
+                  onVotePlayer: _submitVote,
+                  onSetNightActionResult:
+                      (result) => setState(() => _nightActionResult = result),
+                  dayNumber: _dayCount,
+                ),
 
-            // Game content area
-            Expanded(child: _buildPhaseContent()),
-
-            // Control buttons
-            if (widget.isHost) ...[
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: _buildHostControls(),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
