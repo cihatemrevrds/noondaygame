@@ -66,19 +66,19 @@ exports.startGame = async (req, res) => {
             isAlive: true,
             eliminatedBy: null,
             killedBy: null
-        }));
-
-        await lobbyRef.update({
+        })); await lobbyRef.update({
             players: initializedPlayers,
             status: 'started',
             phase: 'night',
             dayCount: 1,
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-            startedAt: admin.firestore.FieldValue.serverTimestamp(), gameState: 'role_reveal', // Players see their roles first
-            phaseTimeLimit: 10000, // 10 seconds for role reveal
+            startedAt: admin.firestore.FieldValue.serverTimestamp(),
+            gameState: 'role_reveal', // Players see their roles first
+            phaseTimeLimit: 5000, // 5 seconds for role reveal
             votes: {},
             roleData: {},
             nightEvents: [],
+            nightOutcomes: {}, // Individual results for each player
             lastDayResult: null
         });
 
@@ -124,43 +124,48 @@ exports.advancePhase = async (req, res) => {
         const currentGameState = lobbyData.gameState || "role_reveal";
         const dayCount = lobbyData.dayCount || 1;
 
-        let updateData = {};
-
-        // Handle different game states
+        let updateData = {};        // Handle different game states - 7-phase system
         if (currentGameState === 'role_reveal') {
             // Move from role reveal to night phase
             updateData = {
-                gameState: 'night_actions',
+                gameState: 'night_phase',
                 phaseTimeLimit: 30000, // 30 seconds for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
-        } else if (currentGameState === 'night_actions') {
-            // Process night actions and move to day phase
+        } else if (currentGameState === 'night_phase') {
+            // Process night actions and move to night outcome phase
             updateData = await processNightActions(lobbyData, players);
-            updateData.phase = 'day';
-            updateData.gameState = 'day_information';
-            updateData.phaseTimeLimit = calculateDayInfoTime(updateData.nightEvents || []); // Dynamic timing based on events
+            updateData.gameState = 'night_outcome';
+            updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome
             updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
-            updateData.votes = {}; // Clear previous votes
-        } else if (currentGameState === 'day_information') {
+        } else if (currentGameState === 'night_outcome') {
+            // Move to event sharing phase
+            updateData = {
+                phase: 'day',
+                gameState: 'event_sharing',
+                phaseTimeLimit: calculateDayInfoTime(lobbyData.nightEvents || []), // Dynamic timing based on events
+                phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+        } else if (currentGameState === 'event_sharing') {
             // Move to discussion phase
             updateData = {
-                gameState: 'day_discussion',
+                gameState: 'discussion_phase',
                 phaseTimeLimit: 120000, // 2 minutes for discussion
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
-        } else if (currentGameState === 'day_discussion') {
+        } else if (currentGameState === 'discussion_phase') {
             // Move to voting phase
             updateData = {
-                gameState: 'day_voting',
-                phaseTimeLimit: 30000, // 30 seconds for voting                phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
+                gameState: 'voting_phase',
+                phaseTimeLimit: 30000, // 30 seconds for voting
+                phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
-        } else if (currentGameState === 'day_voting') {
+        } else if (currentGameState === 'voting_phase') {
             // Process votes and show results for 5 seconds
             const eliminatedPlayer = await processVotes(lobbyData, players);
 
             updateData = {
-                gameState: 'day_voting_result',
+                gameState: 'voting_outcome',
                 phaseTimeLimit: 5000, // 5 seconds to show voting results
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
                 lastDayResult: eliminatedPlayer
@@ -176,15 +181,16 @@ exports.advancePhase = async (req, res) => {
                 });
                 updateData.players = updatedPlayers;
             }
-        } else if (currentGameState === 'day_voting_result') {
+        } else if (currentGameState === 'voting_outcome') {
             // Move from voting results to night
             updateData = {
                 phase: 'night',
-                gameState: 'night_actions',
+                gameState: 'night_phase',
                 dayCount: dayCount + 1,
                 phaseTimeLimit: 30000, // 30 seconds for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-                votes: {}
+                votes: {},
+                nightOutcomes: {} // Clear previous night outcomes
             };
         }
 
@@ -340,44 +346,48 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
     const currentGameState = lobbyData.gameState || "role_reveal";
     const dayCount = lobbyData.dayCount || 1;
 
-    let updateData = {};
-
-    // Handle different game states
+    let updateData = {};    // Handle different game states
     if (currentGameState === 'role_reveal') {
         // Move from role reveal to night phase
         updateData = {
-            gameState: 'night_actions',
+            gameState: 'night_phase',
             phaseTimeLimit: 30000, // 30 seconds for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
         };
-    } else if (currentGameState === 'night_actions') {
-        // Process night actions and move to day phase
+    } else if (currentGameState === 'night_phase') {
+        // Process night actions and move to night outcome phase
         updateData = await processNightActions(lobbyData, players);
-        updateData.phase = 'day';
-        updateData.gameState = 'day_information';
-        updateData.phaseTimeLimit = calculateDayInfoTime(updateData.nightEvents || []); // Dynamic timing based on events
+        updateData.gameState = 'night_outcome';
+        updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome
         updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
-        updateData.votes = {}; // Clear previous votes
-    } else if (currentGameState === 'day_information') {
+    } else if (currentGameState === 'night_outcome') {
+        // Move to event sharing phase
+        updateData = {
+            phase: 'day',
+            gameState: 'event_sharing',
+            phaseTimeLimit: calculateDayInfoTime(lobbyData.nightEvents || []), // Dynamic timing based on events
+            phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+    } else if (currentGameState === 'event_sharing') {
         // Move to discussion phase
         updateData = {
-            gameState: 'day_discussion',
+            gameState: 'discussion_phase',
             phaseTimeLimit: 120000, // 2 minutes for discussion
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
         };
-    } else if (currentGameState === 'day_discussion') {
+    } else if (currentGameState === 'discussion_phase') {
         // Move to voting phase
         updateData = {
-            gameState: 'day_voting',
+            gameState: 'voting_phase',
             phaseTimeLimit: 30000, // 30 seconds for voting
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
         };
-    } else if (currentGameState === 'day_voting') {
+    } else if (currentGameState === 'voting_phase') {
         // Process votes and show results for 5 seconds
         const eliminatedPlayer = await processVotes(lobbyData, players);
 
         updateData = {
-            gameState: 'day_voting_result',
+            gameState: 'voting_outcome',
             phaseTimeLimit: 5000, // 5 seconds to show voting results
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
             lastDayResult: eliminatedPlayer
@@ -393,15 +403,16 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             });
             updateData.players = updatedPlayers;
         }
-    } else if (currentGameState === 'day_voting_result') {
+    } else if (currentGameState === 'voting_outcome') {
         // Move from voting results to night
         updateData = {
             phase: 'night',
-            gameState: 'night_actions',
+            gameState: 'night_phase',
             dayCount: dayCount + 1,
             phaseTimeLimit: 30000, // 30 seconds for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-            votes: {}
+            votes: {},
+            nightOutcomes: {} // Clear previous night outcomes
         };
     }
 
@@ -418,24 +429,139 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
 async function processNightActions(lobbyData, players) {
     let roleDataUpdate = { ...lobbyData.roleData } || {};
     let updatedPlayers = [...players];
-    let nightEvents = [];    // First check who is blocked by Escort
+    let nightEvents = [];
+    let nightOutcomes = {};
+
+    // First check who is blocked by Escort
     const blockedPlayerId = roleDataUpdate.escort?.blockedId || null;
+
+    // Process Sheriff investigations (store individual results)
+    if (roleDataUpdate.sheriff && roleDataUpdate.sheriff.targetId) {
+        const sheriffPlayer = players.find(p => p.role === 'Sheriff' && p.isAlive);
+        const isSheriffBlocked = sheriffPlayer && sheriffPlayer.uid === blockedPlayerId;
+
+        if (!isSheriffBlocked && sheriffPlayer) {
+            const targetId = roleDataUpdate.sheriff.targetId;
+            const targetPlayer = players.find(p => p.uid === targetId);
+
+            if (targetPlayer) {
+                const isSuspicious = targetPlayer.role === 'Gunman' || targetPlayer.role === 'Jester';
+                const result = isSuspicious ? 'Suspicious' : 'Innocent';
+
+                nightOutcomes[sheriffPlayer.uid] = {
+                    type: 'investigation_result',
+                    targetName: targetPlayer.name,
+                    targetRole: targetPlayer.role,
+                    result: result,
+                    message: `You investigated ${targetPlayer.name}. They appear ${result}.`
+                };
+            }
+        } else if (isSheriffBlocked && sheriffPlayer) {
+            nightOutcomes[sheriffPlayer.uid] = {
+                type: 'investigation_blocked',
+                message: 'You were blocked and could not investigate anyone.'
+            };
+        }
+    }
+
+    // Process Peeper spying (store individual results)
+    if (roleDataUpdate.peeper && roleDataUpdate.peeper.targetId) {
+        const peeperPlayer = players.find(p => p.role === 'Peeper' && p.isAlive);
+        const isPeeperBlocked = peeperPlayer && peeperPlayer.uid === blockedPlayerId;
+
+        if (!isPeeperBlocked && peeperPlayer) {
+            const targetId = roleDataUpdate.peeper.targetId;
+            const targetPlayer = players.find(p => p.uid === targetId);
+
+            if (targetPlayer) {
+                // Determine who visited the target
+                let visitors = [];
+
+                // Check if Gunman visited
+                if (roleDataUpdate.gunman?.targetId === targetId) {
+                    const gunmanPlayer = players.find(p => p.role === 'Gunman');
+                    if (gunmanPlayer && gunmanPlayer.uid !== blockedPlayerId) {
+                        visitors.push(gunmanPlayer.name);
+                    }
+                }
+
+                // Check if Doctor visited
+                if (roleDataUpdate.doctor?.protectedId === targetId) {
+                    const doctorPlayer = players.find(p => p.role === 'Doctor');
+                    if (doctorPlayer && doctorPlayer.uid !== blockedPlayerId) {
+                        visitors.push(doctorPlayer.name);
+                    }
+                }
+
+                nightOutcomes[peeperPlayer.uid] = {
+                    type: 'peep_result',
+                    targetName: targetPlayer.name,
+                    visitors: visitors,
+                    message: visitors.length > 0
+                        ? `You spied on ${targetPlayer.name}. They were visited by: ${visitors.join(', ')}.`
+                        : `You spied on ${targetPlayer.name}. No one visited them tonight.`
+                };
+            }
+        } else if (isPeeperBlocked && peeperPlayer) {
+            nightOutcomes[peeperPlayer.uid] = {
+                type: 'peep_blocked',
+                message: 'You were blocked and could not spy on anyone.'
+            };
+        }
+    }
+
+    // Process Doctor protection
+    if (roleDataUpdate.doctor && roleDataUpdate.doctor.protectedId) {
+        const doctorPlayer = players.find(p => p.role === 'Doctor' && p.isAlive);
+        const isDoctorBlocked = doctorPlayer && doctorPlayer.uid === blockedPlayerId;
+
+        if (!isDoctorBlocked && doctorPlayer) {
+            const targetPlayer = players.find(p => p.uid === roleDataUpdate.doctor.protectedId);
+            if (targetPlayer) {
+                nightOutcomes[doctorPlayer.uid] = {
+                    type: 'protection_result',
+                    targetName: targetPlayer.name,
+                    message: `You protected ${targetPlayer.name} tonight.`
+                };
+            }
+        } else if (isDoctorBlocked && doctorPlayer) {
+            nightOutcomes[doctorPlayer.uid] = {
+                type: 'protection_blocked',
+                message: 'You were blocked and could not protect anyone.'
+            };
+        }
+    }
+
+    // Process Escort blocking
+    if (roleDataUpdate.escort && roleDataUpdate.escort.blockedId) {
+        const escortPlayer = players.find(p => p.role === 'Escort' && p.isAlive);
+        if (escortPlayer) {
+            const targetPlayer = players.find(p => p.uid === roleDataUpdate.escort.blockedId);
+            if (targetPlayer) {
+                nightOutcomes[escortPlayer.uid] = {
+                    type: 'block_result',
+                    targetName: targetPlayer.name,
+                    message: `You blocked ${targetPlayer.name} from performing their night action.`
+                };
+            }
+        }
+    }
 
     // Process night kills from Gunman if not blocked
     if (roleDataUpdate.gunman && roleDataUpdate.gunman.targetId) {
-        const gunmanId = players.find(p => p.role === 'Gunman' && p.isAlive)?.id;
-        const isGunmanBlocked = gunmanId && gunmanId === blockedPlayerId;
+        const gunmanPlayer = players.find(p => p.role === 'Gunman' && p.isAlive);
+        const isGunmanBlocked = gunmanPlayer && gunmanPlayer.uid === blockedPlayerId;
 
-        if (!isGunmanBlocked) {
+        if (!isGunmanBlocked && gunmanPlayer) {
             const targetId = roleDataUpdate.gunman.targetId;
-            const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
+            const targetIndex = updatedPlayers.findIndex(p => p.uid === targetId);
 
             if (targetIndex !== -1) {
                 const targetPlayer = updatedPlayers[targetIndex];
 
                 // Check if target is protected by doctor (if doctor is not blocked)
-                const doctorId = players.find(p => p.role === 'Doctor' && p.isAlive)?.id;
-                const isDoctorBlocked = doctorId && doctorId === blockedPlayerId;
+                const doctorPlayer = players.find(p => p.role === 'Doctor' && p.isAlive);
+                const isDoctorBlocked = doctorPlayer && doctorPlayer.uid === blockedPlayerId;
                 const isProtected = !isDoctorBlocked &&
                     roleDataUpdate.doctor &&
                     roleDataUpdate.doctor.protectedId === targetId;
@@ -445,19 +571,37 @@ async function processNightActions(lobbyData, players) {
                     updatedPlayers[targetIndex] = {
                         ...targetPlayer,
                         isAlive: false,
-                        killedBy: 'Gunman'
+                        killedBy: 'Gunman',
+                        eliminatedBy: gunmanPlayer.name
                     };
                     nightEvents.push(`${targetPlayer.name} was killed by the Gunman.`);
+
+                    nightOutcomes[gunmanPlayer.uid] = {
+                        type: 'kill_success',
+                        targetName: targetPlayer.name,
+                        message: `You successfully killed ${targetPlayer.name}.`
+                    };
                 } else {
                     nightEvents.push(`Someone was attacked but saved by the Doctor!`);
+
+                    nightOutcomes[gunmanPlayer.uid] = {
+                        type: 'kill_failed',
+                        targetName: targetPlayer.name,
+                        message: `You tried to kill ${targetPlayer.name}, but they were protected.`
+                    };
                 }
             }
-        } else {
+        } else if (isGunmanBlocked && gunmanPlayer) {
             nightEvents.push(`The Gunman was blocked and could not act.`);
+
+            nightOutcomes[gunmanPlayer.uid] = {
+                type: 'kill_blocked',
+                message: 'You were blocked and could not kill anyone.'
+            };
         }
     }
 
-    // Preserve doctor's self-protection usage and other investigation results
+    // Reset role data for next night, preserving persistent data
     roleDataUpdate = {
         gunman: { targetId: null },
         doctor: {
@@ -465,18 +609,15 @@ async function processNightActions(lobbyData, players) {
             selfProtectionUsed: roleDataUpdate.doctor?.selfProtectionUsed || false
         },
         escort: { blockedId: null },
-        sheriff: {
-            targetId: null,
-            result: roleDataUpdate.sheriff?.result || null // Keep last investigation result 
-        },
-        peeper: {
-            targetId: null,
-            result: roleDataUpdate.peeper?.result || null // Keep last spy result
-        }
-    }; return {
+        sheriff: { targetId: null },
+        peeper: { targetId: null }
+    };
+
+    return {
         players: updatedPlayers,
         roleData: roleDataUpdate,
-        nightEvents: nightEvents
+        nightEvents: nightEvents,
+        nightOutcomes: nightOutcomes
     };
 }
 
