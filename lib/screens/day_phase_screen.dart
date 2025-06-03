@@ -23,7 +23,6 @@ class DayPhaseScreen extends StatelessWidget {
     required this.onVotePlayer,
     required this.onSetNightActionResult,
   });
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -31,7 +30,7 @@ class DayPhaseScreen extends StatelessWidget {
       children: [
         // Üst kısım: Rol bilgisi
         Padding(
-          padding: const EdgeInsets.only(top: 50),
+          padding: const EdgeInsets.only(top: 20), // Reduced from 50 to 20
           child: Column(
             children: [
               // Rol ikonu
