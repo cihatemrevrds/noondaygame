@@ -138,7 +138,7 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                       Icons.chat,
                       _settings['discussionTime'] ?? 60,
                       (value) => _updateSetting('discussionTime', value),
-                    ),                    // Night Time
+                    ), // Night Time
                     _buildTimerSetting(
                       'Night Time',
                       'Duration for night phase',
