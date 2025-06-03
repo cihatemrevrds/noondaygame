@@ -432,190 +432,258 @@ async function processNightActions(lobbyData, players) {
     let nightEvents = [];
     let nightOutcomes = {};
 
-    // First check who is blocked by Escort
-    const blockedPlayerId = roleDataUpdate.escort?.blockedId || null;
-
-    // Process Sheriff investigations (store individual results)
-    if (roleDataUpdate.sheriff && roleDataUpdate.sheriff.targetId) {
-        const sheriffPlayer = players.find(p => p.role === 'Sheriff' && p.isAlive);
-        const isSheriffBlocked = sheriffPlayer && sheriffPlayer.uid === blockedPlayerId;
-
-        if (!isSheriffBlocked && sheriffPlayer) {
-            const targetId = roleDataUpdate.sheriff.targetId;
-            const targetPlayer = players.find(p => p.uid === targetId);
-
-            if (targetPlayer) {
-                const isSuspicious = targetPlayer.role === 'Gunman' || targetPlayer.role === 'Jester';
-                const result = isSuspicious ? 'Suspicious' : 'Innocent';
-
-                nightOutcomes[sheriffPlayer.uid] = {
-                    type: 'investigation_result',
-                    targetName: targetPlayer.name,
-                    targetRole: targetPlayer.role,
-                    result: result,
-                    message: `You investigated ${targetPlayer.name}. They appear ${result}.`
-                };
+    // First check who is blocked by Escort (multiple escorts possible)
+    const blockedPlayerIds = [];
+    if (roleDataUpdate.escort) {
+        for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
+            if (escortData && escortData.blockedId) {
+                blockedPlayerIds.push(escortData.blockedId);
             }
-        } else if (isSheriffBlocked && sheriffPlayer) {
-            nightOutcomes[sheriffPlayer.uid] = {
-                type: 'investigation_blocked',
-                message: 'You were blocked and could not investigate anyone.'
-            };
         }
     }
 
-    // Process Peeper spying (store individual results)
-    if (roleDataUpdate.peeper && roleDataUpdate.peeper.targetId) {
-        const peeperPlayer = players.find(p => p.role === 'Peeper' && p.isAlive);
-        const isPeeperBlocked = peeperPlayer && peeperPlayer.uid === blockedPlayerId;
+    // Process Sheriff investigations (multiple sheriffs possible)
+    if (roleDataUpdate.sheriff) {
+        for (const [sheriffUid, sheriffData] of Object.entries(roleDataUpdate.sheriff)) {
+            if (sheriffData && sheriffData.targetId) {
+                const sheriffPlayer = players.find(p => p.uid === sheriffUid && p.role === 'Sheriff' && p.isAlive);
+                const isSheriffBlocked = blockedPlayerIds.includes(sheriffUid);
 
-        if (!isPeeperBlocked && peeperPlayer) {
-            const targetId = roleDataUpdate.peeper.targetId;
-            const targetPlayer = players.find(p => p.uid === targetId);
+                if (!isSheriffBlocked && sheriffPlayer) {
+                    const targetId = sheriffData.targetId;
+                    const targetPlayer = players.find(p => p.uid === targetId);
 
-            if (targetPlayer) {
-                // Determine who visited the target
-                let visitors = [];
+                    if (targetPlayer) {
+                        const isSuspicious = targetPlayer.role === 'Gunman' || targetPlayer.role === 'Jester';
+                        const result = isSuspicious ? 'Suspicious' : 'Innocent';
 
-                // Check if Gunman visited
-                if (roleDataUpdate.gunman?.targetId === targetId) {
-                    const gunmanPlayer = players.find(p => p.role === 'Gunman');
-                    if (gunmanPlayer && gunmanPlayer.uid !== blockedPlayerId) {
-                        visitors.push(gunmanPlayer.name);
+                        nightOutcomes[sheriffPlayer.uid] = {
+                            type: 'investigation_result',
+                            targetName: targetPlayer.name,
+                            targetRole: targetPlayer.role,
+                            result: result,
+                            message: `You investigated ${targetPlayer.name}. They appear ${result}.`
+                        };
+                    }
+                } else if (isSheriffBlocked && sheriffPlayer) {
+                    nightOutcomes[sheriffPlayer.uid] = {
+                        type: 'investigation_blocked',
+                        message: 'You were blocked and could not investigate anyone.'
+                    };
+                }
+            }
+        }
+    }    // Process Peeper spying (multiple peepers possible)
+    if (roleDataUpdate.peeper) {
+        for (const [peeperUid, peeperData] of Object.entries(roleDataUpdate.peeper)) {
+            if (peeperData && peeperData.targetId) {
+                const peeperPlayer = players.find(p => p.uid === peeperUid && p.role === 'Peeper' && p.isAlive);
+                const isPeeperBlocked = blockedPlayerIds.includes(peeperUid);
+
+                if (!isPeeperBlocked && peeperPlayer) {
+                    const targetId = peeperData.targetId;
+                    const targetPlayer = players.find(p => p.uid === targetId);
+
+                    if (targetPlayer) {
+                        // Determine who visited the target
+                        let visitors = [];
+
+                        // Check if any Gunman visited
+                        if (roleDataUpdate.gunman) {
+                            for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
+                                if (gunmanData && gunmanData.targetId === targetId && !blockedPlayerIds.includes(gunmanUid)) {
+                                    const gunmanPlayer = players.find(p => p.uid === gunmanUid && p.role === 'Gunman');
+                                    if (gunmanPlayer) {
+                                        visitors.push(gunmanPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any Doctor visited
+                        if (roleDataUpdate.doctor) {
+                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                    const doctorPlayer = players.find(p => p.uid === doctorUid && p.role === 'Doctor');
+                                    if (doctorPlayer) {
+                                        visitors.push(doctorPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        nightOutcomes[peeperPlayer.uid] = {
+                            type: 'peep_result',
+                            targetName: targetPlayer.name,
+                            visitors: visitors,
+                            message: visitors.length > 0
+                                ? `You spied on ${targetPlayer.name}. They were visited by: ${visitors.join(', ')}.`
+                                : `You spied on ${targetPlayer.name}. No one visited them tonight.`
+                        };
+                    }
+                } else if (isPeeperBlocked && peeperPlayer) {
+                    nightOutcomes[peeperPlayer.uid] = {
+                        type: 'peep_blocked',
+                        message: 'You were blocked and could not spy on anyone.'
+                    };
+                }
+            }
+        }
+    }    // Process Doctor protection (multiple doctors possible)
+    if (roleDataUpdate.doctor) {
+        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+            if (doctorData && doctorData.protectedId) {
+                const doctorPlayer = players.find(p => p.uid === doctorUid && p.role === 'Doctor' && p.isAlive);
+                const isDoctorBlocked = blockedPlayerIds.includes(doctorUid);
+
+                if (!isDoctorBlocked && doctorPlayer) {
+                    const targetPlayer = players.find(p => p.uid === doctorData.protectedId);
+                    if (targetPlayer) {
+                        nightOutcomes[doctorPlayer.uid] = {
+                            type: 'protection_result',
+                            targetName: targetPlayer.name,
+                            message: `You protected ${targetPlayer.name} tonight.`
+                        };
+                    }
+                } else if (isDoctorBlocked && doctorPlayer) {
+                    nightOutcomes[doctorPlayer.uid] = {
+                        type: 'protection_blocked',
+                        message: 'You were blocked and could not protect anyone.'
+                    };
+                }
+            }
+        }
+    }    // Process Escort blocking (multiple escorts possible)
+    if (roleDataUpdate.escort) {
+        for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
+            if (escortData && escortData.blockedId) {
+                const escortPlayer = players.find(p => p.uid === escortUid && p.role === 'Escort' && p.isAlive);
+                if (escortPlayer) {
+                    const targetPlayer = players.find(p => p.uid === escortData.blockedId);
+                    if (targetPlayer) {
+                        nightOutcomes[escortPlayer.uid] = {
+                            type: 'block_result',
+                            targetName: targetPlayer.name,
+                            message: `You blocked ${targetPlayer.name} from performing their night action.`
+                        };
                     }
                 }
+            }
+        }
+    }    // Process night kills from Gunman (multiple gunmen possible)
+    if (roleDataUpdate.gunman) {
+        for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
+            if (gunmanData && gunmanData.targetId) {
+                const gunmanPlayer = players.find(p => p.uid === gunmanUid && p.role === 'Gunman' && p.isAlive);
+                const isGunmanBlocked = blockedPlayerIds.includes(gunmanUid);
 
-                // Check if Doctor visited
-                if (roleDataUpdate.doctor?.protectedId === targetId) {
-                    const doctorPlayer = players.find(p => p.role === 'Doctor');
-                    if (doctorPlayer && doctorPlayer.uid !== blockedPlayerId) {
-                        visitors.push(doctorPlayer.name);
+                if (!isGunmanBlocked && gunmanPlayer) {
+                    const targetId = gunmanData.targetId;
+                    const targetIndex = updatedPlayers.findIndex(p => p.uid === targetId);
+
+                    if (targetIndex !== -1) {
+                        const targetPlayer = updatedPlayers[targetIndex];
+
+                        // Check if target is protected by any doctor (if doctors are not blocked)
+                        let isProtected = false;
+                        if (roleDataUpdate.doctor) {
+                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                    isProtected = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Kill the target if they're not protected
+                        if (!isProtected) {
+                            updatedPlayers[targetIndex] = {
+                                ...targetPlayer,
+                                isAlive: false,
+                                killedBy: 'Gunman',
+                                eliminatedBy: gunmanPlayer.name
+                            };
+                            nightEvents.push(`${targetPlayer.name} was killed by the Gunman.`);
+
+                            nightOutcomes[gunmanPlayer.uid] = {
+                                type: 'kill_success',
+                                targetName: targetPlayer.name,
+                                message: `You successfully killed ${targetPlayer.name}.`
+                            };
+                        } else {
+                            nightEvents.push(`Someone was attacked but saved by the Doctor!`);
+
+                            nightOutcomes[gunmanPlayer.uid] = {
+                                type: 'kill_failed',
+                                targetName: targetPlayer.name,
+                                message: `You tried to kill ${targetPlayer.name}, but they were protected.`
+                            };
+                        }
                     }
-                }
-
-                nightOutcomes[peeperPlayer.uid] = {
-                    type: 'peep_result',
-                    targetName: targetPlayer.name,
-                    visitors: visitors,
-                    message: visitors.length > 0
-                        ? `You spied on ${targetPlayer.name}. They were visited by: ${visitors.join(', ')}.`
-                        : `You spied on ${targetPlayer.name}. No one visited them tonight.`
-                };
-            }
-        } else if (isPeeperBlocked && peeperPlayer) {
-            nightOutcomes[peeperPlayer.uid] = {
-                type: 'peep_blocked',
-                message: 'You were blocked and could not spy on anyone.'
-            };
-        }
-    }
-
-    // Process Doctor protection
-    if (roleDataUpdate.doctor && roleDataUpdate.doctor.protectedId) {
-        const doctorPlayer = players.find(p => p.role === 'Doctor' && p.isAlive);
-        const isDoctorBlocked = doctorPlayer && doctorPlayer.uid === blockedPlayerId;
-
-        if (!isDoctorBlocked && doctorPlayer) {
-            const targetPlayer = players.find(p => p.uid === roleDataUpdate.doctor.protectedId);
-            if (targetPlayer) {
-                nightOutcomes[doctorPlayer.uid] = {
-                    type: 'protection_result',
-                    targetName: targetPlayer.name,
-                    message: `You protected ${targetPlayer.name} tonight.`
-                };
-            }
-        } else if (isDoctorBlocked && doctorPlayer) {
-            nightOutcomes[doctorPlayer.uid] = {
-                type: 'protection_blocked',
-                message: 'You were blocked and could not protect anyone.'
-            };
-        }
-    }
-
-    // Process Escort blocking
-    if (roleDataUpdate.escort && roleDataUpdate.escort.blockedId) {
-        const escortPlayer = players.find(p => p.role === 'Escort' && p.isAlive);
-        if (escortPlayer) {
-            const targetPlayer = players.find(p => p.uid === roleDataUpdate.escort.blockedId);
-            if (targetPlayer) {
-                nightOutcomes[escortPlayer.uid] = {
-                    type: 'block_result',
-                    targetName: targetPlayer.name,
-                    message: `You blocked ${targetPlayer.name} from performing their night action.`
-                };
-            }
-        }
-    }
-
-    // Process night kills from Gunman if not blocked
-    if (roleDataUpdate.gunman && roleDataUpdate.gunman.targetId) {
-        const gunmanPlayer = players.find(p => p.role === 'Gunman' && p.isAlive);
-        const isGunmanBlocked = gunmanPlayer && gunmanPlayer.uid === blockedPlayerId;
-
-        if (!isGunmanBlocked && gunmanPlayer) {
-            const targetId = roleDataUpdate.gunman.targetId;
-            const targetIndex = updatedPlayers.findIndex(p => p.uid === targetId);
-
-            if (targetIndex !== -1) {
-                const targetPlayer = updatedPlayers[targetIndex];
-
-                // Check if target is protected by doctor (if doctor is not blocked)
-                const doctorPlayer = players.find(p => p.role === 'Doctor' && p.isAlive);
-                const isDoctorBlocked = doctorPlayer && doctorPlayer.uid === blockedPlayerId;
-                const isProtected = !isDoctorBlocked &&
-                    roleDataUpdate.doctor &&
-                    roleDataUpdate.doctor.protectedId === targetId;
-
-                // Kill the target if they're not protected
-                if (!isProtected) {
-                    updatedPlayers[targetIndex] = {
-                        ...targetPlayer,
-                        isAlive: false,
-                        killedBy: 'Gunman',
-                        eliminatedBy: gunmanPlayer.name
-                    };
-                    nightEvents.push(`${targetPlayer.name} was killed by the Gunman.`);
+                } else if (isGunmanBlocked && gunmanPlayer) {
+                    nightEvents.push(`The Gunman was blocked and could not act.`);
 
                     nightOutcomes[gunmanPlayer.uid] = {
-                        type: 'kill_success',
-                        targetName: targetPlayer.name,
-                        message: `You successfully killed ${targetPlayer.name}.`
-                    };
-                } else {
-                    nightEvents.push(`Someone was attacked but saved by the Doctor!`);
-
-                    nightOutcomes[gunmanPlayer.uid] = {
-                        type: 'kill_failed',
-                        targetName: targetPlayer.name,
-                        message: `You tried to kill ${targetPlayer.name}, but they were protected.`
+                        type: 'kill_blocked',
+                        message: 'You were blocked and could not kill anyone.'
                     };
                 }
             }
-        } else if (isGunmanBlocked && gunmanPlayer) {
-            nightEvents.push(`The Gunman was blocked and could not act.`);
-
-            nightOutcomes[gunmanPlayer.uid] = {
-                type: 'kill_blocked',
-                message: 'You were blocked and could not kill anyone.'
-            };
         }
+    }    // Reset role data for next night, preserving persistent data and multi-role structure
+    const newRoleData = {};
+
+    // Reset gunman data for each gunman
+    const gunmanPlayers = players.filter(p => p.role === 'Gunman' && p.isAlive);
+    if (gunmanPlayers.length > 0) {
+        newRoleData.gunman = {};
+        gunmanPlayers.forEach(player => {
+            newRoleData.gunman[player.uid] = { targetId: null };
+        });
     }
 
-    // Reset role data for next night, preserving persistent data
-    roleDataUpdate = {
-        gunman: { targetId: null },
-        doctor: {
-            protectedId: null,
-            selfProtectionUsed: roleDataUpdate.doctor?.selfProtectionUsed || false
-        },
-        escort: { blockedId: null },
-        sheriff: { targetId: null },
-        peeper: { targetId: null }
-    };
+    // Reset doctor data for each doctor, preserving selfProtectionUsed
+    const doctorPlayers = players.filter(p => p.role === 'Doctor' && p.isAlive);
+    if (doctorPlayers.length > 0) {
+        newRoleData.doctor = {};
+        doctorPlayers.forEach(player => {
+            newRoleData.doctor[player.uid] = {
+                protectedId: null,
+                selfProtectionUsed: roleDataUpdate.doctor?.[player.uid]?.selfProtectionUsed || false
+            };
+        });
+    }
+
+    // Reset escort data for each escort
+    const escortPlayers = players.filter(p => p.role === 'Escort' && p.isAlive);
+    if (escortPlayers.length > 0) {
+        newRoleData.escort = {};
+        escortPlayers.forEach(player => {
+            newRoleData.escort[player.uid] = { blockedId: null };
+        });
+    }
+
+    // Reset sheriff data for each sheriff
+    const sheriffPlayers = players.filter(p => p.role === 'Sheriff' && p.isAlive);
+    if (sheriffPlayers.length > 0) {
+        newRoleData.sheriff = {};
+        sheriffPlayers.forEach(player => {
+            newRoleData.sheriff[player.uid] = { targetId: null };
+        });
+    }
+
+    // Reset peeper data for each peeper
+    const peeperPlayers = players.filter(p => p.role === 'Peeper' && p.isAlive);
+    if (peeperPlayers.length > 0) {
+        newRoleData.peeper = {};
+        peeperPlayers.forEach(player => {
+            newRoleData.peeper[player.uid] = { targetId: null };
+        });
+    }
 
     return {
         players: updatedPlayers,
-        roleData: roleDataUpdate,
+        roleData: newRoleData,
         nightEvents: nightEvents,
         nightOutcomes: nightOutcomes
     };
