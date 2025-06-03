@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/lobby_service.dart';
 import '../models/player.dart';
 import '../widgets/role_utils.dart';
 
@@ -34,6 +36,43 @@ class NightPhaseScreen extends StatefulWidget {
 
 class _NightPhaseScreenState extends State<NightPhaseScreen> {
   String? _selectedPlayerId; // Track the selected player
+  Timer? _timer;
+  Map<String, dynamic>? _settings;
+  int _remainingTime = 0;
+
+  Future<Map<String, dynamic>> _fetchLobbySettings() async {
+    return await LobbyService().getLobbySettings(widget.lobbyCode);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLobbySettings().then((settings) {
+      setState(() {
+        _settings = settings;
+        _remainingTime = settings['nightPhaseDuration'] ?? 60; // Convert minutes to seconds
+      });
+      _startTimer();
+    });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   Widget _buildNightActionUI() {
     // Rol rengini ve ikonunu belirle
@@ -113,6 +152,16 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 20),            // Timer display
+            Text(
+              'Time Remaining: $_remainingTime seconds',
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+            
             const SizedBox(height: 30),            // Player selection area - more organized
             if (widget.players.where((p) => p.isAlive).isNotEmpty)
               Container(
