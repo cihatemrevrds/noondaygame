@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/lobby_service.dart';
 import '../models/player.dart';
-import '../widgets/role_utils.dart';
+import '../utils/role_icons.dart';
 
 class NightPhaseScreen extends StatefulWidget {
   final String lobbyCode;
@@ -37,19 +37,16 @@ class NightPhaseScreen extends StatefulWidget {
 class _NightPhaseScreenState extends State<NightPhaseScreen> {
   String? _selectedPlayerId; // Track the selected player
   Timer? _timer;
-  Map<String, dynamic>? _settings;
   int _remainingTime = 0;
 
   Future<Map<String, dynamic>> _fetchLobbySettings() async {
     return await LobbyService().getLobbySettings(widget.lobbyCode);
   }
-
   @override
   void initState() {
     super.initState();
     _fetchLobbySettings().then((settings) {
       setState(() {
-        _settings = settings;
         _remainingTime = settings['nightPhaseDuration'] ?? 60; // Convert minutes to seconds
       });
       _startTimer();
@@ -72,13 +69,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
-  }
-
-  Widget _buildNightActionUI() {
-    // Rol rengini ve ikonunu belirle
-    Color roleColor = RoleUtils.getRoleColor(widget.myRole ?? 'Unknown');
-    IconData roleIcon = RoleUtils.getRoleIcon(widget.myRole ?? 'Unknown');
-
+  }  Widget _buildNightActionUI() {
     return Stack(
       children: [
         // Background image
@@ -87,7 +78,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
             'assets/images/western_town_bg.png',
             fit: BoxFit.cover,
           ),
-        ),        // Foreground content
+        ),// Foreground content
         Column(
           children: [
             // Night bar at the top
@@ -126,11 +117,9 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                     spreadRadius: 2,
                   ),
                 ],
-              ),
-              child: Icon(
-                roleIcon,
+              ),              child: RoleIcons.buildRoleIcon(
+                roleName: widget.myRole ?? 'Unknown',
                 size: 80,
-                color: roleColor,
               ),
             ),
             const SizedBox(height: 20),

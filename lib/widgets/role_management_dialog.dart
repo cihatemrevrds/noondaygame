@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../utils/recommended_roles.dart';
+import '../utils/role_icons.dart';
 
 class RoleManagementDialog extends StatefulWidget {
   final Map<String, int> currentRoles;
@@ -288,8 +289,7 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
         ),
       ),
       child: Row(
-        children: [
-          // Role icon placeholder
+        children: [          // Role icon placeholder
           Container(
             width: 50,
             height: 50,
@@ -298,9 +298,8 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Role.getTeamColor(role.team)),
             ),
-            child: Icon(
-              _getRoleIcon(role.name),
-              color: Role.getTeamColor(role.team),
+            child: RoleIcons.buildRoleIcon(
+              roleName: role.name,
               size: 24,
             ),
           ),
@@ -419,32 +418,8 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
             fontSize: 16,
             color: Colors.white,
             fontWeight: FontWeight.bold,
-          ),
-        ),
+          ),        ),
       ),
     );
-  }
-
-  IconData _getRoleIcon(String roleName) {
-    switch (roleName.toLowerCase()) {
-      case 'doctor':
-        return Icons.local_hospital;
-      case 'sheriff':
-        return Icons.security;
-      case 'escort':
-        return Icons.block;
-      case 'peeper':
-        return Icons.visibility;
-      case 'gunslinger':
-        return Icons.gps_fixed;
-      case 'gunman':
-        return Icons.gps_off;
-      case 'chieftain':
-        return Icons.star;
-      case 'jester':
-        return Icons.theater_comedy;
-      default:
-        return Icons.person;
-    }
   }
 }
