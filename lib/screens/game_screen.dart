@@ -22,16 +22,16 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final LobbyService _lobbyService = LobbyService();
-  final GameService _gameService = GameService();
-  List<Player> _players = [];
+  final GameService _gameService = GameService();  List<Player> _players = [];
   String _currentPhase = 'night';
   String? _myRole;
-  String? _myRoleDesc; // Rol açıklaması
+  String? _myRoleDesc; // Role description
   String? _votedPlayerId;
   bool _isLoading = false;
   String _currentUserId = '';
-  String? _nightActionResult; // Gece aksiyonu sonucu
+  String? _nightActionResult; // Night action result
   bool _hasShownRoleReveal = false; // Role reveal popup state
+  int _dayCount = 1; // Day/Night counter
   @override
   void initState() {
     super.initState();
@@ -80,11 +80,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _setupLobbyListener() {
-    print('📡 Lobiye bağlanılıyor: ${widget.lobbyCode}');
+    print('📡 Connecting to lobby: ${widget.lobbyCode}');
 
     _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
       if (!snapshot.exists) {
-        // Lobi silinmiş, ana menüye geri dön
+        // Lobby deleted, return to main menu
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -117,11 +117,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         orElse: () => Player(name: 'Unknown'),
       ); // Oyların durumunu al
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
-      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
-
-      // Faz bilgisini al
+      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));      // Faz bilgisini al
       final phase = data['phase'] as String? ?? 'night';
       final gameState = data['gameState'] as String? ?? '';
+      final dayCount = data['dayCount'] as int? ?? 1;
 
       // Kalan süre ve gece aksiyonu sonucu (varsa)
       final nightActionResult =
@@ -129,13 +128,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       // Rol açıklaması getir
       _getRoleDescription(myPlayer.role).then((roleDesc) {
-        if (mounted) {
-          setState(() {
+        if (mounted) {          setState(() {
             _players = playersList;
             _myRole = myPlayer.role;
             _myRoleDesc = roleDesc;
             _currentPhase = phase;
             _nightActionResult = nightActionResult;
+            _dayCount = dayCount;
 
             // Oy seçimini güncelle
             _votedPlayerId = votes[_currentUserId];
@@ -372,8 +371,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             fit: BoxFit.cover,
           ),
         ),
-        child:
-            _currentPhase == 'night'
+        child:            _currentPhase == 'night'
                 ? NightPhaseScreen(
                   lobbyCode: widget.lobbyCode,
                   currentUserId: _currentUserId,
@@ -385,8 +383,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onNightAction: _performNightAction,
                   onSetNightActionResult:
                       (result) => setState(() => _nightActionResult = result),
-                )
-                : DayPhaseScreen(
+                  nightNumber: _dayCount,
+                )                : DayPhaseScreen(
                   currentUserId: _currentUserId,
                   myRole: _myRole,
                   myRoleDesc: _myRoleDesc,
@@ -396,6 +394,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onVotePlayer: _submitVote,
                   onSetNightActionResult:
                       (result) => setState(() => _nightActionResult = result),
+                  dayNumber: _dayCount,
                 ),
       ),
     );
