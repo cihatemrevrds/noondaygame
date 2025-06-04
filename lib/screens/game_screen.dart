@@ -251,6 +251,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             roleName: _myRole!,
             onComplete: () {
               Navigator.of(context).pop();
+              // Trigger UI rebuild to show night screen immediately
+              setState(() {
+                // Force rebuild with _hasShownRoleReveal = true
+              });
+              // Server will automatically advance to night phase after 5 seconds
             },
           ),
     );
@@ -551,7 +556,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String _getManualAdvanceButtonText() {
     switch (_currentGameState) {
       case 'role_reveal':
-        return 'START NIGHT PHASE';
+        // After role reveal popup, button should advance to night phase
+        return _hasShownRoleReveal ? 'START NIGHT PHASE' : 'START NIGHT PHASE';
       case 'night_phase':
         return 'START NIGHT OUTCOME';
       case 'night_outcome':
@@ -575,6 +581,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       case 'night_phase':
         return true; // Show night screen for night actions
       case 'role_reveal':
+        // After role reveal popup, immediately show night screen
+        return _hasShownRoleReveal;
       case 'night_outcome':
       case 'event_sharing':
       case 'discussion_phase':
@@ -590,7 +598,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String _getDisplayPhase() {
     switch (_currentGameState) {
       case 'role_reveal':
-        return 'Role Reveal';
+        // After role reveal popup, show "Night" while waiting for server transition
+        return _hasShownRoleReveal ? 'Night' : 'Role Reveal';
       case 'night_phase':
         return 'Night';
       case 'night_outcome':
