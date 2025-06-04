@@ -42,7 +42,8 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
     // Create animations
     _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
-    );    _fadeAnimation = Tween<double>(
+    );
+    _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
@@ -99,7 +100,6 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
     }
   }
 
-
   String _getRoleDescription(String role) {
     switch (role) {
       case 'Doctor':
@@ -124,15 +124,16 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
         return 'A mysterious role with unknown abilities.';
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final roleColor = _getRoleColor(widget.roleName);
     final roleDescription = _getRoleDescription(widget.roleName);
 
-    return Material(
-      color: Colors.black.withOpacity(0.8),
-      child: GestureDetector(
-        onTap: _closePopup,
+    return PopScope(
+      canPop: false, // Prevent back button dismissal
+      child: Material(
+        color: Colors.black.withOpacity(0.8),
         child: Center(
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _fadeAnimation]),
@@ -157,7 +158,8 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [                        // Role Icon
+                      children: [
+                        // Role Icon
                         Container(
                           width: 120,
                           height: 120,
@@ -177,9 +179,9 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                             size: 80,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
+
                         // Role Name
                         Text(
                           widget.roleName,
@@ -191,9 +193,9 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Role Description
                         Text(
                           roleDescription,
@@ -204,12 +206,12 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
-                        // Tap to close hint
+
+                        // Auto-close countdown hint
                         Text(
-                          'Tap anywhere to continue',
+                          'Automatically continuing in 5 seconds...',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
