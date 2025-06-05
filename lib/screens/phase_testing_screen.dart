@@ -1,0 +1,431 @@
+import 'package:flutter/material.dart';
+import '../widgets/discussion_phase_widget.dart';
+import '../widgets/role_reveal_popup.dart';
+import '../widgets/event_share_popup.dart';
+import '../models/player.dart';
+
+class PhaseTestingScreen extends StatefulWidget {
+  const PhaseTestingScreen({super.key});
+
+  @override
+  State<PhaseTestingScreen> createState() => _PhaseTestingScreenState();
+}
+
+class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
+  String _selectedPhase = 'discussion';
+  String _selectedRole = 'Sheriff'; // For role reveal testing
+  String _selectedEvent = 'gunman_kill'; // For event sharing testing
+  
+  // Mock data for testing
+  final List<Player> _mockPlayers = [
+    Player(id: '1', name: 'Sheriff Jack', isLeader: true),
+    Player(id: '2', name: 'Doc Smith', isLeader: false),
+    Player(id: '3', name: 'Gunman Pete', isLeader: false),
+    Player(id: '4', name: 'Townsperson Mary', isLeader: false),
+    Player(id: '5', name: 'Escort Belle', isLeader: false),
+    Player(id: '6', name: 'Peeper Tom', isLeader: false),
+    Player(id: '7', name: 'Chieftain Joe', isLeader: false),
+    Player(id: '8', name: 'Jester Bob', isLeader: false),
+    Player(id: '9', name: 'Gunslinger Kate', isLeader: false),
+    Player(id: '10', name: 'Deputy Luke', isLeader: false),
+    Player(id: '11', name: 'Medic Sarah', isLeader: false),
+    Player(id: '12', name: 'Outlaw Rex', isLeader: false),
+    Player(id: '13', name: 'Villager Ann', isLeader: false),
+    Player(id: '14', name: 'Bandit Will', isLeader: false),
+    Player(id: '15', name: 'Ranger Max', isLeader: false),
+    Player(id: '16', name: 'Settler Eva', isLeader: false),
+    Player(id: '17', name: 'Marshal Jim', isLeader: false),
+    Player(id: '18', name: 'Trader Sam', isLeader: false),
+    Player(id: '19', name: 'Prospector Dan', isLeader: false),
+    Player(id: '20', name: 'Saloon Owner Lily', isLeader: false),  ];  void _showRoleRevealPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => RoleRevealPopup(
+        roleName: _selectedRole,
+        onComplete: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+  String _getEventDisplayName(String eventType) {
+    switch (eventType) {
+      case 'gunman_kill':
+        return 'Gunman Kill';
+      case 'doctor_save':
+        return 'Doctor Save';
+      case 'gunman_blocked':
+        return 'Gunman Blocked';
+      default:
+        return 'Unknown Event';
+    }
+  }
+  void _showEventSharePopup() {
+    String playerName;
+    String? playerRole;
+    String eventDescription;
+    bool isDeath = false;
+
+    switch (_selectedEvent) {
+      case 'gunman_kill':
+        playerName = 'Doc Smith';
+        playerRole = 'Doctor';
+        eventDescription = 'Doc Smith was killed by the Gunman.';
+        isDeath = true;
+        break;
+      case 'doctor_save':
+        playerName = 'Sheriff Jack';
+        playerRole = null; // Don't reveal role in this event
+        eventDescription = 'Someone was attacked but saved by the Doctor!';
+        break;
+      case 'gunman_blocked':
+        playerName = 'Gunman Pete';
+        playerRole = 'Gunman';
+        eventDescription = 'The Gunman was blocked and could not act.';
+        break;
+      default:
+        playerName = 'Unknown Player';
+        playerRole = null;
+        eventDescription = 'Something mysterious happened in the night.';
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => EventSharePopup(
+        eventDescription: eventDescription,
+        playerName: playerName,
+        playerRole: playerRole,
+        isDeath: isDeath,
+        onComplete: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF4E2C0B),
+        title: const Text(
+          'PHASE TESTING',
+          style: TextStyle(
+            fontFamily: 'Rye',
+            fontSize: 18,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/saloon_bg.png"),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Phase Selection Row
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildPhaseButton('Role Reveal', 'role_reveal'),
+                    const SizedBox(width: 8),
+                    _buildPhaseButton('Night Phase', 'night'),
+                    const SizedBox(width: 8),
+                    _buildPhaseButton('Night Outcome', 'night_outcome'),
+                    const SizedBox(width: 8),
+                    _buildPhaseButton('Event Sharing', 'event_sharing'),
+                    const SizedBox(width: 8),
+                    _buildPhaseButton('Discussion', 'discussion'),
+                    const SizedBox(width: 8),
+                    _buildPhaseButton('Voting', 'voting'),
+                    const SizedBox(width: 8),
+                    _buildPhaseButton('Vote Results', 'vote_results'),
+                  ],
+                ),
+              ),
+            ),
+
+            // Phase Content
+            Expanded(child: _buildPhaseContent()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhaseButton(String label, String phase) {
+    final isSelected = _selectedPhase == phase;
+    return ElevatedButton(
+      onPressed: () => setState(() => _selectedPhase = phase),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? const Color(0xFF8B4513) : Colors.black54,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Rye',
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhaseContent() {
+    switch (_selectedPhase) {
+      case 'discussion':
+        return DiscussionPhaseWidget(
+          players: _mockPlayers,
+          remainingTime: 120, // 2 minutes
+          currentUserId: '1',
+          myRole: 'Sheriff',
+        );      case 'role_reveal':
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'ROLE REVEAL PHASE',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Rye',
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Role Selector
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white54),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedRole,
+                  dropdownColor: Colors.black87,
+                  style: const TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                  underline: Container(),
+                  items: [
+                    'Sheriff',
+                    'Doctor', 
+                    'Gunman',
+                    'Chieftain',
+                    'Jester',
+                    'Townsperson',
+                    'Escort',
+                    'Peeper',
+                    'Gunslinger',
+                  ].map((String role) {
+                    return DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedRole = newValue;
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _showRoleRevealPopup,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B4513),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text(
+                  'SHOW ROLE REVEAL',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Selected Role: $_selectedRole',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        );
+      case 'night':
+        return const Center(
+          child: Text(
+            'NIGHT PHASE\n(Coming Soon)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      case 'night_outcome':
+        return const Center(
+          child: Text(
+            'NIGHT OUTCOME PHASE\n(Coming Soon)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );      case 'event_sharing':
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'EVENT SHARING PHASE',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Rye',
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Event Type Selector
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white54),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedEvent,
+                  dropdownColor: Colors.black87,
+                  style: const TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                  underline: Container(),                  items: [
+                    'gunman_kill',
+                    'doctor_save',
+                    'gunman_blocked',
+                  ].map((String event) {
+                    return DropdownMenuItem<String>(
+                      value: event,
+                      child: Text(_getEventDisplayName(event)),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedEvent = newValue;
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _showEventSharePopup,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B4513),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text(
+                  'SHOW EVENT',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Selected Event: ${_getEventDisplayName(_selectedEvent)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        );
+      case 'voting':
+        return const Center(
+          child: Text(
+            'VOTING PHASE\n(Coming Soon)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      case 'vote_results':
+        return const Center(
+          child: Text(
+            'VOTE RESULTS PHASE\n(Coming Soon)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      default:
+        return const Center(
+          child: Text(
+            'SELECT A PHASE TO TEST',
+            style: TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+    }
+  }
+}
