@@ -8,6 +8,7 @@ import '../widgets/role_utils.dart';
 import '../screens/night_phase_screen.dart';
 import '../screens/day_phase_screen.dart';
 import 'package:noondaygame/widgets/role_reveal_popup.dart';
+import '../widgets/night_outcome_popup.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -380,9 +381,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       });
 
       if (outcomes.isNotEmpty) {
-        _showOutcomePopups(outcomes, 0, isPrivate: true);
+        _showPrivateEventPopups(outcomes, 0);
       }
     }
+  }
+
+  void _showPrivateEventPopups(List<String> messages, int index) {
+    if (index >= messages.length) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => NightOutcomePopup(
+            title: 'Night Outcome',
+            message: messages[index],
+            onComplete: () {
+              Navigator.of(context).pop();
+              if (index + 1 < messages.length) {
+                _showPrivateEventPopups(messages, index + 1);
+              }
+            },
+          ),
+    );
   }
 
   void _showEventSharingPhase() {

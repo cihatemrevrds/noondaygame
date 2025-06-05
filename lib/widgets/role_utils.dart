@@ -3,20 +3,25 @@ import 'package:flutter/material.dart';
 class RoleUtils {
   static Color getRoleColor(String role) {
     switch (role) {
+      // Citizens (Green shades)
       case 'Doctor':
-        return Colors.blue;
-      case 'Gunman':
-        return Colors.red;
+        return const Color(0xFF2E7D32); // Dark Green
       case 'Sheriff':
-        return Colors.green;
-      case 'Prostitute':
-        return Colors.pink;
+        return const Color(0xFF388E3C); // Medium Green
+      case 'Escort':
+        return const Color(0xFF43A047); // Light Green
       case 'Peeper':
-        return Colors.orange;
+        return const Color(0xFF4CAF50); // Standard Green
+      case 'Gunslinger':
+        return const Color(0xFF66BB6A); // Lighter Green
+      // Bandits (Red shades)
+      case 'Gunman':
+        return const Color(0xFFC62828); // Dark Red
       case 'Chieftain':
-        return Colors.brown;
-      case 'Townsperson':
-        return Colors.grey;
+        return const Color(0xFFD32F2F); // Medium Red
+      // Neutrals (Gray shades)
+      case 'Jester':
+        return const Color(0xFF616161); // Medium Gray
       default:
         return Colors.black;
     }
@@ -36,8 +41,6 @@ class RoleUtils {
         return Icons.visibility;
       case 'Chieftain':
         return Icons.verified_user;
-      case 'Townsperson':
-        return Icons.person;
       default:
         return Icons.help;
     }
@@ -55,6 +58,7 @@ class RoleUtils {
         return false;
     }
   }
+
   static Future<String> getRoleDescription(String? role) async {
     if (role == null) return 'Role not assigned yet';
 
@@ -70,9 +74,7 @@ class RoleUtils {
       case 'Peeper':
         return 'Each night you can learn someone\'s role.';
       case 'Chieftain':
-        return 'You are the leader of the bandit team. Sheriff sees you as a townsperson.';
-      case 'Townsperson':
-        return 'You are a townsperson. No night action, try to find bandits in day voting.';
+        return 'You are the leader of the bandit team. Sheriff sees you as innocent.';
       default:
         return 'Unknown role';
     }

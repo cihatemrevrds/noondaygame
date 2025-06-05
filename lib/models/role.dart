@@ -163,11 +163,11 @@ class Role {
   static Color getTeamColor(RoleTeam team) {
     switch (team) {
       case RoleTeam.town:
-        return Colors.blue;
+        return const Color(0xFF4CAF50); // Green for citizens/town
       case RoleTeam.bandit:
-        return Colors.red;
+        return const Color(0xFFC62828); // Red for bandits
       case RoleTeam.neutral:
-        return Colors.orange;
+        return const Color(0xFF616161); // Gray for neutrals
     }
   }
 
