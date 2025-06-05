@@ -3,6 +3,7 @@ import '../widgets/discussion_phase_widget.dart';
 import '../widgets/role_reveal_popup.dart';
 import '../widgets/event_share_popup.dart';
 import '../widgets/night_outcome_popup.dart';
+import '../widgets/vote_result_popup.dart';
 import '../models/player.dart';
 
 class PhaseTestingScreen extends StatefulWidget {
@@ -13,11 +14,11 @@ class PhaseTestingScreen extends StatefulWidget {
 }
 
 class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
-  String _selectedPhase = 'discussion';
-  String _selectedRole = 'Sheriff'; // For role reveal testing
+  String _selectedPhase = 'discussion';  String _selectedRole = 'Sheriff'; // For role reveal testing
   String _selectedEvent = 'kill_success'; // For event sharing testing
   String _selectedPrivateEvent =
       'kill_success_private'; // For night outcome testing
+  String _selectedVoteResult = 'gunman_executed'; // For vote result testing
 
   // Mock data for testing
   final List<Player> _mockPlayers = [
@@ -105,7 +106,6 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           ),
     );
   }
-
   String _getPrivateEventDisplayName(String eventType) {
     switch (eventType) {
       case 'kill_success_private':
@@ -127,6 +127,26 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
     }
   }
 
+  String _getVoteResultDisplayName(String resultType) {
+    switch (resultType) {
+      case 'gunman_executed':
+        return 'Gunman Executed';
+      case 'sheriff_executed':
+        return 'Sheriff Executed';
+      case 'doctor_executed':
+        return 'Doctor Executed';
+      case 'jester_executed':
+        return 'Jester Executed';
+      case 'escort_executed':
+        return 'Escort Executed';
+      case 'chieftain_executed':
+        return 'Chieftain Executed';
+      case 'no_majority':
+        return 'No Majority Vote';
+      default:
+        return 'Unknown Vote Result';
+    }
+  }
   void _showNightOutcomePopup() {
     String title;
     String message;
@@ -177,6 +197,83 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
             },
           ),
     );
+  }
+
+  void _showVoteResultPopup() {
+    String playerName;
+    String? playerRole;
+    int voteCount;
+
+    switch (_selectedVoteResult) {
+      case 'gunman_executed':
+        playerName = 'Gunman Pete';
+        playerRole = 'Gunman';
+        voteCount = 7;
+        break;
+      case 'sheriff_executed':
+        playerName = 'Sheriff Jack';
+        playerRole = 'Sheriff';
+        voteCount = 5;
+        break;
+      case 'doctor_executed':
+        playerName = 'Doc Smith';
+        playerRole = 'Doctor';
+        voteCount = 6;
+        break;
+      case 'jester_executed':
+        playerName = 'Jester Bob';
+        playerRole = 'Jester';
+        voteCount = 8;
+        break;
+      case 'escort_executed':
+        playerName = 'Escort Belle';
+        playerRole = 'Escort';
+        voteCount = 4;
+        break;
+      case 'chieftain_executed':
+        playerName = 'Chieftain Joe';
+        playerRole = 'Chieftain';
+        voteCount = 9;
+        break;
+      case 'no_majority':
+        playerName = 'No One';
+        playerRole = null;
+        voteCount = 0;
+        break;
+      default:
+        playerName = 'Unknown Player';
+        playerRole = null;
+        voteCount = 1;
+    }
+
+    if (_selectedVoteResult == 'no_majority') {
+      // For no majority, show a different message
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => VoteResultPopup(
+          playerName: 'No one was executed - no majority vote reached.',
+          playerRole: null,
+          voteCount: 0,
+          onComplete: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => VoteResultPopup(
+          playerName: playerName,
+          playerRole: playerRole,
+          voteCount: voteCount,
+          onComplete: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+    }
   }
 
   @override
@@ -562,18 +659,94 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-        );
-      case 'vote_results':
-        return const Center(
-          child: Text(
-            'VOTE RESULTS PHASE\n(Coming Soon)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Rye',
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+        );      case 'vote_results':
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'VOTE RESULTS PHASE',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Rye',
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Vote Result Scenario Selector
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white54),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedVoteResult,
+                  dropdownColor: Colors.black87,
+                  style: const TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                  underline: Container(),
+                  items: [
+                    'gunman_executed',
+                    'sheriff_executed',
+                    'doctor_executed',
+                    'jester_executed',
+                    'escort_executed',
+                    'chieftain_executed',
+                    'no_majority',
+                  ].map((String result) {
+                    return DropdownMenuItem<String>(
+                      value: result,
+                      child: Text(_getVoteResultDisplayName(result)),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedVoteResult = newValue;
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _showVoteResultPopup,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B4513),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'SHOW VOTE RESULT',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Selected Result: ${_getVoteResultDisplayName(_selectedVoteResult)}',
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              ),
+            ],
           ),
         );
       default:
