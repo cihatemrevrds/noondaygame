@@ -75,8 +75,8 @@ exports.startGame = async (req, res) => {
             phaseTimeLimit: 5000, // 5 seconds for role reveal (non-skippable)
             votes: {},
             roleData: {},
-            nightEvents: [],
-            nightOutcomes: {}, // Individual results for each player
+            nightEvents: [], // Public events for event sharing phase
+            privateEvents: {}, // Private individual results for night outcome phase
             lastDayResult: null
         });
 
@@ -188,7 +188,7 @@ exports.advancePhase = async (req, res) => {
                 phaseTimeLimit: 30000, // 30 seconds for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
                 votes: {},
-                nightOutcomes: {} // Clear previous night outcomes
+                privateEvents: {} // Clear previous private events
             };
         }
 
@@ -280,14 +280,13 @@ exports.getGameState = async (req, res) => {
         const phaseStartedAt = lobbyData.phaseStartedAt?.toDate();
         const phaseTimeLimit = lobbyData.phaseTimeLimit || 60000;
         const now = new Date();
-        const timeRemaining = Math.max(0, phaseTimeLimit - (now - phaseStartedAt));
-
-        return res.status(200).json({
+        const timeRemaining = Math.max(0, phaseTimeLimit - (now - phaseStartedAt)); return res.status(200).json({
             phase: lobbyData.phase,
             gameState: lobbyData.gameState,
             dayCount: lobbyData.dayCount,
             timeRemaining: timeRemaining,
             nightEvents: lobbyData.nightEvents || [],
+            privateEvents: lobbyData.privateEvents || {},
             lastDayResult: lobbyData.lastDayResult,
             players: lobbyData.players || [],
             votes: lobbyData.votes || {}
@@ -410,7 +409,7 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             phaseTimeLimit: 30000, // 30 seconds for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
             votes: {},
-            nightOutcomes: {} // Clear previous night outcomes
+            privateEvents: {} // Clear previous private events
         };
     }
 
@@ -427,8 +426,8 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
 async function processNightActions(lobbyData, players) {
     let roleDataUpdate = { ...lobbyData.roleData } || {};
     let updatedPlayers = [...players];
-    let nightEvents = [];
-    let nightOutcomes = {};
+    let nightEvents = []; // Public events - visible to everyone
+    let privateEvents = {}; // Private events - visible only to specific players
 
     // First check who is blocked by Escort (multiple escorts possible)
     const blockedPlayerIds = [];
@@ -449,13 +448,12 @@ async function processNightActions(lobbyData, players) {
 
                 if (!isSheriffBlocked && sheriffPlayer) {
                     const targetId = sheriffData.targetId;
-                    const targetPlayer = players.find(p => p.uid === targetId);
-
-                    if (targetPlayer) {
+                    const targetPlayer = players.find(p => p.uid === targetId); if (targetPlayer) {
                         const isSuspicious = targetPlayer.role === 'Gunman' || targetPlayer.role === 'Jester';
                         const result = isSuspicious ? 'Suspicious' : 'Innocent';
 
-                        nightOutcomes[sheriffPlayer.uid] = {
+                        // Private event - only the Sheriff sees this
+                        privateEvents[sheriffPlayer.uid] = {
                             type: 'investigation_result',
                             targetName: targetPlayer.name,
                             targetRole: targetPlayer.role,
@@ -464,7 +462,8 @@ async function processNightActions(lobbyData, players) {
                         };
                     }
                 } else if (isSheriffBlocked && sheriffPlayer) {
-                    nightOutcomes[sheriffPlayer.uid] = {
+                    // Private event - only the Sheriff sees this
+                    privateEvents[sheriffPlayer.uid] = {
                         type: 'investigation_blocked',
                         message: 'You were blocked and could not investigate anyone.'
                     };
@@ -508,9 +507,8 @@ async function processNightActions(lobbyData, players) {
                                     }
                                 }
                             }
-                        }
-
-                        nightOutcomes[peeperPlayer.uid] = {
+                        }                        // Private event - only the Peeper sees this
+                        privateEvents[peeperPlayer.uid] = {
                             type: 'peep_result',
                             targetName: targetPlayer.name,
                             visitors: visitors,
@@ -520,7 +518,8 @@ async function processNightActions(lobbyData, players) {
                         };
                     }
                 } else if (isPeeperBlocked && peeperPlayer) {
-                    nightOutcomes[peeperPlayer.uid] = {
+                    // Private event - only the Peeper sees this
+                    privateEvents[peeperPlayer.uid] = {
                         type: 'peep_blocked',
                         message: 'You were blocked and could not spy on anyone.'
                     };
@@ -532,19 +531,19 @@ async function processNightActions(lobbyData, players) {
         for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
             if (doctorData && doctorData.protectedId) {
                 const doctorPlayer = players.find(p => p.uid === doctorUid && p.role === 'Doctor' && p.isAlive);
-                const isDoctorBlocked = blockedPlayerIds.includes(doctorUid);
-
-                if (!isDoctorBlocked && doctorPlayer) {
+                const isDoctorBlocked = blockedPlayerIds.includes(doctorUid); if (!isDoctorBlocked && doctorPlayer) {
                     const targetPlayer = players.find(p => p.uid === doctorData.protectedId);
                     if (targetPlayer) {
-                        nightOutcomes[doctorPlayer.uid] = {
+                        // Private event - only the Doctor sees this
+                        privateEvents[doctorPlayer.uid] = {
                             type: 'protection_result',
                             targetName: targetPlayer.name,
                             message: `You protected ${targetPlayer.name} tonight.`
                         };
                     }
                 } else if (isDoctorBlocked && doctorPlayer) {
-                    nightOutcomes[doctorPlayer.uid] = {
+                    // Private event - only the Doctor sees this
+                    privateEvents[doctorPlayer.uid] = {
                         type: 'protection_blocked',
                         message: 'You were blocked and could not protect anyone.'
                     };
@@ -557,9 +556,9 @@ async function processNightActions(lobbyData, players) {
             if (escortData && escortData.blockedId) {
                 const escortPlayer = players.find(p => p.uid === escortUid && p.role === 'Escort' && p.isAlive);
                 if (escortPlayer) {
-                    const targetPlayer = players.find(p => p.uid === escortData.blockedId);
-                    if (targetPlayer) {
-                        nightOutcomes[escortPlayer.uid] = {
+                    const targetPlayer = players.find(p => p.uid === escortData.blockedId); if (targetPlayer) {
+                        // Private event - only the Escort sees this
+                        privateEvents[escortPlayer.uid] = {
                             type: 'block_result',
                             targetName: targetPlayer.name,
                             message: `You blocked ${targetPlayer.name} from performing their night action.`
@@ -591,9 +590,7 @@ async function processNightActions(lobbyData, players) {
                                     break;
                                 }
                             }
-                        }
-
-                        // Kill the target if they're not protected
+                        }                        // Kill the target if they're not protected
                         if (!isProtected) {
                             updatedPlayers[targetIndex] = {
                                 ...targetPlayer,
@@ -601,17 +598,35 @@ async function processNightActions(lobbyData, players) {
                                 killedBy: 'Gunman',
                                 eliminatedBy: gunmanPlayer.name
                             };
-                            nightEvents.push(`${targetPlayer.name} was killed by the Gunman.`);
+                            // Public event - everyone sees this
+                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
-                            nightOutcomes[gunmanPlayer.uid] = {
+                            // Private event - only the Gunman sees this
+                            privateEvents[gunmanPlayer.uid] = {
                                 type: 'kill_success',
                                 targetName: targetPlayer.name,
                                 message: `You successfully killed ${targetPlayer.name}.`
                             };
                         } else {
-                            nightEvents.push(`Someone was attacked but saved by the Doctor!`);
+                            // Find the doctor(s) who protected this target and give them success notification
+                            if (roleDataUpdate.doctor) {
+                                for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                    if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                        const doctorPlayer = players.find(p => p.uid === doctorUid && p.role === 'Doctor');
+                                        if (doctorPlayer) {
+                                            // Private event - only the Doctor sees this successful save
+                                            privateEvents[doctorPlayer.uid] = {
+                                                type: 'protection_successful',
+                                                targetName: targetPlayer.name,
+                                                message: `You successfully saved ${targetPlayer.name} from an attack!`
+                                            };
+                                        }
+                                    }
+                                }
+                            }
 
-                            nightOutcomes[gunmanPlayer.uid] = {
+                            // Private event - only the Gunman sees this
+                            privateEvents[gunmanPlayer.uid] = {
                                 type: 'kill_failed',
                                 targetName: targetPlayer.name,
                                 message: `You tried to kill ${targetPlayer.name}, but they were protected.`
@@ -619,9 +634,9 @@ async function processNightActions(lobbyData, players) {
                         }
                     }
                 } else if (isGunmanBlocked && gunmanPlayer) {
-                    nightEvents.push(`The Gunman was blocked and could not act.`);
 
-                    nightOutcomes[gunmanPlayer.uid] = {
+                    // Private event - only the Gunman sees this
+                    privateEvents[gunmanPlayer.uid] = {
                         type: 'kill_blocked',
                         message: 'You were blocked and could not kill anyone.'
                     };
@@ -668,9 +683,7 @@ async function processNightActions(lobbyData, players) {
         sheriffPlayers.forEach(player => {
             newRoleData.sheriff[player.uid] = { targetId: null };
         });
-    }
-
-    // Reset peeper data for each peeper
+    }    // Reset peeper data for each peeper
     const peeperPlayers = players.filter(p => p.role === 'Peeper' && p.isAlive);
     if (peeperPlayers.length > 0) {
         newRoleData.peeper = {};
@@ -679,11 +692,16 @@ async function processNightActions(lobbyData, players) {
         });
     }
 
+    // If no public events occurred, add quiet night message
+    if (nightEvents.length === 0) {
+        nightEvents.push("The night was quiet. No one was harmed.");
+    }
+
     return {
         players: updatedPlayers,
         roleData: newRoleData,
-        nightEvents: nightEvents,
-        nightOutcomes: nightOutcomes
+        nightEvents: nightEvents, // Public events for event sharing phase
+        privateEvents: privateEvents // Private events for night outcome phase
     };
 }
 

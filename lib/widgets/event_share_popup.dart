@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../utils/role_icons.dart';
 
 class EventSharePopup extends StatefulWidget {
   final String eventDescription;
@@ -95,24 +94,32 @@ class _EventSharePopupState extends State<EventSharePopup>
     return PopScope(
       canPop: false, // Prevent back button dismissal
       child: Material(
-        color: Colors.black.withOpacity(0.8),
+        color: Colors.black54,
         child: Center(
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _fadeAnimation]),
             builder: (context, child) {
-              return Opacity(
-                opacity: _fadeAnimation.value,
-                child: Transform.scale(
-                  scale: _scaleAnimation.value,
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Opacity(
+                  opacity: _fadeAnimation.value,
                   child: Container(
-                    width: 350,
-                    padding: const EdgeInsets.all(32),
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF2B1810), Color(0xFF1A0F08)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.5),
+                        width: 2,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: eventColor.withOpacity(0.3),
+                          color: Colors.black.withOpacity(0.8),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
@@ -121,112 +128,81 @@ class _EventSharePopupState extends State<EventSharePopup>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Event Title
-                        Text(
-                          widget.isDeath ? 'DEATH EVENT' : 'NIGHT EVENT',
-                          style: TextStyle(
-                            fontFamily: 'Rye',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: eventColor,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Player Avatar/Icon
+                        // Event Icon
                         Container(
-                          width: 120,
-                          height: 120,
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: eventColor,
-                              width: 3,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: eventColor.withOpacity(0.4),
-                                blurRadius: 15,
-                                spreadRadius: 2,
-                              ),
-                            ],
+                            color: eventColor.withOpacity(0.2),
+                            border: Border.all(color: eventColor, width: 2),
                           ),
-                          child: widget.playerRole != null
-                              ? RoleIcons.buildRoleIcon(
-                                  roleName: widget.playerRole!,
-                                  size: 80,
-                                )
-                              : const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.grey,
-                                ),
+                          child: Icon(
+                            widget.isDeath ? Icons.dangerous : Icons.info,
+                            color: eventColor,
+                            size: 32,
+                          ),
                         ),
-
                         const SizedBox(height: 16),
 
-                        // Player Name
+                        // Event Title
                         Text(
-                          widget.playerName,
-                          style: TextStyle(
+                          widget.isDeath ? 'Rest in Peace' : 'zZzZz',
+                          style: const TextStyle(
                             fontFamily: 'Rye',
-                            fontSize: 24,
+                            fontSize: 20,
+                            color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            color: eventColor,
                           ),
                           textAlign: TextAlign.center,
                         ),
-
-                        if (widget.playerRole != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            widget.playerRole!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.black54,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
                         // Event Description
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: eventColor.withOpacity(0.1),
+                            color: Colors.black.withOpacity(0.3),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: eventColor.withOpacity(0.3),
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1,
                             ),
                           ),
                           child: Text(
                             widget.eventDescription,
                             style: const TextStyle(
+                              fontFamily: 'Rye',
                               fontSize: 16,
-                              color: Colors.black87,
+                              color: Colors.white,
                               height: 1.4,
                             ),
                             textAlign: TextAlign.center,
                           ),
                         ),
+                        const SizedBox(height: 20),
 
-                        const SizedBox(height: 24),
-
-                        // Auto-close countdown hint
-                        Text(
-                          'Automatically continuing in 5 seconds...',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
+                        // Manual close button
+                        ElevatedButton(
+                          onPressed: _closePopup,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B4513),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
+                          child: const Text(
+                            'Continue',
+                            style: TextStyle(
+                              fontFamily: 'Rye',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/discussion_phase_widget.dart';
 import '../widgets/role_reveal_popup.dart';
 import '../widgets/event_share_popup.dart';
+import '../widgets/night_outcome_popup.dart';
 import '../models/player.dart';
 
 class PhaseTestingScreen extends StatefulWidget {
@@ -14,14 +15,16 @@ class PhaseTestingScreen extends StatefulWidget {
 class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
   String _selectedPhase = 'discussion';
   String _selectedRole = 'Sheriff'; // For role reveal testing
-  String _selectedEvent = 'gunman_kill'; // For event sharing testing
-  
+  String _selectedEvent = 'kill_success'; // For event sharing testing
+  String _selectedPrivateEvent =
+      'kill_success_private'; // For night outcome testing
+
   // Mock data for testing
   final List<Player> _mockPlayers = [
     Player(id: '1', name: 'Sheriff Jack', isLeader: true),
     Player(id: '2', name: 'Doc Smith', isLeader: false),
     Player(id: '3', name: 'Gunman Pete', isLeader: false),
-    Player(id: '4', name: 'Townsperson Mary', isLeader: false),
+    Player(id: '4', name: 'Doctor Mary', isLeader: false),
     Player(id: '5', name: 'Escort Belle', isLeader: false),
     Player(id: '6', name: 'Peeper Tom', isLeader: false),
     Player(id: '7', name: 'Chieftain Joe', isLeader: false),
@@ -37,30 +40,33 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
     Player(id: '17', name: 'Marshal Jim', isLeader: false),
     Player(id: '18', name: 'Trader Sam', isLeader: false),
     Player(id: '19', name: 'Prospector Dan', isLeader: false),
-    Player(id: '20', name: 'Saloon Owner Lily', isLeader: false),  ];  void _showRoleRevealPopup() {
+    Player(id: '20', name: 'Saloon Owner Lily', isLeader: false),
+  ];
+  void _showRoleRevealPopup() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => RoleRevealPopup(
-        roleName: _selectedRole,
-        onComplete: () {
-          Navigator.of(context).pop();
-        },
-      ),
+      builder:
+          (context) => RoleRevealPopup(
+            roleName: _selectedRole,
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
+          ),
     );
   }
+
   String _getEventDisplayName(String eventType) {
     switch (eventType) {
-      case 'gunman_kill':
-        return 'Gunman Kill';
-      case 'doctor_save':
-        return 'Doctor Save';
-      case 'gunman_blocked':
-        return 'Gunman Blocked';
+      case 'kill_success':
+        return 'Player Killed';
+      case 'quiet_night':
+        return 'Quiet Night';
       default:
         return 'Unknown Event';
     }
   }
+
   void _showEventSharePopup() {
     String playerName;
     String? playerRole;
@@ -68,40 +74,108 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
     bool isDeath = false;
 
     switch (_selectedEvent) {
-      case 'gunman_kill':
-        playerName = 'Doc Smith';
-        playerRole = 'Doctor';
-        eventDescription = 'Doc Smith was killed by the Gunman.';
+      case 'kill_success':
+        playerName = 'Gunman Pete';
+        playerRole = null; // Don't reveal role in public events
+        eventDescription = 'Gunman Pete was killed by the Gunman.';
         isDeath = true;
         break;
-      case 'doctor_save':
-        playerName = 'Sheriff Jack';
-        playerRole = null; // Don't reveal role in this event
-        eventDescription = 'Someone was attacked but saved by the Doctor!';
-        break;
-      case 'gunman_blocked':
-        playerName = 'Gunman Pete';
-        playerRole = 'Gunman';
-        eventDescription = 'The Gunman was blocked and could not act.';
+      case 'quiet_night':
+        playerName = 'No One';
+        playerRole = null;
+        eventDescription = 'The night was quiet. No one was harmed.';
         break;
       default:
         playerName = 'Unknown Player';
         playerRole = null;
         eventDescription = 'Something mysterious happened in the night.';
     }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => EventSharePopup(
+            eventDescription: eventDescription,
+            playerName: playerName,
+            playerRole: playerRole,
+            isDeath: isDeath,
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
+          ),
+    );
+  }
+
+  String _getPrivateEventDisplayName(String eventType) {
+    switch (eventType) {
+      case 'kill_success_private':
+        return 'Kill Success (Gunman)';
+      case 'kill_failed_private':
+        return 'Kill Failed (Gunman)';
+      case 'investigation_result':
+        return 'Investigation Result (Sheriff)';
+      case 'protection_result':
+        return 'Protection Result (Doctor)';
+      case 'protection_successful':
+        return 'Successful Save (Doctor)';
+      case 'block_result':
+        return 'Block Result (Escort)';
+      case 'peep_result':
+        return 'Peep Result (Peeper)';
+      default:
+        return 'Unknown Private Event';
+    }
+  }
+
+  void _showNightOutcomePopup() {
+    String title;
+    String message;
+
+    switch (_selectedPrivateEvent) {
+      case 'kill_success_private':
+        title = 'Night Action Result';
+        message = 'You successfully killed Gunman Pete.';
+        break;
+      case 'kill_failed_private':
+        title = 'Night Action Result';
+        message = 'You tried to kill Doc Smith, but they were protected.';
+        break;
+      case 'investigation_result':
+        title = 'Investigation Result';
+        message = 'You investigated Gunman Pete. They appear Suspicious.';
+        break;
+      case 'protection_result':
+        title = 'Protection Result';
+        message = 'You protected Doc Smith tonight.';
+        break;
+      case 'protection_successful':
+        title = 'Heroic Save!';
+        message = 'You successfully saved Doc Smith from an attack!';
+        break;
+      case 'block_result':
+        title = 'Block Result';
+        message = 'You blocked Gunman Pete from performing their night action.';
+        break;
+      case 'peep_result':
+        title = 'Spy Result';
+        message = 'You spied on Doc Smith. They were visited by: Sheriff Jack.';
+        break;
+      default:
+        title = 'Night Result';
+        message = 'Something happened during the night.';
+    }
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => EventSharePopup(
-        eventDescription: eventDescription,
-        playerName: playerName,
-        playerRole: playerRole,
-        isDeath: isDeath,
-        onComplete: () {
-          Navigator.of(context).pop();
-        },
-      ),
+      builder:
+          (context) => NightOutcomePopup(
+            title: title,
+            message: message,
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
+          ),
     );
   }
 
@@ -196,7 +270,8 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           remainingTime: 120, // 2 minutes
           currentUserId: '1',
           myRole: 'Sheriff',
-        );      case 'role_reveal':
+        );
+      case 'role_reveal':
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -214,7 +289,10 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
               const SizedBox(height: 24),
               // Role Selector
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),
@@ -229,22 +307,22 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
                     color: Colors.white,
                   ),
                   underline: Container(),
-                  items: [
-                    'Sheriff',
-                    'Doctor', 
-                    'Gunman',
-                    'Chieftain',
-                    'Jester',
-                    'Townsperson',
-                    'Escort',
-                    'Peeper',
-                    'Gunslinger',
-                  ].map((String role) {
-                    return DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(role),
-                    );
-                  }).toList(),
+                  items:
+                      [
+                        'Sheriff',
+                        'Doctor',
+                        'Gunman',
+                        'Chieftain',
+                        'Jester',
+                        'Escort',
+                        'Peeper',
+                        'Gunslinger',
+                      ].map((String role) {
+                        return DropdownMenuItem<String>(
+                          value: role,
+                          child: Text(role),
+                        );
+                      }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
                       setState(() {
@@ -260,8 +338,13 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8B4513),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: const Text(
                   'SHOW ROLE REVEAL',
@@ -275,10 +358,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
               const SizedBox(height: 16),
               Text(
                 'Selected Role: $_selectedRole',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
               ),
             ],
           ),
@@ -297,18 +377,97 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           ),
         );
       case 'night_outcome':
-        return const Center(
-          child: Text(
-            'NIGHT OUTCOME PHASE\n(Coming Soon)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Rye',
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'NIGHT OUTCOME PHASE',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Rye',
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Private Event Type Selector
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white54),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedPrivateEvent,
+                  dropdownColor: Colors.black87,
+                  style: const TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                  underline: Container(),
+                  items:
+                      [
+                        'kill_success_private',
+                        'kill_failed_private',
+                        'investigation_result',
+                        'protection_result',
+                        'protection_successful',
+                        'block_result',
+                        'peep_result',
+                      ].map((String event) {
+                        return DropdownMenuItem<String>(
+                          value: event,
+                          child: Text(_getPrivateEventDisplayName(event)),
+                        );
+                      }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedPrivateEvent = newValue;
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _showNightOutcomePopup,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B4513),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'SHOW PRIVATE EVENT',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Selected Event: ${_getPrivateEventDisplayName(_selectedPrivateEvent)}',
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              ),
+            ],
           ),
-        );      case 'event_sharing':
+        );
+      case 'event_sharing':
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -326,7 +485,10 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
               const SizedBox(height: 24),
               // Event Type Selector
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),
@@ -340,16 +502,14 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
                     fontSize: 16,
                     color: Colors.white,
                   ),
-                  underline: Container(),                  items: [
-                    'gunman_kill',
-                    'doctor_save',
-                    'gunman_blocked',
-                  ].map((String event) {
-                    return DropdownMenuItem<String>(
-                      value: event,
-                      child: Text(_getEventDisplayName(event)),
-                    );
-                  }).toList(),
+                  underline: Container(),
+                  items:
+                      ['kill_success', 'quiet_night'].map((String event) {
+                        return DropdownMenuItem<String>(
+                          value: event,
+                          child: Text(_getEventDisplayName(event)),
+                        );
+                      }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
                       setState(() {
@@ -365,8 +525,13 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8B4513),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: const Text(
                   'SHOW EVENT',
@@ -380,10 +545,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
               const SizedBox(height: 16),
               Text(
                 'Selected Event: ${_getEventDisplayName(_selectedEvent)}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
               ),
             ],
           ),
