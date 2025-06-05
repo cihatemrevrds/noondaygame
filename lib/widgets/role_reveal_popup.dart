@@ -77,24 +77,25 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
 
   Color _getRoleColor(String role) {
     switch (role) {
+      // Citizens (Green shades)
       case 'Doctor':
-        return const Color(0xFF4CAF50); // Green
+        return const Color(0xFF2E7D32); // Dark Green
       case 'Sheriff':
-        return const Color(0xFF2196F3); // Blue
+        return const Color(0xFF388E3C); // Medium Green
       case 'Escort':
-        return const Color(0xFFE91E63); // Pink
+        return const Color(0xFF43A047); // Light Green
       case 'Peeper':
-        return const Color(0xFFFF9800); // Orange
+        return const Color(0xFF4CAF50); // Standard Green
       case 'Gunslinger':
-        return const Color(0xFF9C27B0); // Purple
+        return const Color(0xFF66BB6A); // Lighter Green
+      // Bandits (Red shades)
       case 'Gunman':
-        return const Color(0xFFF44336); // Red
+        return const Color(0xFFC62828); // Dark Red
       case 'Chieftain':
-        return const Color(0xFF795548); // Brown
+        return const Color(0xFFD32F2F); // Medium Red
+      // Neutrals (Gray shades)
       case 'Jester':
-        return const Color(0xFFFFEB3B); // Yellow
-      case 'Townsperson':
-        return const Color(0xFF607D8B); // Blue Grey
+        return const Color(0xFF616161); // Medium Gray
       default:
         return const Color(0xFF424242); // Dark Grey
     }
@@ -118,8 +119,6 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
         return 'You are the leader of the outlaws. The Sheriff sees you as innocent.';
       case 'Jester':
         return 'Your goal is to be eliminated by the town. If successful, you win!';
-      case 'Townsperson':
-        return 'You are a member of the town. Use voting to find and eliminate the outlaws.';
       default:
         return 'A mysterious role with unknown abilities.';
     }
@@ -133,24 +132,32 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
     return PopScope(
       canPop: false, // Prevent back button dismissal
       child: Material(
-        color: Colors.black.withOpacity(0.8),
+        color: Colors.black54,
         child: Center(
           child: AnimatedBuilder(
             animation: Listenable.merge([_scaleAnimation, _fadeAnimation]),
             builder: (context, child) {
-              return Opacity(
-                opacity: _fadeAnimation.value,
-                child: Transform.scale(
-                  scale: _scaleAnimation.value,
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Opacity(
+                  opacity: _fadeAnimation.value,
                   child: Container(
-                    width: 320,
-                    padding: const EdgeInsets.all(32),
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF2B1810), Color(0xFF1A0F08)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.5),
+                        width: 2,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: roleColor.withOpacity(0.3),
+                          color: Colors.black.withOpacity(0.8),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
@@ -161,63 +168,91 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                       children: [
                         // Role Icon
                         Container(
-                          width: 120,
-                          height: 120,
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
                             shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: roleColor.withOpacity(0.4),
-                                blurRadius: 15,
-                                spreadRadius: 2,
-                              ),
-                            ],
+                            color: roleColor.withOpacity(0.2),
+                            border: Border.all(color: roleColor, width: 2),
                           ),
                           child: RoleIcons.buildRoleIcon(
                             roleName: widget.roleName,
-                            size: 80,
+                            size: 48,
                           ),
                         ),
+                        const SizedBox(height: 16),
 
-                        const SizedBox(height: 24),
+                        // "Your Role" title
+                        const Text(
+                          'Your Role',
+                          style: TextStyle(
+                            fontFamily: 'Rye',
+                            fontSize: 16,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
 
                         // Role Name
                         Text(
                           widget.roleName,
                           style: TextStyle(
                             fontFamily: 'Rye',
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
                             color: roleColor,
+                            fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
-
                         const SizedBox(height: 16),
 
                         // Role Description
-                        Text(
-                          roleDescription,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            height: 1.4,
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
+                          child: Text(
+                            roleDescription,
+                            style: const TextStyle(
+                              fontFamily: 'Rye',
+                              fontSize: 14,
+                              color: Colors.white,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
+                        const SizedBox(height: 20),
 
-                        const SizedBox(height: 24),
-
-                        // Auto-close countdown hint
-                        Text(
-                          'Automatically continuing in 5 seconds...',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
+                        // Manual close button
+                        ElevatedButton(
+                          onPressed: _closePopup,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B4513),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
+                          child: const Text(
+                            'Continue',
+                            style: TextStyle(
+                              fontFamily: 'Rye',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
