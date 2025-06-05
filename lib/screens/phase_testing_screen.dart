@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/discussion_phase_widget.dart';
+import '../widgets/voting_phase_widget.dart';
 import '../widgets/role_reveal_popup.dart';
 import '../widgets/event_share_popup.dart';
 import '../widgets/night_outcome_popup.dart';
@@ -14,7 +15,8 @@ class PhaseTestingScreen extends StatefulWidget {
 }
 
 class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
-  String _selectedPhase = 'discussion';  String _selectedRole = 'Sheriff'; // For role reveal testing
+  String _selectedPhase = 'discussion';
+  String _selectedRole = 'Sheriff'; // For role reveal testing
   String _selectedEvent = 'kill_success'; // For event sharing testing
   String _selectedPrivateEvent =
       'kill_success_private'; // For night outcome testing
@@ -106,6 +108,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           ),
     );
   }
+
   String _getPrivateEventDisplayName(String eventType) {
     switch (eventType) {
       case 'kill_success_private':
@@ -147,6 +150,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
         return 'Unknown Vote Result';
     }
   }
+
   void _showNightOutcomePopup() {
     String title;
     String message;
@@ -251,27 +255,29 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => VoteResultPopup(
-          playerName: 'No one was executed - no majority vote reached.',
-          playerRole: null,
-          voteCount: 0,
-          onComplete: () {
-            Navigator.of(context).pop();
-          },
-        ),
+        builder:
+            (context) => VoteResultPopup(
+              playerName: 'No one was executed - no majority vote reached.',
+              playerRole: null,
+              voteCount: 0,
+              onComplete: () {
+                Navigator.of(context).pop();
+              },
+            ),
       );
     } else {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => VoteResultPopup(
-          playerName: playerName,
-          playerRole: playerRole,
-          voteCount: voteCount,
-          onComplete: () {
-            Navigator.of(context).pop();
-          },
-        ),
+        builder:
+            (context) => VoteResultPopup(
+              playerName: playerName,
+              playerRole: playerRole,
+              voteCount: voteCount,
+              onComplete: () {
+                Navigator.of(context).pop();
+              },
+            ),
       );
     }
   }
@@ -648,18 +654,17 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           ),
         );
       case 'voting':
-        return const Center(
-          child: Text(
-            'VOTING PHASE\n(Coming Soon)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Rye',
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );      case 'vote_results':
+        return VotingPhaseWidget(
+          players: _mockPlayers,
+          remainingTime: 30, // 30 seconds for voting
+          currentUserId: '1',
+          myRole: 'Sheriff',
+          onVoteChanged: (selectedPlayerId) {
+            // Handle vote change (could be used for real-time updates)
+            print('Vote changed to: $selectedPlayerId');
+          },
+        );
+      case 'vote_results':
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -695,20 +700,21 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
                     color: Colors.white,
                   ),
                   underline: Container(),
-                  items: [
-                    'gunman_executed',
-                    'sheriff_executed',
-                    'doctor_executed',
-                    'jester_executed',
-                    'escort_executed',
-                    'chieftain_executed',
-                    'no_majority',
-                  ].map((String result) {
-                    return DropdownMenuItem<String>(
-                      value: result,
-                      child: Text(_getVoteResultDisplayName(result)),
-                    );
-                  }).toList(),
+                  items:
+                      [
+                        'gunman_executed',
+                        'sheriff_executed',
+                        'doctor_executed',
+                        'jester_executed',
+                        'escort_executed',
+                        'chieftain_executed',
+                        'no_majority',
+                      ].map((String result) {
+                        return DropdownMenuItem<String>(
+                          value: result,
+                          child: Text(_getVoteResultDisplayName(result)),
+                        );
+                      }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
                       setState(() {

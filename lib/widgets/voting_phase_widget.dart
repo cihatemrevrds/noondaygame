@@ -2,28 +2,31 @@ import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../widgets/player_avatar.dart';
 
-class DiscussionPhaseWidget extends StatefulWidget {
+class VotingPhaseWidget extends StatefulWidget {
   final List<Player> players;
   final int remainingTime; // in seconds
   final String currentUserId;
   final String? myRole;
+  final Function(String?)? onVoteChanged; // Callback when vote changes
 
-  const DiscussionPhaseWidget({
+  const VotingPhaseWidget({
     super.key,
     required this.players,
     required this.remainingTime,
     required this.currentUserId,
     this.myRole,
+    this.onVoteChanged,
   });
 
   @override
-  State<DiscussionPhaseWidget> createState() => _DiscussionPhaseWidgetState();
+  State<VotingPhaseWidget> createState() => _VotingPhaseWidgetState();
 }
 
-class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
+class _VotingPhaseWidgetState extends State<VotingPhaseWidget>
     with TickerProviderStateMixin {
   late AnimationController _timerController;
   late Animation<double> _timerAnimation;
+  String? _selectedPlayerId; // The player ID we're voting for
 
   @override
   void initState() {
@@ -56,13 +59,30 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
     return '${minutes}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
+  void _toggleVote(String playerId) {
+    setState(() {
+      if (_selectedPlayerId == playerId) {
+        // Remove vote from currently selected player
+        _selectedPlayerId = null;
+      } else {
+        // Vote for this player (automatically removes vote from previous player)
+        _selectedPlayerId = playerId;
+      }
+    });
+
+    // Notify parent widget about vote change
+    if (widget.onVoteChanged != null) {
+      widget.onVoteChanged!(_selectedPlayerId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          // Left side - Timer and Discussion text
+          // Left side - Timer and Voting text
           Expanded(
             flex: 2,
             child: Container(
@@ -113,7 +133,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
                                 backgroundColor: Colors.transparent,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   _timerAnimation.value > 0.3
-                                      ? Colors.white
+                                      ? Colors.orange
                                       : Colors.red,
                                 ),
                               ),
@@ -154,9 +174,9 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
                     ),
                   ),
                   const SizedBox(height: 32),
-                  // Discussion text
+                  // Voting text
                   const Text(
-                    'DISCUSSION',
+                    'VOTING',
                     style: TextStyle(
                       fontFamily: 'Rye',
                       fontSize: 24,
@@ -172,12 +192,54 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  // Current vote status
+                  if (_selectedPlayerId != null)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange, width: 1),
+                      ),
+                      child: Text(
+                        'Voting for:\n${widget.players.firstWhere((p) => p.id == _selectedPlayerId).name}',
+                        style: const TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 12,
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey, width: 1),
+                      ),
+                      child: const Text(
+                        'No vote cast',
+                        style: TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
 
-          const SizedBox(width: 24), // Right side - Players Grid
+          const SizedBox(width: 24),
+
+          // Right side - Players Grid with voting buttons
           Expanded(
             flex: 3,
             child: Container(
@@ -207,7 +269,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        childAspectRatio: 1.0,
+        childAspectRatio: 0.9, // Slightly adjusted for smaller buttons
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
@@ -228,8 +290,11 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
             ),
           );
         }
-        // Player slot
+
+        // Can't vote for yourself or dead players
+        final canVote = player.id != widget.currentUserId && player.isAlive;
         final isCurrentUser = player.id == widget.currentUserId;
+        final isSelected = _selectedPlayerId == player.id;
 
         return Container(
           decoration:
@@ -238,11 +303,65 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.blue, width: 3),
                   )
+                  : isSelected
+                  ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange, width: 3),
+                  )
                   : null,
-          child: PlayerAvatar(
-            name: player.name,
-            isLeader: player.isLeader,
-            isDead: !player.isAlive,
+          child: Column(
+            children: [
+              // Player Avatar
+              Expanded(
+                child: PlayerAvatar(
+                  name: player.name,
+                  isLeader: player.isLeader,
+                  isDead: !player.isAlive,
+                ),
+              ), // Vote Button
+              if (canVote)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: 2.0,
+                    left: 4.0,
+                    right: 4.0,
+                    bottom: 2.0,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 20,
+                    child: ElevatedButton(
+                      onPressed: () => _toggleVote(player.id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isSelected
+                                ? Colors.orange
+                                : const Color(0xFF8B4513),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 1,
+                          horizontal: 4,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        minimumSize: const Size(0, 20),
+                      ),
+                      child: Text(
+                        isSelected ? 'REMOVE' : 'VOTE',
+                        style: const TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 7,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                // Placeholder for dead players or current user
+                const SizedBox(height: 20),
+            ],
           ),
         );
       },
