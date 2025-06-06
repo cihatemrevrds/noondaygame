@@ -692,18 +692,6 @@ async function processNightActions(lobbyData, players) {
         }
     }
 
-    // Process night kills from Gunslinger (multiple gunslingers possible)
-    if (roleDataUpdate.gunslinger) {
-        for (const [gunslingerUid, gunslingerData] of Object.entries(roleDataUpdate.gunslinger)) {
-            if (gunslingerData && gunslingerData.usedBullet) {
-                const targetPlayer = updatedPlayers.find(p => p.id === gunslingerData.targetId);
-                if (targetPlayer) {
-                    nightEvents.push(`${targetPlayer.name} was killed by the Gunslinger.`);
-                }
-            }
-        }
-    }
-
     // Reset role data for next night, preserving persistent data and multi-role structure
     const newRoleData = {};
 
