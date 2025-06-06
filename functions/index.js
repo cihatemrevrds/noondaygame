@@ -14,6 +14,7 @@ exports.gunmanKill = functions.https.onRequest(roleActions.gunmanKill);
 exports.sheriffInvestigate = functions.https.onRequest(roleActions.sheriffInvestigate);
 exports.escortBlock = functions.https.onRequest(roleActions.escortBlock);
 exports.peeperSpy = functions.https.onRequest(roleActions.peeperSpy);
+exports.chieftainOrder = functions.https.onRequest(roleActions.chieftainOrder);
 
 // Expose game phase functions
 exports.startGame = functions.https.onRequest(gamePhase.startGame);

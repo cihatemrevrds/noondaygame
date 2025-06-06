@@ -38,16 +38,72 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
   String? _selectedPlayerId; // Track the selected player
   Timer? _timer;
   int _remainingTime = 0;
+  // Helper method to get the correct action based on role
+  String _getRoleAction(String? role) {
+    switch (role) {
+      case 'Doctor':
+        return 'doctorProtect';
+      case 'Gunman':
+        return 'gunmanKill';
+      case 'Sheriff':
+        return 'sheriffInvestigate';
+      case 'Escort':
+        return 'prostituteBlock'; // Using prostituteBlock as per game_service.dart
+      case 'Peeper':
+        return 'peeperSpy';
+      case 'Chieftain':
+        return 'chieftainOrder';
+      default:
+        return ''; // No action for other roles
+    }
+  }
+
+  // Helper method to get button text based on role
+  String _getActionButtonText(String? role) {
+    switch (role) {
+      case 'Doctor':
+        return 'Protect';
+      case 'Gunman':
+        return 'Kill';
+      case 'Sheriff':
+        return 'Investigate';
+      case 'Escort':
+        return 'Block';
+      case 'Peeper':
+        return 'Spy';
+      case 'Chieftain':
+        return 'Order Kill';
+      default:
+        return 'Action';
+    }
+  }
+
+  // Helper method to check if role has night action
+  bool _hasNightAction(String? role) {
+    switch (role) {
+      case 'Doctor':
+      case 'Gunman':
+      case 'Sheriff':
+      case 'Escort':
+      case 'Peeper':
+      case 'Chieftain':
+        return true;
+      default:
+        return false; // Jester, Gunslinger don't have night actions
+    }
+  }
 
   Future<Map<String, dynamic>> _fetchLobbySettings() async {
     return await LobbyService().getLobbySettings(widget.lobbyCode);
   }
+
   @override
   void initState() {
     super.initState();
     _fetchLobbySettings().then((settings) {
       setState(() {
-        _remainingTime = settings['nightPhaseDuration'] ?? 60; // Convert minutes to seconds
+        _remainingTime =
+            settings['nightPhaseDuration'] ?? 60; // Convert minutes to seconds
       });
       _startTimer();
     });
@@ -69,229 +125,356 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
-  }  Widget _buildNightActionUI() {
+  }
+
+  // Build player selection area for roles with night actions
+  Widget _buildPlayerSelectionArea() {
+    if (widget.players.where((p) => p.isAlive).isEmpty) return Container();
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: MediaQuery.of(context).size.width > 800 ? 40 : 20,
+      ),
+      padding: EdgeInsets.all(
+        MediaQuery.of(context).size.width > 800 ? 30 : 20,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+      ),
+      child: Center(
+        child: Wrap(
+          spacing: MediaQuery.of(context).size.width > 800 ? 30 : 20,
+          runSpacing: MediaQuery.of(context).size.width > 800 ? 30 : 20,
+          alignment: WrapAlignment.center,
+          children:
+              widget.players
+                  .where((p) => p.isAlive)
+                  .map(
+                    (player) => GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedPlayerId = player.id;
+                        });
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            width:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 90
+                                    : 80,
+                            height:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 90
+                                    : 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  _selectedPlayerId == player.id
+                                      ? Colors.green.withOpacity(0.8)
+                                      : Colors.grey[300],
+                              border: Border.all(
+                                color:
+                                    _selectedPlayerId == player.id
+                                        ? Colors.white
+                                        : Colors.grey[400]!,
+                                width: 3,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.person,
+                              size:
+                                  MediaQuery.of(context).size.width > 800
+                                      ? 50
+                                      : 45,
+                              color:
+                                  _selectedPlayerId == player.id
+                                      ? Colors.white
+                                      : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 100
+                                    : 80,
+                            child: Text(
+                              player.name,
+                              style: TextStyle(
+                                fontSize:
+                                    MediaQuery.of(context).size.width > 800
+                                        ? 16
+                                        : 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+        ),
+      ),
+    );
+  }
+
+  // Build message for roles without night actions
+  Widget _buildNoActionMessage() {
+    String message;
+    switch (widget.myRole) {
+      case 'Jester':
+        message =
+            'You have no night ability.\nWait for the day phase to achieve your goal.';
+        break;
+      case 'Gunslinger':
+        message =
+            'You can use your bullets during the day phase.\nWait for discussion time.';
+        break;
+      default:
+        message = 'You have no night action.\nWait for the night to end.';
+        break;
+    }
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: MediaQuery.of(context).size.width > 800 ? 40 : 20,
+      ),
+      padding: EdgeInsets.all(
+        MediaQuery.of(context).size.width > 800 ? 30 : 20,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontFamily: 'Rye',
+          fontSize: MediaQuery.of(context).size.width > 800 ? 18 : 16,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  // Build action buttons
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // Skip button - left
+          SizedBox(
+            width: 140,
+            child: ElevatedButton(
+              onPressed:
+                  widget.isLoading
+                      ? null
+                      : () {
+                        widget.onSetNightActionResult(
+                          "You chose to skip this night.",
+                        );
+                      },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown[600],
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 15,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Skip',
+                style: TextStyle(
+                  fontFamily: 'Rye',
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 30), // Space between buttons
+          // Role action button - conditional on role capability
+          if (_hasNightAction(widget.myRole))
+            SizedBox(
+              width: 140,
+              child: ElevatedButton(
+                onPressed:
+                    widget.isLoading || _selectedPlayerId == null
+                        ? null
+                        : () {
+                          String action = _getRoleAction(widget.myRole);
+                          if (action.isNotEmpty) {
+                            widget.onNightAction(action, _selectedPlayerId!);
+                          }
+                        },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.brown[600],
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  _getActionButtonText(widget.myRole),
+                  style: const TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            )
+          else
+            // Placeholder for roles without night actions
+            SizedBox(
+              width: 140,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 15,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Wait',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNightActionUI() {
     return Stack(
       children: [
         // Background image
         Positioned.fill(
           child: Image.asset(
-            'assets/images/western_town_bg.png',
+            'assets/images/backgrounds/western_town_bg.png',
             fit: BoxFit.cover,
           ),
-        ),// Foreground content
-        Column(
-          children: [
-            // Night bar at the top
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.brown,
-              child: Text(
-                'Night: ${widget.nightNumber}',
-                style: const TextStyle(
-                  fontFamily: 'Rye',
-                  fontSize: 22,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 40),
-
-            // Role logo - larger and more prominent
-            Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(
-                  color: Colors.black,
-                  width: 3,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),              child: RoleIcons.buildRoleIcon(
-                roleName: widget.myRole ?? 'Unknown',
-                size: 80,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Role name - larger font
-            Text(
-              widget.myRole ?? 'Unknown',
-              style: const TextStyle(
-                fontFamily: 'Rye',
-                fontSize: 32,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    color: Colors.black,
-                    offset: Offset(2, 2),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),            // Timer display
-            Text(
-              'Time Remaining: $_remainingTime seconds',
-              style: const TextStyle(
-                fontFamily: 'Rye',
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-            
-            const SizedBox(height: 30),            // Player selection area - more organized
-            if (widget.players.where((p) => p.isAlive).isNotEmpty)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                    width: 1,
-                  ),                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: 20,
-                    runSpacing: 20,
-                    alignment: WrapAlignment.start,
-                    children: widget.players
-                      .where((p) => p.isAlive)
-                      .map((player) => GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedPlayerId = player.id;
-                              });
-                            },                            child: Column(
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _selectedPlayerId == player.id
-                                        ? Colors.green.withOpacity(0.8)
-                                        : Colors.grey[300],
-                                    border: Border.all(
-                                      color: _selectedPlayerId == player.id
-                                          ? Colors.white
-                                          : Colors.grey[400]!,
-                                      width: 3,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 45,
-                                    color: _selectedPlayerId == player.id
-                                        ? Colors.white
-                                        : Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  player.name,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),                          ))                      .toList(),
+        ),
+        // Foreground content
+        Positioned.fill(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Night bar at the top
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.brown,
+                  child: Text(
+                    'Night: ${widget.nightNumber}',
+                    style: const TextStyle(
+                      fontFamily: 'Rye',
+                      fontSize: 22,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-            const SizedBox(height: 40),            // Action buttons - rectangular brown buttons side by side
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Skip button - sola
-                  SizedBox(
-                    width: 140,
-                    child: ElevatedButton(
-                      onPressed: widget.isLoading
-                          ? null
-                          : () {                              widget.onSetNightActionResult(
-                                "You chose to skip this night.",
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.brown[600],
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),                      child: const Text(
-                        'Skip',
-                        style: TextStyle(
-                          fontFamily: 'Rye',
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                const SizedBox(height: 40),
+
+                // Role logo - responsive sizing
+                Container(
+                  width: MediaQuery.of(context).size.width > 800 ? 140 : 100,
+                  height: MediaQuery.of(context).size.width > 800 ? 140 : 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(color: Colors.black, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
                       ),
-                    ),
+                    ],
                   ),
+                  child: RoleIcons.buildRoleIcon(
+                    roleName: widget.myRole ?? 'Unknown',
+                    size: MediaQuery.of(context).size.width > 800 ? 80 : 60,
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-                  const SizedBox(width: 30), // Space between buttons
-
-                  // Role action button - right side
-                  SizedBox(
-                    width: 140,
-                    child: ElevatedButton(
-                      onPressed: widget.isLoading || _selectedPlayerId == null
-                          ? null
-                          : () {
-                              widget.onNightAction(
-                                'sheriffInvestigate',
-                                _selectedPlayerId!,
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.brown[600],
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),                      child: const Text(
-                        'Action',
-                        style: TextStyle(
-                          fontFamily: 'Rye',
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                // Role name - responsive font size
+                Text(
+                  widget.myRole ?? 'Unknown',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: MediaQuery.of(context).size.width > 800 ? 32 : 24,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    shadows: const [
+                      Shadow(
+                        color: Colors.black,
+                        offset: Offset(2, 2),
+                        blurRadius: 4,
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+
+                // Timer display
+                Text(
+                  'Time Remaining: $_remainingTime seconds',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: MediaQuery.of(context).size.width > 800 ? 18 : 16,
+                    color: Colors.white,
+                  ),
+                ),
+
+                SizedBox(
+                  height: MediaQuery.of(context).size.width > 800 ? 30 : 20,
+                ), // Player selection area - responsive layout
+                if (_hasNightAction(widget.myRole))
+                  _buildPlayerSelectionArea()
+                else
+                  _buildNoActionMessage(),
+
+                const SizedBox(height: 40),
+
+                // Action buttons - rectangular brown buttons side by side
+                _buildActionButtons(),
+                const SizedBox(height: 20),
+              ],
             ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ],
     );

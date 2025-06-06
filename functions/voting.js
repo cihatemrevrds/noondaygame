@@ -27,10 +27,8 @@ exports.submitVote = async (req, res) => {
             return res.status(404).json({ error: "Lobby not found" });
         }
 
-        const lobbyData = lobbyDoc.data();
-
-        // Check if it's voting phase
-        if (lobbyData.gameState !== 'day_voting') {
+        const lobbyData = lobbyDoc.data();        // Check if it's voting phase
+        if (lobbyData.gameState !== 'voting_phase') {
             return res.status(400).json({ error: "Not in voting phase" });
         }
 
@@ -78,11 +76,12 @@ exports.processVotes = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: "Lobby not found" });
-        }
-
-        const lobbyData = lobbyDoc.data();
+        } const lobbyData = lobbyDoc.data();
         const votes = lobbyData.votes || {};
         const players = lobbyData.players || [];
+        const alivePlayers = players.filter(p => p.isAlive);
+        const totalVotes = alivePlayers.length;
+        const requiredVotes = Math.ceil(totalVotes / 2); // Majority needed
 
         // Count votes
         const voteCounts = {};
@@ -94,18 +93,16 @@ exports.processVotes = async (req, res) => {
         let maxVotes = 0;
         let eliminatedId = null;
         for (const [targetId, count] of Object.entries(voteCounts)) {
-            if (count > maxVotes) {
+            if (count > maxVotes && count >= requiredVotes) {
                 maxVotes = count;
                 eliminatedId = targetId;
-            } else if (count === maxVotes) {
+            } else if (count === maxVotes && count >= requiredVotes) {
                 eliminatedId = null; // Tie, no one is eliminated
             }
-        }
-
-        // Update players
+        }        // Update players
         const updatedPlayers = players.map(p => {
             if (p.id === eliminatedId) {
-                return { ...p, isAlive: false };
+                return { ...p, isAlive: false, eliminatedBy: 'vote' };
             }
             return p;
         });
@@ -115,10 +112,19 @@ exports.processVotes = async (req, res) => {
             votes: {} // Clear votes for the next day
         });
 
-        return res.status(200).json({
-            message: eliminatedId ? "Player eliminated" : "Tie, no one eliminated",
-            eliminatedId
-        });
+        const eliminatedPlayer = eliminatedId ? players.find(p => p.id === eliminatedId) : null;
+        const result = {
+            message: eliminatedId ? "Player eliminated" : "No majority vote, no one eliminated",
+            eliminatedId,
+            eliminatedPlayer: eliminatedPlayer ? {
+                id: eliminatedPlayer.id,
+                name: eliminatedPlayer.name,
+                role: eliminatedPlayer.role,
+                voteCount: maxVotes
+            } : null
+        };
+
+        return res.status(200).json(result);
     } catch (error) {
         console.error("processVotes error:", error);
         return res.status(500).json({ error: "Internal Server Error" });
