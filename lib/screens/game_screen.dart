@@ -232,8 +232,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _submitVote(String targetId) async {
-    if (_currentGameState != 'voting_phase' || targetId == _currentUserId)
+    // Prevent dead players from voting
+    if (!_players.any((p) => p.id == _currentUserId && p.isAlive)) {
       return;
+    }
+
+    if (_currentGameState != 'voting_phase' || targetId == _currentUserId) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -308,6 +314,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _performNightAction(String action, String targetId) async {
+    // Prevent dead players from performing actions
+    if (!_players.any((p) => p.id == _currentUserId && p.isAlive)) {
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -354,32 +365,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
           break;
       }
+
       if (mounted && result != null) {
         setState(() => _nightActionResult = result);
 
-        // Only show immediate feedback for actions except sheriff investigation
-        if (action != 'sheriffInvestigate') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Action submitted",
-                style: const TextStyle(fontFamily: 'Rye'),
-              ),
-              backgroundColor: Colors.green[800],
-            ),
-          );
-        } else {
-          // For sheriff, just show that the action was submitted without revealing the result
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Investigation submitted",
-                style: const TextStyle(fontFamily: 'Rye'),
-              ),
-              backgroundColor: Colors.green[800],
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result, style: const TextStyle(fontFamily: 'Rye')),
+            backgroundColor: Colors.green[800],
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -956,9 +951,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           nightActionResult: _nightActionResult,
           players: _players,
           isLoading: _isLoading,
-          onNightAction: _performNightAction,
-          onSetNightActionResult:
-              (result) => setState(() => _nightActionResult = result),
+          onNightAction: (action, targetId) {
+            if (_players.any((p) => p.id == _currentUserId && p.isAlive)) {
+              _performNightAction(action, targetId);
+            }
+          },
+          onSetNightActionResult: (result) => setState(() => _nightActionResult = result),
           nightNumber: _dayCount,
         );
 
@@ -987,16 +985,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       case 'voting_phase':
         // Show voting phase widget
         return VotingPhaseWidget(
-          players:
-              _players
-                  .where((p) => p.isAlive && p.id != _currentUserId)
-                  .toList(),
+          players: _players
+              .where((p) => p.isAlive && p.id != _currentUserId)
+              .toList(),
           remainingTime: _remainingTime,
           currentUserId: _currentUserId,
           myRole: _myRole,
           onVoteChanged: (selectedPlayerId) {
-            if (selectedPlayerId != null) {
-              _submitVote(selectedPlayerId);
+            if (_players.any((p) => p.id == _currentUserId && p.isAlive)) {
+              if (selectedPlayerId != null) {
+                _submitVote(selectedPlayerId);
+              }
             }
           },
         );
@@ -1111,7 +1110,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             height: double.infinity,
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage("assets/images/saloon_bg.png"),
+                image: AssetImage("assets/images/backgrounds/saloon_bg.png"),
                 fit: BoxFit.cover,
               ),
             ),
