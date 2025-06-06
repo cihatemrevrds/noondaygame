@@ -223,7 +223,7 @@ class _MainMenuState extends State<MainMenu> {
         height: double.infinity,
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage("assets/images/western_town_bg.png"),
+            image: AssetImage("assets/images/backgrounds/western_town_bg.png"),
             fit: BoxFit.cover,
           ),
         ),
