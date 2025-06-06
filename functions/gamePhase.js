@@ -729,20 +729,19 @@ async function processVotes(lobbyData, players) {
 
     // Find the player with the most votes
     let maxVotes = 0;
-    let eliminatedId = null;
-
-    for (const [targetId, count] of Object.entries(voteCounts)) {
+    let eliminatedId = null; for (const [targetId, count] of Object.entries(voteCounts)) {
         if (count > maxVotes && count >= requiredVotes) {
             maxVotes = count;
             eliminatedId = targetId;
-        } else if (count === maxVotes) {
+        } else if (count === maxVotes && count >= requiredVotes) {
             eliminatedId = null; // Tie, no one is eliminated
         }
-    }
-
-    if (eliminatedId) {
+    } if (eliminatedId) {
         const eliminatedPlayer = players.find(p => p.id === eliminatedId);
-        return eliminatedPlayer;
+        return {
+            ...eliminatedPlayer,
+            voteCount: maxVotes
+        };
     }
 
     return null;
