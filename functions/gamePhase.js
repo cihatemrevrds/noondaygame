@@ -460,9 +460,14 @@ async function processNightActions(lobbyData, players) {
     let roleDataUpdate = { ...lobbyData.roleData } || {};
     let updatedPlayers = [...players];
     let nightEvents = []; // Public events - visible to everyone
-    let privateEvents = {}; // Private events - visible only to specific players
+    let privateEvents = {}; // Private events - visible only to specific players    // NIGHT ACTION ORDER OF OPERATIONS:
+    // 1. Escort blocking (processed first)
+    // 2. Doctor protection (if not blocked)
+    // 3. Sheriff investigation (if not blocked)
+    // 4. Chieftain orders (if not blocked)
+    // 5. Gunmen kills (following orders or independent choices, if not blocked)
 
-    // First check who is blocked by Escort (multiple escorts possible)
+    // 1. First check who is blocked by Escort (multiple escorts possible)
     const blockedPlayerIds = [];
     if (roleDataUpdate.escort) {
         for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
@@ -472,7 +477,35 @@ async function processNightActions(lobbyData, players) {
         }
     }
 
-    // Process Sheriff investigations (multiple sheriffs possible)
+    // 2. Process Doctor protection (multiple doctors possible) - BEFORE investigations
+    if (roleDataUpdate.doctor) {
+        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+            if (doctorData && doctorData.protectedId) {
+                const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor' && p.isAlive);
+                const isDoctorBlocked = blockedPlayerIds.includes(doctorUid);
+
+                if (!isDoctorBlocked && doctorPlayer) {
+                    const targetPlayer = players.find(p => p.id === doctorData.protectedId);
+                    if (targetPlayer) {
+                        // Private event - only the Doctor sees this
+                        privateEvents[doctorPlayer.id] = {
+                            type: 'protection_result',
+                            targetName: targetPlayer.name,
+                            message: `You protected ${targetPlayer.name} tonight.`
+                        };
+                    }
+                } else if (isDoctorBlocked && doctorPlayer) {
+                    // Private event - only the Doctor sees this
+                    privateEvents[doctorPlayer.id] = {
+                        type: 'protection_blocked',
+                        message: 'You were blocked and could not protect anyone.'
+                    };
+                }
+            }
+        }
+    }
+
+    // 3. Process Sheriff investigations (multiple sheriffs possible) - AFTER protection
     if (roleDataUpdate.sheriff) {
         for (const [sheriffUid, sheriffData] of Object.entries(roleDataUpdate.sheriff)) {
             if (sheriffData && sheriffData.targetId) {
@@ -567,39 +600,12 @@ async function processNightActions(lobbyData, players) {
         }
     }
 
-    // Process Doctor protection (multiple doctors possible)
-    if (roleDataUpdate.doctor) {
-        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-            if (doctorData && doctorData.protectedId) {
-                const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor' && p.isAlive);
-                const isDoctorBlocked = blockedPlayerIds.includes(doctorUid);
-
-                if (!isDoctorBlocked && doctorPlayer) {
-                    const targetPlayer = players.find(p => p.id === doctorData.protectedId);
-                    if (targetPlayer) {
-                        // Private event - only the Doctor sees this
-                        privateEvents[doctorPlayer.id] = {
-                            type: 'protection_result',
-                            targetName: targetPlayer.name,
-                            message: `You protected ${targetPlayer.name} tonight.`
-                        };
-                    }
-                } else if (isDoctorBlocked && doctorPlayer) {
-                    // Private event - only the Doctor sees this
-                    privateEvents[doctorPlayer.id] = {
-                        type: 'protection_blocked',
-                        message: 'You were blocked and could not protect anyone.'
-                    };
-                }
-            }
-        }
-    }
-
-    // Process Escort blocking (multiple escorts possible)
+    // 5. Process Escort blocking notifications (after actions processed)
     if (roleDataUpdate.escort) {
         for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
             if (escortData && escortData.blockedId) {
                 const escortPlayer = players.find(p => p.id === escortUid && p.role === 'Escort' && p.isAlive);
+
                 if (escortPlayer) {
                     const targetPlayer = players.find(p => p.id === escortData.blockedId);
 
@@ -614,151 +620,207 @@ async function processNightActions(lobbyData, players) {
                 }
             }
         }
-    }    // Process night kills - prioritize chieftain orders over gunman choices
+    }
+
+    // 6. Process Chieftain orders and Gunman kills (FINAL PHASE)
     console.log('🔫 Processing bandit team kills...');
     console.log('🔍 RoleData gunman section:', JSON.stringify(roleDataUpdate.gunman, null, 2));
     console.log('👑 RoleData chieftain section:', JSON.stringify(roleDataUpdate.chieftain, null, 2));
 
-    // First check if any chieftain has given orders
+    // First check if any chieftain has given orders (if not blocked)
     let chieftainTarget = null;
     let chieftainPlayer = null;
     if (roleDataUpdate.chieftain) {
         for (const [chieftainUid, chieftainData] of Object.entries(roleDataUpdate.chieftain)) {
-            if (chieftainData && chieftainData.targetId) {
+            if (chieftainData && chieftainData.targetId && !blockedPlayerIds.includes(chieftainUid)) {
                 const foundChieftain = players.find(p => p.id === chieftainUid && p.role === 'Chieftain' && p.isAlive);
                 if (foundChieftain) {
                     chieftainTarget = chieftainData.targetId;
                     chieftainPlayer = foundChieftain;
-                    console.log(`👑 Chieftain ${chieftainPlayer.name} ordered kill on ${chieftainTarget}`);
+                    console.log(`👑 Chieftain ${chieftainPlayer.name} ordered kill on ${chieftainTarget} (not blocked)`);
                     break; // Only one chieftain can give orders
                 }
             }
         }
-    }
+    }    // Process kills based on chieftain orders or gunman choices
+    // If Chieftain gives orders, randomly select ONE gunman to execute it
+    // If Chieftain is blocked or dead, all gunmen act independently
 
-    // Process kills based on chieftain orders or gunman choices
-    if (roleDataUpdate.gunman) {
-        for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
-            console.log(`🔫 Processing gunman ${gunmanUid}:`, gunmanData);
+    const aliveGunmen = Object.keys(roleDataUpdate.gunman || {})
+        .map(gunmanUid => players.find(p => p.id === gunmanUid && p.role === 'Gunman' && p.isAlive))
+        .filter(Boolean);
 
-            const gunmanPlayer = players.find(p => p.id === gunmanUid && p.role === 'Gunman' && p.isAlive);
-            const isGunmanBlocked = blockedPlayerIds.includes(gunmanUid);
+    console.log(`🔫 Found ${aliveGunmen.length} alive gunmen`);
 
-            if (gunmanPlayer && !isGunmanBlocked) {
-                // Determine target: chieftain order takes priority over gunman's choice
-                let targetId = null;
-                let orderSource = 'self';
+    if (chieftainTarget && chieftainPlayer && aliveGunmen.length > 0) {
+        // Chieftain gave orders and is not blocked - randomly select ONE gunman to execute
+        const availableGunmen = aliveGunmen.filter(gunman => !blockedPlayerIds.includes(gunman.id));
 
-                if (chieftainTarget && chieftainPlayer) {
-                    targetId = chieftainTarget;
-                    orderSource = 'chieftain';
-                    console.log(`🎯 Gunman ${gunmanPlayer.name} following chieftain's order to target ${targetId}`);
-                } else if (gunmanData && gunmanData.targetId) {
-                    targetId = gunmanData.targetId;
-                    orderSource = 'self';
-                    console.log(`🎯 Gunman ${gunmanPlayer.name} targeting own choice ${targetId}`);
+        if (availableGunmen.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableGunmen.length);
+            const selectedGunman = availableGunmen[randomIndex];
+
+            console.log(`👑 Chieftain ordered kill, randomly selected ${selectedGunman.name} to execute`);
+
+            // Execute the chieftain's order with the selected gunman
+            const targetIndex = updatedPlayers.findIndex(p => p.id === chieftainTarget);
+            if (targetIndex !== -1) {
+                const targetPlayer = updatedPlayers[targetIndex];
+
+                // Check if target is protected by any doctor (if doctors are not blocked)
+                let isProtected = false;
+                if (roleDataUpdate.doctor) {
+                    for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                        if (doctorData && doctorData.protectedId === chieftainTarget && !blockedPlayerIds.includes(doctorUid)) {
+                            console.log(`🛡️ Target protected by doctor ${doctorUid}`);
+                            isProtected = true;
+                            break;
+                        }
+                    }
                 }
 
-                if (targetId) {
-                    console.log(`🔫 Gunman ${gunmanUid} found:`, !!gunmanPlayer);
-                    console.log(`🔫 Gunman ${gunmanUid} blocked:`, isGunmanBlocked);
-                    console.log(`🔫 Target ID:`, targetId);
+                if (!isProtected) {
+                    console.log(`💀 Killing target: ${targetPlayer.name}`);
+                    updatedPlayers[targetIndex] = {
+                        ...targetPlayer,
+                        isAlive: false,
+                        killedBy: 'Gunman',
+                        eliminatedBy: selectedGunman.name
+                    };
 
-                    if (targetId) {
-                        const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
-                        console.log(`🎯 Target index found:`, targetIndex);
+                    // Public event - everyone sees this
+                    nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
-                        if (targetIndex !== -1) {
-                            const targetPlayer = updatedPlayers[targetIndex];
-                            console.log(`🎯 Target player:`, targetPlayer.name);
+                    // Private event - only the selected Gunman sees this
+                    privateEvents[selectedGunman.id] = {
+                        type: 'kill_success',
+                        targetName: targetPlayer.name,
+                        message: `You carried out the Chieftain's order and killed ${targetPlayer.name}.`
+                    };
 
-                            // Check if target is protected by any doctor (if doctors are not blocked)
-                            let isProtected = false;
-                            if (roleDataUpdate.doctor) {
-                                for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-                                    if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
-                                        console.log(`🛡️ Target protected by doctor ${doctorUid}`);
-                                        isProtected = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            console.log(`🛡️ Target protection status:`, isProtected);
-
-                            // Kill the target if they're not protected
-                            if (!isProtected) {
-                                console.log(`💀 Killing target: ${targetPlayer.name}`);
-                                updatedPlayers[targetIndex] = {
-                                    ...targetPlayer,
-                                    isAlive: false,
-                                    killedBy: 'Gunman',
-                                    eliminatedBy: gunmanPlayer.name
-                                };
-
-                                // Public event - everyone sees this
-                                nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
-                                console.log(`📢 Added public event: ${targetPlayer.name} was killed by Bandits.`);
-
-                                // Private event - only the Gunman sees this
-                                privateEvents[gunmanPlayer.id] = {
-                                    type: 'kill_success',
-                                    targetName: targetPlayer.name,
-                                    message: orderSource === 'chieftain'
-                                        ? `You carried out the Chieftain's order and killed ${targetPlayer.name}.`
-                                        : `You successfully killed ${targetPlayer.name}.`
-                                };
-                                console.log(`📝 Added private success event for gunman`);
-
-                                // If chieftain gave the order, notify them too
-                                if (orderSource === 'chieftain' && chieftainPlayer) {
-                                    privateEvents[chieftainPlayer.id] = {
-                                        type: 'order_success',
+                    // Chieftain gets success notification
+                    privateEvents[chieftainPlayer.id] = {
+                        type: 'order_success',
+                        targetName: targetPlayer.name,
+                        message: `Your order was carried out. ${targetPlayer.name} was killed.`
+                    };
+                } else {
+                    // Target was protected
+                    // Find the doctor(s) who protected this target
+                    if (roleDataUpdate.doctor) {
+                        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                            if (doctorData && doctorData.protectedId === chieftainTarget && !blockedPlayerIds.includes(doctorUid)) {
+                                const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
+                                if (doctorPlayer) {
+                                    privateEvents[doctorPlayer.id] = {
+                                        type: 'protection_successful',
                                         targetName: targetPlayer.name,
-                                        message: `Your order was carried out. ${targetPlayer.name} was killed.`
-                                    };
-                                    console.log(`📝 Added private success event for chieftain`);
-                                }
-                            } else {
-                                // Find the doctor(s) who protected this target and give them success notification
-                                if (roleDataUpdate.doctor) {
-                                    for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-                                        if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
-                                            const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
-                                            if (doctorPlayer) {
-                                                // Private event - only the Doctor sees this successful save
-                                                privateEvents[doctorPlayer.id] = {
-                                                    type: 'protection_successful',
-                                                    targetName: targetPlayer.name,
-                                                    message: `You successfully saved ${targetPlayer.name} from an attack!`
-                                                };
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Private event - only the Gunman sees this
-                                privateEvents[gunmanPlayer.id] = {
-                                    type: 'kill_failed',
-                                    targetName: targetPlayer.name,
-                                    message: orderSource === 'chieftain'
-                                        ? `You tried to carry out the Chieftain's order, but ${targetPlayer.name} was protected.`
-                                        : `You tried to kill ${targetPlayer.name}, but they were protected.`
-                                };
-
-                                // If chieftain gave the order, notify them too
-                                if (orderSource === 'chieftain' && chieftainPlayer) {
-                                    privateEvents[chieftainPlayer.id] = {
-                                        type: 'order_failed',
-                                        targetName: targetPlayer.name,
-                                        message: `Your order failed. ${targetPlayer.name} was protected.`
+                                        message: `You successfully saved ${targetPlayer.name} from an attack!`
                                     };
                                 }
                             }
                         }
                     }
-                } else if (isGunmanBlocked && gunmanPlayer) {
-                    // Private event - only the Gunman sees this
+
+                    // Selected Gunman gets failure notification
+                    privateEvents[selectedGunman.id] = {
+                        type: 'kill_failed',
+                        targetName: targetPlayer.name,
+                        message: `You tried to carry out the Chieftain's order, but ${targetPlayer.name} was protected.`
+                    };
+
+                    // Chieftain gets failure notification
+                    privateEvents[chieftainPlayer.id] = {
+                        type: 'order_failed',
+                        targetName: targetPlayer.name,
+                        message: `Your order failed. ${targetPlayer.name} was protected.`
+                    };
+                }
+            }
+
+            // Other gunmen who weren't selected get informed they were not chosen
+            aliveGunmen.forEach(gunman => {
+                if (gunman.id !== selectedGunman.id && !blockedPlayerIds.includes(gunman.id)) {
+                    privateEvents[gunman.id] = {
+                        type: 'not_selected',
+                        message: 'The Chieftain gave orders to another Gunman tonight.'
+                    };
+                }
+            });
+        } else {
+            // All gunmen are blocked, chieftain order fails
+            privateEvents[chieftainPlayer.id] = {
+                type: 'order_failed',
+                message: 'Your order could not be carried out - all Gunmen were blocked.'
+            };
+        }
+    } else {
+        // No chieftain orders OR chieftain is dead/blocked - gunmen act independently
+        console.log(`🔫 Gunmen acting independently (no chieftain orders or chieftain blocked)`);
+
+        if (roleDataUpdate.gunman) {
+            for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
+                const gunmanPlayer = players.find(p => p.id === gunmanUid && p.role === 'Gunman' && p.isAlive);
+                const isGunmanBlocked = blockedPlayerIds.includes(gunmanUid);
+
+                if (gunmanPlayer && !isGunmanBlocked && gunmanData && gunmanData.targetId) {
+                    const targetId = gunmanData.targetId;
+                    const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
+
+                    if (targetIndex !== -1) {
+                        const targetPlayer = updatedPlayers[targetIndex];
+
+                        // Check if target is protected by any doctor (if doctors are not blocked)
+                        let isProtected = false;
+                        if (roleDataUpdate.doctor) {
+                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                    isProtected = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!isProtected) {
+                            updatedPlayers[targetIndex] = {
+                                ...targetPlayer,
+                                isAlive: false,
+                                killedBy: 'Gunman',
+                                eliminatedBy: gunmanPlayer.name
+                            };
+
+                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+
+                            privateEvents[gunmanPlayer.id] = {
+                                type: 'kill_success',
+                                targetName: targetPlayer.name,
+                                message: `You successfully killed ${targetPlayer.name}.`
+                            };
+                        } else {
+                            // Find the doctor(s) who protected this target
+                            if (roleDataUpdate.doctor) {
+                                for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                    if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                        const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
+                                        if (doctorPlayer) {
+                                            privateEvents[doctorPlayer.id] = {
+                                                type: 'protection_successful',
+                                                targetName: targetPlayer.name,
+                                                message: `You successfully saved ${targetPlayer.name} from an attack!`
+                                            };
+                                        }
+                                    }
+                                }
+                            }
+
+                            privateEvents[gunmanPlayer.id] = {
+                                type: 'kill_failed',
+                                targetName: targetPlayer.name,
+                                message: `You tried to kill ${targetPlayer.name}, but they were protected.`
+                            };
+                        }
+                    }
+                } else if (gunmanPlayer && isGunmanBlocked) {
                     privateEvents[gunmanPlayer.id] = {
                         type: 'kill_blocked',
                         message: 'You were blocked and could not kill anyone.'
