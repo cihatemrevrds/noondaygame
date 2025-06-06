@@ -1,4 +1,6 @@
 const admin = require('firebase-admin');
+const admin = require('firebase-admin');
+const functions = require('firebase-functions');
 const db = admin.firestore();
 
 // Helper function to calculate day information phase time based on events
