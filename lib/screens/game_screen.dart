@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/player.dart';
@@ -6,9 +9,12 @@ import '../services/game_service.dart';
 import '../services/game_state_manager.dart';
 import '../widgets/role_utils.dart';
 import '../screens/night_phase_screen.dart';
-import '../screens/day_phase_screen.dart';
-import 'package:noondaygame/widgets/role_reveal_popup.dart';
+import '../widgets/discussion_phase_widget.dart';
+import '../widgets/voting_phase_widget.dart';
+import '../widgets/role_reveal_popup.dart';
 import '../widgets/night_outcome_popup.dart';
+import '../widgets/event_share_popup.dart';
+import '../widgets/vote_result_popup.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -36,10 +42,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Map<String, dynamic> _nightOutcomes = {}; // Individual night outcomes
   bool _hasShownRoleReveal = false; // Role reveal popup state
   int _dayCount = 1; // Day/Night counter
-
   // Phase configuration
   bool _manualPhaseControl = false; // Default value
   Map<String, dynamic>? _lobbyData; // Store current lobby data
+  // Timing and phase management
+  Timer? _phaseTimer;
+  int _remainingTime = 0;
+
+  // Event and popup state management
+  bool _hasShownNightOutcome = false;
+  bool _hasShownEventSharing = false;
+  bool _hasShownVoteResult = false;
   @override
   void initState() {
     super.initState();
@@ -54,6 +67,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _phaseTimer?.cancel();
     super.dispose();
   }
 
@@ -136,14 +150,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       // Get votes status
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
-      final votes = votesData.map(
-        (k, v) => MapEntry(k, v.toString()),
-      ); // Get phase info
+      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
+
+      // Get phase info and timing
       final phase = data['phase'] as String? ?? 'night';
       final gameState = data['gameState'] as String? ?? 'role_reveal';
       final dayCount = data['dayCount'] as int? ?? 1;
 
-      // Get remaining time and night action result (if any)
+      // Extract timing info from Firebase
+      final phaseStartedAt = data['phaseStartedAt'];
+      final phaseTimeLimit =
+          data['phaseTimeLimit'] as int? ?? 60000; // milliseconds
+
+      // Calculate remaining time
+      int remainingTime = 0;
+      if (phaseStartedAt != null) {
+        final startTime = phaseStartedAt.toDate();
+        final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+        remainingTime =
+            ((phaseTimeLimit - elapsed) / 1000)
+                .round()
+                .clamp(0, double.infinity)
+                .toInt();
+      }
+
+      // Get night action result and outcomes
       final nightActionResult =
           data['nightActionResult']?[_currentUserId] as String?;
 
@@ -165,17 +196,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _nightActionResult = nightActionResult;
             _nightOutcomes = myNightOutcome;
             _dayCount = dayCount;
+            _remainingTime = remainingTime;
 
             // Update vote selection
             _votedPlayerId = votes[_currentUserId];
-          }); // Show role reveal popup when game starts
-          if (gameState == 'role_reveal' &&
-              !_hasShownRoleReveal &&
-              _myRole != null &&
-              _myRole!.isNotEmpty) {
-            _hasShownRoleReveal = true;
-            _showRoleRevealPopup();
-          }
+          });
+
+          // Handle phase-specific popups and actions
+          _handlePhaseSpecificActions(gameState, data);
+
+          // Start or update timer for current phase
+          _updatePhaseTimer();
         }
       });
     });
@@ -416,9 +447,185 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Handle phase-specific actions and popups
+  void _handlePhaseSpecificActions(
+    String gameState,
+    Map<String, dynamic> data,
+  ) {
+    switch (gameState) {
+      case 'role_reveal':
+        // Show role reveal popup when game starts
+        if (!_hasShownRoleReveal && _myRole != null && _myRole!.isNotEmpty) {
+          _hasShownRoleReveal = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showRoleRevealPopup();
+          });
+        }
+        break;
+
+      case 'night_outcome':
+        // Show private night outcome events
+        if (!_hasShownNightOutcome && _nightOutcomes.isNotEmpty) {
+          _hasShownNightOutcome = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showNightOutcomePhase();
+          });
+        }
+        break;
+
+      case 'event_sharing':
+        // Show public event sharing popup
+        if (!_hasShownEventSharing) {
+          _hasShownEventSharing = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final events = _fetchNightEvents();
+            if (events.isNotEmpty) {
+              _showEventSharingPopup(events);
+            }
+          });
+        }
+        break;
+
+      case 'voting_outcome':
+        // Show vote result popup
+        if (!_hasShownVoteResult) {
+          _hasShownVoteResult = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showVoteResultPopup(data);
+          });
+        }
+        break;
+
+      default:
+        // Reset popup flags when entering new phases
+        if (gameState == 'night_phase') {
+          _hasShownNightOutcome = false;
+        } else if (gameState == 'discussion_phase') {
+          _hasShownEventSharing = false;
+        } else if (gameState == 'voting_phase') {
+          _hasShownVoteResult = false;
+        }
+        break;
+    }
+  }
+
+  // Update phase timer based on current timing
+  void _updatePhaseTimer() {
+    _phaseTimer?.cancel();
+
+    if (_remainingTime > 0) {
+      _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted) {
+          setState(() {
+            _remainingTime =
+                (_remainingTime - 1).clamp(0, double.infinity).toInt();
+          });
+
+          if (_remainingTime <= 0) {
+            timer.cancel();
+            // Automatically advance phase when timer expires (only if not in manual mode)
+            if (!_manualPhaseControl) {
+              _autoAdvancePhase();
+            }
+          }
+        } else {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
+  // Automatically advance phase when timer expires
+  void _autoAdvancePhase() async {
+    try {
+      print('⏰ Timer expired, auto-advancing phase from: $_currentGameState');
+
+      // Call the backend auto-advance function
+      final response = await http.post(
+        Uri.parse(
+          'https://us-central1-noondaygame.cloudfunctions.net/autoAdvancePhase',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'lobbyCode': widget.lobbyCode}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Phase auto-advanced: ${responseData['message']}');
+      } else {
+        print(
+          '❌ Auto-advance failed: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Auto-advance error: $e');
+    }
+  }
+
+  // Show event sharing popup with public events
+  void _showEventSharingPopup(List<String> events) {
+    if (events.isEmpty) return;
+
+    // Show first event - for multiple events, we could chain them
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => EventSharePopup(
+            eventDescription: events.first,
+            playerName: 'Everyone', // Generic player name for public events
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
+          ),
+    );
+  }
+
+  // Show vote result popup
+  void _showVoteResultPopup(Map<String, dynamic> data) {
+    final lastDayResult = data['lastDayResult'] as Map<String, dynamic>?;
+
+    if (lastDayResult != null) {
+      final eliminatedPlayerName =
+          lastDayResult['name'] as String? ?? 'Unknown';
+      final eliminatedPlayerRole =
+          lastDayResult['role'] as String? ?? 'Unknown';
+      final voteCount = lastDayResult['voteCount'] as int? ?? 0;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => VoteResultPopup(
+              playerName: eliminatedPlayerName,
+              playerRole: eliminatedPlayerRole,
+              voteCount: voteCount,
+              onComplete: () {
+                Navigator.of(context).pop();
+              },
+            ),
+      );
+    } else {
+      // No majority vote - show no elimination message
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => VoteResultPopup(
+              playerName: 'No One', // Use "No One" instead of null
+              playerRole: null,
+              voteCount: 0,
+              onComplete: () {
+                Navigator.of(context).pop();
+              },
+            ),
+      );
+    }
+  }
+
   void _showVotingOutcomePhase() {
-    // Show voting results (handled by server-side voting outcome)
-    // This phase will show elimination results, etc.
+    // Show voting results (handled by the vote result popup in _handlePhaseSpecificActions)
+    // This method is called by _startGameLoop but actual popup is handled by phase listener
   }
   Future<void> _fetchPhaseDurations() async {
     try {
@@ -598,25 +805,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
-  // Determine which screen to show based on game state
-  bool _shouldShowNightScreen() {
-    switch (_currentGameState) {
-      case 'night_phase':
-        return true; // Show night screen for night actions
-      case 'role_reveal':
-        // After role reveal popup, immediately show night screen
-        return _hasShownRoleReveal;
-      case 'night_outcome':
-      case 'event_sharing':
-      case 'discussion_phase':
-      case 'voting_phase':
-      case 'voting_outcome':
-        return false; // Show day screen for all other phases
-      default:
-        return _currentPhase == 'night'; // Fallback to old logic
-    }
-  }
-
   // Get user-friendly display text for current phase
   String _getDisplayPhase() {
     switch (_currentGameState) {
@@ -638,6 +826,125 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       default:
         return _currentPhase;
     }
+  }
+
+  // Build the appropriate widget for the current game state
+  Widget _buildPhaseWidget() {
+    switch (_currentGameState) {
+      case 'role_reveal':
+        // Show a waiting screen while role reveal popup is shown
+        return _buildWaitingScreen('Revealing roles...', Icons.visibility);
+
+      case 'night_phase':
+        // Show night phase screen for night actions
+        return NightPhaseScreen(
+          lobbyCode: widget.lobbyCode,
+          currentUserId: _currentUserId,
+          myRole: _myRole,
+          myRoleDesc: _myRoleDesc,
+          nightActionResult: _nightActionResult,
+          players: _players,
+          isLoading: _isLoading,
+          onNightAction: _performNightAction,
+          onSetNightActionResult:
+              (result) => setState(() => _nightActionResult = result),
+          nightNumber: _dayCount,
+        );
+
+      case 'night_outcome':
+        // Show waiting screen while night outcome popups are shown
+        return _buildWaitingScreen(
+          'Processing night actions...',
+          Icons.nightlight_round,
+        );
+
+      case 'event_sharing':
+        // Show waiting screen while event sharing popup is shown
+        return _buildWaitingScreen(
+          'Sharing night events...',
+          Icons.announcement,
+        );
+
+      case 'discussion_phase':
+        // Show discussion phase widget
+        return DiscussionPhaseWidget(
+          players: _players.where((p) => p.isAlive).toList(),
+          remainingTime: _remainingTime,
+          currentUserId: _currentUserId,
+          myRole: _myRole,
+        );
+      case 'voting_phase':
+        // Show voting phase widget
+        return VotingPhaseWidget(
+          players:
+              _players
+                  .where((p) => p.isAlive && p.id != _currentUserId)
+                  .toList(),
+          remainingTime: _remainingTime,
+          currentUserId: _currentUserId,
+          myRole: _myRole,
+          onVoteChanged: (selectedPlayerId) {
+            if (selectedPlayerId != null) {
+              _submitVote(selectedPlayerId);
+            }
+          },
+        );
+
+      case 'voting_outcome':
+        // Show waiting screen while vote result popup is shown
+        return _buildWaitingScreen('Counting votes...', Icons.how_to_vote);
+
+      default:
+        // Fallback to a generic waiting screen
+        return _buildWaitingScreen('Loading game...', Icons.hourglass_empty);
+    }
+  }
+
+  // Build a waiting screen with message and icon
+  Widget _buildWaitingScreen(String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 80, color: Colors.orange.withOpacity(0.8)),
+          const SizedBox(height: 20),
+          Text(
+            message,
+            style: const TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              shadows: [
+                Shadow(
+                  offset: Offset(2, 2),
+                  blurRadius: 4,
+                  color: Colors.black87,
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (_remainingTime > 0) ...[
+            const SizedBox(height: 10),
+            Text(
+              '${_remainingTime}s remaining',
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 16,
+                color: Colors.orange,
+                shadows: [
+                  Shadow(
+                    offset: Offset(1, 1),
+                    blurRadius: 2,
+                    color: Colors.black87,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -697,35 +1004,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 fit: BoxFit.cover,
               ),
             ),
-            child:
-                _shouldShowNightScreen()
-                    ? NightPhaseScreen(
-                      lobbyCode: widget.lobbyCode,
-                      currentUserId: _currentUserId,
-                      myRole: _myRole,
-                      myRoleDesc: _myRoleDesc,
-                      nightActionResult: _nightActionResult,
-                      players: _players,
-                      isLoading: _isLoading,
-                      onNightAction: _performNightAction,
-                      onSetNightActionResult:
-                          (result) =>
-                              setState(() => _nightActionResult = result),
-                      nightNumber: _dayCount,
-                    )
-                    : DayPhaseScreen(
-                      currentUserId: _currentUserId,
-                      myRole: _myRole,
-                      myRoleDesc: _myRoleDesc,
-                      players: _players,
-                      votedPlayerId: _votedPlayerId,
-                      isLoading: _isLoading,
-                      onVotePlayer: _submitVote,
-                      onSetNightActionResult:
-                          (result) =>
-                              setState(() => _nightActionResult = result),
-                      dayNumber: _dayCount,
-                    ),
+            child: _buildPhaseWidget(),
           ),
 
           // Host controls for manual phase advancement
