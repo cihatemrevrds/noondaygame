@@ -176,13 +176,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       // Get night action result and outcomes
       final nightActionResult =
-          data['nightActionResult']?[_currentUserId] as String?;
+          data['nightActionResult']?[_currentUserId]
+              as String?; // Get individual night outcomes for this player
+      final privateEvents =
+          data['privateEvents'] as Map<String, dynamic>? ?? {};
 
-      // Get individual night outcomes for this player
-      final nightOutcomes =
-          data['nightOutcomes'] as Map<String, dynamic>? ?? {};
-      final myNightOutcome =
-          nightOutcomes[_currentUserId] as Map<String, dynamic>? ?? {};
+      print("DEBUG: privateEvents structure: $privateEvents");
+
+      // Check if there's a private event specifically for the current user
+      final myPrivateEvent = privateEvents[_currentUserId];
+      print("DEBUG: myPrivateEvent for $_currentUserId: $myPrivateEvent");
+
+      // Handle both potential structures - either a full event object or a map of events
+      final Map<String, dynamic> myNightOutcome;
+      if (myPrivateEvent is Map<String, dynamic>) {
+        myNightOutcome = myPrivateEvent;
+      } else if (myPrivateEvent is String && myPrivateEvent.isNotEmpty) {
+        // Handle case where privateEvent is a direct string message
+        myNightOutcome = {'message': myPrivateEvent};
+      } else {
+        myNightOutcome = {};
+      }
 
       // Get role description
       _getRoleDescription(myPlayer.role).then((roleDesc) {
@@ -340,16 +354,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
           break;
       }
-
       if (mounted && result != null) {
         setState(() => _nightActionResult = result);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result, style: const TextStyle(fontFamily: 'Rye')),
-            backgroundColor: Colors.green[800],
-          ),
-        );
+        // Only show immediate feedback for actions except sheriff investigation
+        if (action != 'sheriffInvestigate') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Action submitted",
+                style: const TextStyle(fontFamily: 'Rye'),
+              ),
+              backgroundColor: Colors.green[800],
+            ),
+          );
+        } else {
+          // For sheriff, just show that the action was submitted without revealing the result
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Investigation submitted",
+                style: const TextStyle(fontFamily: 'Rye'),
+              ),
+              backgroundColor: Colors.green[800],
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -403,36 +433,53 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _showNightOutcomePhase() {
     // Show individual night outcomes (Sheriff investigation results, etc.)
+    print("DEBUG: Showing night outcome with _nightOutcomes: $_nightOutcomes");
+
+    // Always show something, even if _nightOutcomes is empty
+    String mainMessage = 'You had a quiet night.';
+
     if (_nightOutcomes.isNotEmpty) {
-      final outcomes = <String>[];
-      _nightOutcomes.forEach((key, value) {
-        if (value is String && value.isNotEmpty) {
-          outcomes.add(value);
+      // Check if _nightOutcomes itself has a message property (it's the entire event object)
+      if (_nightOutcomes.containsKey('message')) {
+        final message = _nightOutcomes['message'];
+        if (message is String && message.isNotEmpty) {
+          mainMessage = message;
         }
-      });
-
-      if (outcomes.isNotEmpty) {
-        _showPrivateEventPopups(outcomes, 0);
       }
-    }
-  }
-
-  void _showPrivateEventPopups(List<String> messages, int index) {
-    if (index >= messages.length) {
-      return;
-    }
-
+    } // Show a single popup with the night outcome message
+    print("DEBUG: Showing night outcome popup with message: '$mainMessage'");
     showDialog(
       context: context,
       barrierDismissible: false,
       builder:
           (context) => NightOutcomePopup(
             title: 'Night Outcome',
-            message: messages[index],
+            message: mainMessage,
             onComplete: () {
               Navigator.of(context).pop();
-              if (index + 1 < messages.length) {
-                _showPrivateEventPopups(messages, index + 1);
+              // Make sure we set flag so phase can advance properly
+              setState(() {
+                _hasShownNightOutcome = true;
+              });
+
+              // If we're in manual phase control mode, show a snackbar to remind the host
+              if (_manualPhaseControl && widget.isHost) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "You can now advance to the next phase",
+                      style: const TextStyle(fontFamily: 'Rye'),
+                    ),
+                    backgroundColor: Colors.green[800],
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+
+              // Try to manually advance phase if auto-advance is enabled and timer is done
+              if (!_manualPhaseControl && _remainingTime <= 0) {
+                print("DEBUG: Attempting auto-advance after popup completion");
+                _autoAdvancePhase();
               }
             },
           ),
@@ -445,6 +492,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (events.isNotEmpty) {
       _showOutcomePopups(events, 0, isPrivate: false);
     }
+  }
+
+  // Helper method to check if there are any valid night outcomes
+  bool _hasValidNightOutcomes() {
+    if (_nightOutcomes.isEmpty) return false;
+
+    // If _nightOutcomes has a message property, it's a valid outcome
+    if (_nightOutcomes.containsKey('message')) {
+      final message = _nightOutcomes['message'];
+      return message is String && message.isNotEmpty;
+    }
+
+    // Always return true if we have any data - we'll display a default message anyway
+    return true;
   }
 
   // Handle phase-specific actions and popups
@@ -464,15 +525,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           });
         }
         break;
-
       case 'night_outcome':
-        if (!_hasShownNightOutcome && _nightOutcomes.isNotEmpty) {
-          _hasShownNightOutcome = true;
+        if (!_hasShownNightOutcome && _hasValidNightOutcomes()) {
+          // We'll set _hasShownNightOutcome in the popup's onComplete callback
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _showNightOutcomePhase();
           });
           setState(() {
-            _remainingTime = 5; // Set timer to 5 seconds for night_outcome phase
+            _remainingTime =
+                10; // Set timer to 10 seconds for night_outcome phase
           });
         }
         break;
@@ -487,7 +548,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             }
           });
           setState(() {
-            _remainingTime = 5; // Set timer to 5 seconds for event_sharing phase
+            _remainingTime =
+                5; // Set timer to 5 seconds for event_sharing phase
           });
         }
         break;
@@ -500,10 +562,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           });
         }
         break;
-
       default:
         // Reset popup flags when entering new phases
         if (gameState == 'night_phase') {
+          _hasShownNightOutcome = false;
+        } else if (gameState == 'night_outcome') {
+          // Ensure the flag is reset when entering night outcome phase
           _hasShownNightOutcome = false;
         } else if (gameState == 'discussion_phase') {
           _hasShownEventSharing = false;
@@ -531,6 +595,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             // Automatically advance phase when timer expires (only if not in manual mode)
             if (!_manualPhaseControl) {
               _autoAdvancePhase();
+            } else {
+              // In manual mode, ensure we show a message that the host needs to advance the phase
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    "Host needs to advance to the next phase",
+                    style: const TextStyle(fontFamily: 'Rye'),
+                  ),
+                  backgroundColor: Colors.amber[800],
+                ),
+              );
             }
           }
         } else {
@@ -545,25 +620,56 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     try {
       print('⏰ Timer expired, auto-advancing phase from: $_currentGameState');
 
+      // Add a small delay to ensure Firebase has processed any state changes
+      await Future.delayed(const Duration(milliseconds: 500));
+
       // Call the backend auto-advance function
       final response = await http.post(
         Uri.parse(
           'https://us-central1-noondaygame.cloudfunctions.net/autoAdvancePhase',
         ),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'lobbyCode': widget.lobbyCode}),
+        body: jsonEncode({
+          'lobbyCode': widget.lobbyCode,
+          'currentState':
+              _currentGameState, // Send current state for verification
+        }),
       );
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         print('✅ Phase auto-advanced: ${responseData['message']}');
+      } else if (response.statusCode == 400 &&
+          response.body.contains("Phase time not expired yet")) {
+        // Phase isn't ready to advance yet, will be handled by the next Firebase update
+        print('⏱️ Phase not ready to advance yet, waiting for next update');
       } else {
         print(
           '❌ Auto-advance failed: ${response.statusCode} - ${response.body}',
         );
+
+        // Show a message to the host if we're in manual mode
+        if (widget.isHost && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Unable to advance phase automatically. Please try manually.",
+                style: const TextStyle(fontFamily: 'Rye'),
+              ),
+              backgroundColor: Colors.red[800],
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } catch (e) {
       print('❌ Auto-advance error: $e');
+
+      // Try again after a short delay if it's a network error
+      if (e.toString().contains('XMLHttpRequest error')) {
+        print('🔄 Network error, retrying auto-advance in 1 second');
+        Future.delayed(const Duration(seconds: 1), _autoAdvancePhase);
+      }
     }
   }
 
