@@ -1,5 +1,4 @@
 const admin = require('firebase-admin');
-const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const db = admin.firestore();
 
@@ -118,18 +117,21 @@ exports.advancePhase = async (req, res) => {
         const lobbyData = lobbyDoc.data();
         const players = lobbyData.players || []; if (lobbyData.hostUid !== hostId) {
             return res.status(403).json({ error: "Only host can advance the phase" });
-        }
-
-        const currentPhase = lobbyData.phase || "night";
+        } const currentPhase = lobbyData.phase || "night";
         const currentGameState = lobbyData.gameState || "role_reveal";
         const dayCount = lobbyData.dayCount || 1;
 
-        let updateData = {};        // Handle different game states - 7-phase system
-        if (currentGameState === 'role_reveal') {
-            // Move from role reveal to night phase
+        // Get game settings for timer durations
+        const gameSettings = lobbyData.gameSettings || {};
+        const discussionTime = (gameSettings.discussionTime || 60) * 1000; // Convert seconds to milliseconds
+        const votingTime = (gameSettings.votingTime || 30) * 1000; // Convert seconds to milliseconds
+        const nightTime = (gameSettings.nightTime || 45) * 1000; // Convert seconds to milliseconds
+
+        let updateData = {};// Handle different game states - 7-phase system
+        if (currentGameState === 'role_reveal') {        // Move from role reveal to night phase
             updateData = {
                 gameState: 'night_phase',
-                phaseTimeLimit: 30000, // 30 seconds for night actions
+                phaseTimeLimit: nightTime, // Use lobby setting for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
         } else if (currentGameState === 'night_phase') {
@@ -146,18 +148,17 @@ exports.advancePhase = async (req, res) => {
                 phaseTimeLimit: calculateDayInfoTime(lobbyData.nightEvents || []), // Dynamic timing based on events
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
-        } else if (currentGameState === 'event_sharing') {
-            // Move to discussion phase
+        } else if (currentGameState === 'event_sharing') {            // Move to discussion phase
             updateData = {
                 gameState: 'discussion_phase',
-                phaseTimeLimit: 120000, // 2 minutes for discussion
+                phaseTimeLimit: discussionTime, // Use lobby setting for discussion
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
         } else if (currentGameState === 'discussion_phase') {
             // Move to voting phase
             updateData = {
                 gameState: 'voting_phase',
-                phaseTimeLimit: 30000, // 30 seconds for voting
+                phaseTimeLimit: votingTime, // Use lobby setting for voting
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
             };
         } else if (currentGameState === 'voting_phase') {
@@ -187,7 +188,7 @@ exports.advancePhase = async (req, res) => {
                 phase: 'night',
                 gameState: 'night_phase',
                 dayCount: dayCount + 1,
-                phaseTimeLimit: 30000, // 30 seconds for night actions
+                phaseTimeLimit: nightTime, // Use lobby setting for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
                 votes: {},
                 privateEvents: {} // Clear previous private events
@@ -345,19 +346,25 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
     const currentGameState = lobbyData.gameState || "role_reveal";
     const dayCount = lobbyData.dayCount || 1;
 
+    // Get game settings for timer durations
+    const gameSettings = lobbyData.gameSettings || {};
+    const discussionTime = (gameSettings.discussionTime || 60) * 1000; // Convert seconds to milliseconds
+    const votingTime = (gameSettings.votingTime || 30) * 1000; // Convert seconds to milliseconds
+    const nightTime = (gameSettings.nightTime || 45) * 1000; // Convert seconds to milliseconds
+
     let updateData = {};    // Handle different game states
     if (currentGameState === 'role_reveal') {
         // Move from role reveal to night phase
         updateData = {
             gameState: 'night_phase',
-            phaseTimeLimit: 30000, // 30 seconds for night actions
+            phaseTimeLimit: nightTime, // Use lobby setting for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
         };
     } else if (currentGameState === 'night_phase') {
         // Process night actions and move to night outcome phase
         updateData = await processNightActions(lobbyData, players);
         updateData.gameState = 'night_outcome';
-        updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome
+        updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome (fixed duration)
         updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
     } else if (currentGameState === 'night_outcome') {
         // Move to event sharing phase
@@ -371,14 +378,14 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
         // Move to discussion phase
         updateData = {
             gameState: 'discussion_phase',
-            phaseTimeLimit: 120000, // 2 minutes for discussion
+            phaseTimeLimit: discussionTime, // Use lobby setting for discussion
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
         };
     } else if (currentGameState === 'discussion_phase') {
         // Move to voting phase
         updateData = {
             gameState: 'voting_phase',
-            phaseTimeLimit: 30000, // 30 seconds for voting
+            phaseTimeLimit: votingTime, // Use lobby setting for voting
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
         };
     } else if (currentGameState === 'voting_phase') {
@@ -408,7 +415,7 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             phase: 'night',
             gameState: 'night_phase',
             dayCount: dayCount + 1,
-            phaseTimeLimit: 30000, // 30 seconds for night actions
+            phaseTimeLimit: nightTime, // Use lobby setting for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
             votes: {},
             privateEvents: {} // Clear previous private events
