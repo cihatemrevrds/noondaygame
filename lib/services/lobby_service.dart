@@ -770,4 +770,32 @@ class LobbyService {
       print('Error during player lobby cleanup: $e');
     }
   }
+
+  Future<Map<String, dynamic>> getLobbySettings(String lobbyCode) async {
+    try {
+      final lobbyDoc =
+          await _firestore.collection('lobbies').doc(lobbyCode).get();
+      if (!lobbyDoc.exists) {
+        throw Exception('Lobby not found');
+      }
+
+      final data = lobbyDoc.data() as Map<String, dynamic>;
+      final gameSettings = data['gameSettings'] as Map<String, dynamic>? ?? {};
+
+      return {
+        'nightPhaseDuration': gameSettings['nightTime'] ?? 30,
+        'eventPhaseDuration': gameSettings['eventPhaseDuration'] ?? 5,
+        'dayPhaseDuration': gameSettings['discussionTime'] ?? 60,
+        'manualPhaseControl': gameSettings['manualPhaseControl'] ?? false,
+      };
+    } catch (e) {
+      print('Error fetching lobby settings: $e');
+      return {
+        'nightTime': 30,
+        'eventPhaseDuration': 5,
+        'discussionTime': 60,
+        'manualPhaseControl': false,
+      };
+    }
+  }
 }

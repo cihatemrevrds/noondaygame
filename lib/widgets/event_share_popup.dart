@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../utils/role_icons.dart';
 
-class RoleRevealPopup extends StatefulWidget {
-  final String roleName;
+class EventSharePopup extends StatefulWidget {
+  final String eventDescription;
+  final String playerName;
+  final String? playerRole;
+  final bool isDeath;
   final VoidCallback onComplete;
 
-  const RoleRevealPopup({
+  const EventSharePopup({
     super.key,
-    required this.roleName,
+    required this.eventDescription,
+    required this.playerName,
+    this.playerRole,
+    this.isDeath = false,
     required this.onComplete,
   });
 
   @override
-  State<RoleRevealPopup> createState() => _RoleRevealPopupState();
+  State<EventSharePopup> createState() => _EventSharePopupState();
 }
 
-class _RoleRevealPopupState extends State<RoleRevealPopup>
+class _EventSharePopupState extends State<EventSharePopup>
     with TickerProviderStateMixin {
   late AnimationController _scaleController;
   late AnimationController _fadeController;
@@ -75,59 +80,16 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
     widget.onComplete();
   }
 
-  Color _getRoleColor(String role) {
-    switch (role) {
-      // Citizens (Green shades)
-      case 'Doctor':
-        return const Color(0xFF2E7D32); // Dark Green
-      case 'Sheriff':
-        return const Color(0xFF388E3C); // Medium Green
-      case 'Escort':
-        return const Color(0xFF43A047); // Light Green
-      case 'Peeper':
-        return const Color(0xFF4CAF50); // Standard Green
-      case 'Gunslinger':
-        return const Color(0xFF66BB6A); // Lighter Green
-      // Bandits (Red shades)
-      case 'Gunman':
-        return const Color(0xFFC62828); // Dark Red
-      case 'Chieftain':
-        return const Color(0xFFD32F2F); // Medium Red
-      // Neutrals (Gray shades)
-      case 'Jester':
-        return const Color(0xFF616161); // Medium Gray
-      default:
-        return const Color(0xFF424242); // Dark Grey
+  Color _getEventColor() {
+    if (widget.isDeath) {
+      return const Color(0xFFF44336); // Red for death events
     }
-  }
-
-  String _getRoleDescription(String role) {
-    switch (role) {
-      case 'Doctor':
-        return 'You can protect one person each night from being eliminated. You can protect yourself.';
-      case 'Sheriff':
-        return 'Each night, you can investigate a player to learn their team allegiance.';
-      case 'Escort':
-        return 'Each night, you can block a player from using their night action.';
-      case 'Peeper':
-        return 'Each night, you can spy on a player to learn their exact role.';
-      case 'Gunslinger':
-        return 'During the day, you can challenge another player to a duel.';
-      case 'Gunman':
-        return 'Each night, you can eliminate one player. Choose wisely!';
-      case 'Chieftain':
-        return 'You are the leader of the outlaws. The Sheriff sees you as innocent.';
-      case 'Jester':
-        return 'Your goal is to be eliminated by the town. If successful, you win!';
-      default:
-        return 'A mysterious role with unknown abilities.';
-    }
+    return const Color(0xFF2196F3); // Blue for other events
   }
 
   @override
   Widget build(BuildContext context) {
-    final roleColor = _getRoleColor(widget.roleName);
-    final roleDescription = _getRoleDescription(widget.roleName);
+    final eventColor = _getEventColor();
 
     return PopScope(
       canPop: false, // Prevent back button dismissal
@@ -166,48 +128,36 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Role Icon
+                        // Event Icon
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: roleColor.withOpacity(0.2),
-                            border: Border.all(color: roleColor, width: 2),
+                            color: eventColor.withOpacity(0.2),
+                            border: Border.all(color: eventColor, width: 2),
                           ),
-                          child: RoleIcons.buildRoleIcon(
-                            roleName: widget.roleName,
-                            size: 48,
+                          child: Icon(
+                            widget.isDeath ? Icons.dangerous : Icons.info,
+                            color: eventColor,
+                            size: 32,
                           ),
                         ),
                         const SizedBox(height: 16),
 
-                        // "Your Role" title
-                        const Text(
-                          'Your Role',
-                          style: TextStyle(
-                            fontFamily: 'Rye',
-                            fontSize: 16,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Role Name
+                        // Event Title
                         Text(
-                          widget.roleName,
-                          style: TextStyle(
+                          widget.isDeath ? 'Rest in Peace' : 'zZzZz',
+                          style: const TextStyle(
                             fontFamily: 'Rye',
-                            fontSize: 24,
-                            color: roleColor,
+                            fontSize: 20,
+                            color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
 
-                        // Role Description
+                        // Event Description
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -219,10 +169,10 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                             ),
                           ),
                           child: Text(
-                            roleDescription,
+                            widget.eventDescription,
                             style: const TextStyle(
                               fontFamily: 'Rye',
-                              fontSize: 14,
+                              fontSize: 16,
                               color: Colors.white,
                               height: 1.4,
                             ),

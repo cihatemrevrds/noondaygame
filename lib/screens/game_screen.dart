@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/player.dart';
@@ -6,8 +9,12 @@ import '../services/game_service.dart';
 import '../services/game_state_manager.dart';
 import '../widgets/role_utils.dart';
 import '../screens/night_phase_screen.dart';
-import '../screens/day_phase_screen.dart';
-import 'package:noondaygame/widgets/role_reveal_popup.dart';
+import '../widgets/discussion_phase_widget.dart';
+import '../widgets/voting_phase_widget.dart';
+import '../widgets/role_reveal_popup.dart';
+import '../widgets/night_outcome_popup.dart';
+import '../widgets/event_share_popup.dart';
+import '../widgets/vote_result_popup.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -25,25 +32,42 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final GameService _gameService = GameService();
   List<Player> _players = [];
   String _currentPhase = 'night';
+  String _currentGameState = 'role_reveal'; // Track current game state
   String? _myRole;
-  String? _myRoleDesc; // Rol açıklaması
+  String? _myRoleDesc; // Role description
   String? _votedPlayerId;
   bool _isLoading = false;
   String _currentUserId = '';
-  String? _nightActionResult; // Gece aksiyonu sonucu
+  String? _nightActionResult; // Night action result
+  Map<String, dynamic> _nightOutcomes = {}; // Individual night outcomes
   bool _hasShownRoleReveal = false; // Role reveal popup state
-  Map<String, dynamic> _currentSettings = {}; // Current game settings
+  int _dayCount = 1; // Day/Night counter
+  // Phase configuration
+  bool _manualPhaseControl = false; // Default value
+  Map<String, dynamic>? _lobbyData; // Store current lobby data
+  // Timing and phase management
+  Timer? _phaseTimer;
+  int _remainingTime = 0;
+
+  // Event and popup state management
+  bool _hasShownNightOutcome = false;
+  bool _hasShownEventSharing = false;
+  bool _hasShownVoteResult = false;
   @override
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     WidgetsBinding.instance.addObserver(this);
     _setupLobbyListener();
+    _fetchPhaseDurations().then((_) {
+      _startGameLoop();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _phaseTimer?.cancel();
     super.dispose();
   }
 
@@ -54,20 +78,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // Handle app lifecycle changes during game
     switch (state) {
       case AppLifecycleState.paused:
-        // Game went to background - player might return
+        // Game went to background (Alt+Tab, minimized, etc.) - do nothing
+        // Players should stay in game when switching between apps
         break;
       case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
         // App is being terminated - if host, try to end game gracefully
         if (widget.isHost) {
           _performEmergencyGameCleanup();
         }
         break;
+      case AppLifecycleState.inactive:
+        // App is inactive but not necessarily closing - do nothing
+        // This can happen during transitions, system dialogs, or Alt+Tab
+        break;
       case AppLifecycleState.resumed:
-        // Game resumed
+        // Game resumed - everything is fine
         break;
       case AppLifecycleState.hidden:
-        // Game is hidden
+        // Game is hidden - do nothing
         break;
     }
   }
@@ -81,11 +109,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _setupLobbyListener() {
-    print('📡 Lobiye bağlanılıyor: ${widget.lobbyCode}');
+    print('📡 Connecting to lobby: ${widget.lobbyCode}');
 
     _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
       if (!snapshot.exists) {
-        // Lobi silinmiş, ana menüye geri dön
+        // Lobby deleted, return to main menu
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -103,32 +131,60 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
         return;
       }
-
       final data = snapshot.data() as Map<String, dynamic>;
 
-      // Oyuncuları güncelle
+      // Store lobby data for access in other methods
+      _lobbyData = data;
+
+      // Update players
       final playersList =
           (data['players'] as List<dynamic>? ?? [])
               .map((p) => Player.fromMap(p as Map<String, dynamic>))
               .toList();
 
-      // Kendi rolümü bul
+      // Find my role
       final myPlayer = playersList.firstWhere(
         (p) => p.id == _currentUserId,
         orElse: () => Player(name: 'Unknown'),
-      ); // Oyların durumunu al
+      );
+
+      // Get votes status
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
       final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
 
-      // Faz bilgisini al
+      // Get phase info and timing
       final phase = data['phase'] as String? ?? 'night';
-      final gameState = data['gameState'] as String? ?? '';
+      final gameState = data['gameState'] as String? ?? 'role_reveal';
+      final dayCount = data['dayCount'] as int? ?? 1;
 
-      // Kalan süre ve gece aksiyonu sonucu (varsa)
+      // Extract timing info from Firebase
+      final phaseStartedAt = data['phaseStartedAt'];
+      final phaseTimeLimit =
+          data['phaseTimeLimit'] as int? ?? 60000; // milliseconds
+
+      // Calculate remaining time
+      int remainingTime = 0;
+      if (phaseStartedAt != null) {
+        final startTime = phaseStartedAt.toDate();
+        final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+        remainingTime =
+            ((phaseTimeLimit - elapsed) / 1000)
+                .round()
+                .clamp(0, double.infinity)
+                .toInt();
+      }
+
+      // Get night action result and outcomes
       final nightActionResult =
           data['nightActionResult']?[_currentUserId] as String?;
 
-      // Rol açıklaması getir
+      // Get individual night outcomes for this player
+      final nightOutcomes =
+          data['nightOutcomes'] as Map<String, dynamic>? ?? {};
+      final myNightOutcome =
+          nightOutcomes[_currentUserId] as Map<String, dynamic>? ?? {};
+
+      // Get role description
       _getRoleDescription(myPlayer.role).then((roleDesc) {
         if (mounted) {
           setState(() {
@@ -136,61 +192,38 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _myRole = myPlayer.role;
             _myRoleDesc = roleDesc;
             _currentPhase = phase;
+            _currentGameState = gameState;
             _nightActionResult = nightActionResult;
+            _nightOutcomes = myNightOutcome;
+            _dayCount = dayCount;
+            _remainingTime = remainingTime;
 
-            // Oy seçimini güncelle
+            // Update vote selection
             _votedPlayerId = votes[_currentUserId];
           });
 
-          // Show role reveal popup when game starts
-          if (gameState == 'role_reveal' &&
-              !_hasShownRoleReveal &&
-              _myRole != null &&
-              _myRole!.isNotEmpty) {
-            _hasShownRoleReveal = true;
-            _showRoleRevealPopup();
-          }
-        }
-      });
+          // Handle phase-specific popups and actions
+          _handlePhaseSpecificActions(gameState, data);
 
-      // Update current settings
-      setState(() {
-        _currentSettings = data['settings'] as Map<String, dynamic>? ?? {};
+          // Start or update timer for current phase
+          _updatePhaseTimer();
+        }
       });
     });
   }
 
-  // Rol açıklamasını getir
+  // Get role description
   Future<String> _getRoleDescription(String? role) async {
     return RoleUtils.getRoleDescription(role);
   }
 
-  Future<void> _advancePhase() async {
-    final gameStateManager = GameStateManager();
-    await gameStateManager.advancePhase(
-      widget.lobbyCode,
-      widget.isHost,
-      _currentPhase,
-      () => setState(() => _isLoading = true),
-      (message) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message, style: const TextStyle(fontFamily: 'Rye')),
-            ),
-          );
-          setState(() => _isLoading = false);
-        }
-      },
-    );
-  }
-
   Future<void> _submitVote(String targetId) async {
-    if (_currentPhase != 'day' || targetId == _currentUserId) return;
+    if (_currentGameState != 'voting_phase' || targetId == _currentUserId)
+      return;
 
     setState(() {
       _isLoading = true;
-      _votedPlayerId = targetId; // Hemen UI'ı güncelle
+      _votedPlayerId = targetId; // Update UI immediately
     });
 
     try {
@@ -225,7 +258,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
         );
         setState(() {
-          _votedPlayerId = null; // Hata durumunda seçimi sıfırla
+          _votedPlayerId = null; // Reset selection on error
         });
       }
     } finally {
@@ -235,42 +268,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         });
       }
     }
-  }
-
-  Future<void> _endGame() async {
-    final gameStateManager = GameStateManager();
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('End Game?'),
-            content: const Text('This will end the game for all players.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await gameStateManager.endGame(
-                    widget.lobbyCode,
-                    widget.isHost,
-                    (message) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(message)));
-                      }
-                    },
-                  );
-                },
-                child: const Text('END GAME'),
-              ),
-            ],
-          ),
-    );
   }
 
   void _showRoleRevealPopup() {
@@ -286,6 +283,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             roleName: _myRole!,
             onComplete: () {
               Navigator.of(context).pop();
+              // Trigger UI rebuild to show night screen immediately
+              setState(() {
+                // Force rebuild with _hasShownRoleReveal = true
+              });
+              // Server will automatically advance to night phase after 5 seconds
             },
           ),
     );
@@ -366,46 +368,679 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _startGameLoop() {
+    // Handle 7-phase system based on gameState
+    switch (_currentGameState) {
+      case 'role_reveal':
+        // Phase 1: Role Reveal - handled by popup, no specific screen
+        break;
+      case 'night_phase':
+        // Phase 2: Night Phase - uses NightPhaseScreen
+        break;
+      case 'night_outcome':
+        // Phase 3: Night Outcome - individual results shown
+        _showNightOutcomePhase();
+        break;
+      case 'event_sharing':
+        // Phase 4: Event Sharing - public events shown
+        _showEventSharingPhase();
+        break;
+      case 'discussion_phase':
+        // Phase 5: Discussion Phase - uses DayPhaseScreen
+        break;
+      case 'voting_phase':
+        // Phase 6: Voting Phase - uses DayPhaseScreen
+        break;
+      case 'voting_outcome':
+        // Phase 7: Voting Outcome - results shown
+        _showVotingOutcomePhase();
+        break;
+      default:
+        print('Unknown game state: $_currentGameState');
+        break;
+    }
+  }
+
+  void _showNightOutcomePhase() {
+    // Show individual night outcomes (Sheriff investigation results, etc.)
+    if (_nightOutcomes.isNotEmpty) {
+      final outcomes = <String>[];
+      _nightOutcomes.forEach((key, value) {
+        if (value is String && value.isNotEmpty) {
+          outcomes.add(value);
+        }
+      });
+
+      if (outcomes.isNotEmpty) {
+        _showPrivateEventPopups(outcomes, 0);
+      }
+    }
+  }
+
+  void _showPrivateEventPopups(List<String> messages, int index) {
+    if (index >= messages.length) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => NightOutcomePopup(
+            title: 'Night Outcome',
+            message: messages[index],
+            onComplete: () {
+              Navigator.of(context).pop();
+              if (index + 1 < messages.length) {
+                _showPrivateEventPopups(messages, index + 1);
+              }
+            },
+          ),
+    );
+  }
+
+  void _showEventSharingPhase() {
+    // Show public night events
+    List<String> events = _fetchNightEvents();
+    if (events.isNotEmpty) {
+      _showOutcomePopups(events, 0, isPrivate: false);
+    }
+  }
+
+  // Handle phase-specific actions and popups
+  void _handlePhaseSpecificActions(
+    String gameState,
+    Map<String, dynamic> data,
+  ) {
+    switch (gameState) {
+      case 'role_reveal':
+        if (!_hasShownRoleReveal && _myRole != null && _myRole!.isNotEmpty) {
+          _hasShownRoleReveal = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showRoleRevealPopup();
+          });
+          setState(() {
+            _remainingTime = 5; // Set timer to 5 seconds for role_reveal phase
+          });
+        }
+        break;
+
+      case 'night_outcome':
+        if (!_hasShownNightOutcome && _nightOutcomes.isNotEmpty) {
+          _hasShownNightOutcome = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showNightOutcomePhase();
+          });
+          setState(() {
+            _remainingTime = 5; // Set timer to 5 seconds for night_outcome phase
+          });
+        }
+        break;
+
+      case 'event_sharing':
+        if (!_hasShownEventSharing) {
+          _hasShownEventSharing = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final events = _fetchNightEvents();
+            if (events.isNotEmpty) {
+              _showEventSharingPopup(events);
+            }
+          });
+          setState(() {
+            _remainingTime = 5; // Set timer to 5 seconds for event_sharing phase
+          });
+        }
+        break;
+
+      case 'voting_outcome':
+        if (!_hasShownVoteResult) {
+          _hasShownVoteResult = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showVoteResultPopup(data);
+          });
+        }
+        break;
+
+      default:
+        // Reset popup flags when entering new phases
+        if (gameState == 'night_phase') {
+          _hasShownNightOutcome = false;
+        } else if (gameState == 'discussion_phase') {
+          _hasShownEventSharing = false;
+        } else if (gameState == 'voting_phase') {
+          _hasShownVoteResult = false;
+        }
+        break;
+    }
+  }
+
+  // Update phase timer based on current timing
+  void _updatePhaseTimer() {
+    _phaseTimer?.cancel();
+
+    if (_remainingTime > 0) {
+      _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted) {
+          setState(() {
+            _remainingTime =
+                (_remainingTime - 1).clamp(0, double.infinity).toInt();
+          });
+
+          if (_remainingTime <= 0) {
+            timer.cancel();
+            // Automatically advance phase when timer expires (only if not in manual mode)
+            if (!_manualPhaseControl) {
+              _autoAdvancePhase();
+            }
+          }
+        } else {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
+  // Automatically advance phase when timer expires
+  void _autoAdvancePhase() async {
+    try {
+      print('⏰ Timer expired, auto-advancing phase from: $_currentGameState');
+
+      // Call the backend auto-advance function
+      final response = await http.post(
+        Uri.parse(
+          'https://us-central1-noondaygame.cloudfunctions.net/autoAdvancePhase',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'lobbyCode': widget.lobbyCode}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Phase auto-advanced: ${responseData['message']}');
+      } else {
+        print(
+          '❌ Auto-advance failed: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Auto-advance error: $e');
+    }
+  }
+
+  // Show event sharing popup with public events
+  void _showEventSharingPopup(List<String> events) {
+    if (events.isEmpty) return;
+
+    // Show first event - for multiple events, we could chain them
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => EventSharePopup(
+            eventDescription: events.first,
+            playerName: 'Everyone', // Generic player name for public events
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
+          ),
+    );
+  }
+
+  // Show vote result popup
+  void _showVoteResultPopup(Map<String, dynamic> data) {
+    final lastDayResult = data['lastDayResult'] as Map<String, dynamic>?;
+
+    if (lastDayResult != null) {
+      final eliminatedPlayerName =
+          lastDayResult['name'] as String? ?? 'Unknown';
+      final eliminatedPlayerRole =
+          lastDayResult['role'] as String? ?? 'Unknown';
+      final voteCount = lastDayResult['voteCount'] as int? ?? 0;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => VoteResultPopup(
+              playerName: eliminatedPlayerName,
+              playerRole: eliminatedPlayerRole,
+              voteCount: voteCount,
+              onComplete: () {
+                Navigator.of(context).pop();
+              },
+            ),
+      );
+    } else {
+      // No majority vote - show no elimination message
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => VoteResultPopup(
+              playerName: 'No One', // Use "No One" instead of null
+              playerRole: null,
+              voteCount: 0,
+              onComplete: () {
+                Navigator.of(context).pop();
+              },
+            ),
+      );
+    }
+  }
+
+  void _showVotingOutcomePhase() {
+    // Show voting results (handled by the vote result popup in _handlePhaseSpecificActions)
+    // This method is called by _startGameLoop but actual popup is handled by phase listener
+  }
+  Future<void> _fetchPhaseDurations() async {
+    try {
+      final lobbySettings = await _lobbyService.getLobbySettings(
+        widget.lobbyCode,
+      );
+      setState(() {
+        _manualPhaseControl = lobbySettings['manualPhaseControl'] ?? false;
+        // Note: In 7-phase system, phase durations are handled server-side
+        // We only need to fetch manual phase control setting
+      });
+    } catch (e) {
+      print('Error fetching phase durations: $e');
+    }
+  }
+
+  List<String> _fetchNightEvents() {
+    // Fetch events from Firebase lobby data
+    if (_lobbyData != null && _lobbyData!.containsKey('nightEvents')) {
+      final nightEvents = _lobbyData!['nightEvents'] as List<dynamic>?;
+      if (nightEvents != null) {
+        return nightEvents.map((event) => event.toString()).toList();
+      }
+    }
+    // Return empty list if no events are available
+    return [];
+  }
+
+  void _showOutcomePopups(
+    List<String> messages,
+    int index, {
+    bool isPrivate = false,
+  }) {
+    if (index >= messages.length) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF2B1810),
+            title: Text(
+              isPrivate ? 'Night Outcome' : 'Event',
+              style: const TextStyle(fontFamily: 'Rye', color: Colors.white),
+            ),
+            content: Text(
+              messages[index],
+              style: const TextStyle(fontFamily: 'Rye', color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  if (index + 1 < messages.length) {
+                    _showOutcomePopups(
+                      messages,
+                      index + 1,
+                      isPrivate: isPrivate,
+                    );
+                  }
+                },
+                child: const Text(
+                  'OK',
+                  style: TextStyle(fontFamily: 'Rye', color: Colors.orange),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<void> _endGame() async {
+    final gameStateManager = GameStateManager();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('End Game?'),
+            content: const Text('This will end the game for all players.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await gameStateManager.endGame(
+                    widget.lobbyCode,
+                    widget.isHost,
+                    (message) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                      }
+                    },
+                  );
+                },
+                child: const Text('END GAME'),
+              ),
+            ],
+          ),
+    );
+  } // Manual advance method for host
+
+  void _manualAdvancePhase() async {
+    if (!widget.isHost || !_manualPhaseControl) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      // Use gameService to advance to next phase
+      final result = await _gameService.advancePhase(
+        widget.lobbyCode,
+        user.uid,
+      );
+
+      if (result == null) {
+        throw Exception('Failed to advance phase');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Phase advanced',
+              style: TextStyle(fontFamily: 'Rye'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: ${e.toString()}',
+              style: const TextStyle(fontFamily: 'Rye'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Get text for manual advance button based on current game state
+  String _getManualAdvanceButtonText() {
+    switch (_currentGameState) {
+      case 'role_reveal':
+        // After role reveal popup, button should advance to night phase
+        return _hasShownRoleReveal ? 'START NIGHT PHASE' : 'START NIGHT PHASE';
+      case 'night_phase':
+        return 'START NIGHT OUTCOME';
+      case 'night_outcome':
+        return 'START EVENT SHARING';
+      case 'event_sharing':
+        return 'START DISCUSSION';
+      case 'discussion_phase':
+        return 'START VOTING';
+      case 'voting_phase':
+        return 'START VOTING OUTCOME';
+      case 'voting_outcome':
+        return 'START NEXT NIGHT';
+      default:
+        return 'ADVANCE PHASE';
+    }
+  }
+
+  // Get user-friendly display text for current phase
+  String _getDisplayPhase() {
+    switch (_currentGameState) {
+      case 'role_reveal':
+        // After role reveal popup, show "Night" while waiting for server transition
+        return _hasShownRoleReveal ? 'Night' : 'Role Reveal';
+      case 'night_phase':
+        return 'Night';
+      case 'night_outcome':
+        return 'Night Results';
+      case 'event_sharing':
+        return 'Events';
+      case 'discussion_phase':
+        return 'Discussion';
+      case 'voting_phase':
+        return 'Voting';
+      case 'voting_outcome':
+        return 'Vote Results';
+      default:
+        return _currentPhase;
+    }
+  }
+
+  // Build the appropriate widget for the current game state
+  Widget _buildPhaseWidget() {
+    switch (_currentGameState) {
+      case 'role_reveal':
+        // Show a waiting screen while role reveal popup is shown
+        return _buildWaitingScreen('Revealing roles...', Icons.visibility);
+
+      case 'night_phase':
+        // Show night phase screen for night actions
+        return NightPhaseScreen(
+          lobbyCode: widget.lobbyCode,
+          currentUserId: _currentUserId,
+          myRole: _myRole,
+          myRoleDesc: _myRoleDesc,
+          nightActionResult: _nightActionResult,
+          players: _players,
+          isLoading: _isLoading,
+          onNightAction: _performNightAction,
+          onSetNightActionResult:
+              (result) => setState(() => _nightActionResult = result),
+          nightNumber: _dayCount,
+        );
+
+      case 'night_outcome':
+        // Show waiting screen while night outcome popups are shown
+        return _buildWaitingScreen(
+          'Processing night actions...',
+          Icons.nightlight_round,
+        );
+
+      case 'event_sharing':
+        // Show waiting screen while event sharing popup is shown
+        return _buildWaitingScreen(
+          'Sharing night events...',
+          Icons.announcement,
+        );
+
+      case 'discussion_phase':
+        // Show discussion phase widget
+        return DiscussionPhaseWidget(
+          players: _players.where((p) => p.isAlive).toList(),
+          remainingTime: _remainingTime,
+          currentUserId: _currentUserId,
+          myRole: _myRole,
+        );
+      case 'voting_phase':
+        // Show voting phase widget
+        return VotingPhaseWidget(
+          players:
+              _players
+                  .where((p) => p.isAlive && p.id != _currentUserId)
+                  .toList(),
+          remainingTime: _remainingTime,
+          currentUserId: _currentUserId,
+          myRole: _myRole,
+          onVoteChanged: (selectedPlayerId) {
+            if (selectedPlayerId != null) {
+              _submitVote(selectedPlayerId);
+            }
+          },
+        );
+
+      case 'voting_outcome':
+        // Show waiting screen while vote result popup is shown
+        return _buildWaitingScreen('Counting votes...', Icons.how_to_vote);
+
+      default:
+        // Fallback to a generic waiting screen
+        return _buildWaitingScreen('Loading game...', Icons.hourglass_empty);
+    }
+  }
+
+  // Build a waiting screen with message and icon
+  Widget _buildWaitingScreen(String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 80, color: Colors.orange.withOpacity(0.8)),
+          const SizedBox(height: 20),
+          Text(
+            message,
+            style: const TextStyle(
+              fontFamily: 'Rye',
+              fontSize: 24,
+              color: Colors.white,
+              shadows: [
+                Shadow(
+                  offset: Offset(2, 2),
+                  blurRadius: 4,
+                  color: Colors.black87,
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (_remainingTime > 0) ...[
+            const SizedBox(height: 10),
+            Text(
+              '${_remainingTime}s remaining',
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 16,
+                color: Colors.orange,
+                shadows: [
+                  Shadow(
+                    offset: Offset(1, 1),
+                    blurRadius: 2,
+                    color: Colors.black87,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/western_town_bg.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child:
-            _currentPhase == 'night'
-                ? NightPhaseScreen(
-                  lobbyCode: widget.lobbyCode,
-                  currentUserId: _currentUserId,
-                  myRole: _myRole,
-                  myRoleDesc: _myRoleDesc,
-                  nightActionResult: _nightActionResult,
-                  players: _players,
-                  isLoading: _isLoading,
-                  onNightAction: _performNightAction,
-                  onSetNightActionResult:
-                      (result) => setState(() => _nightActionResult = result),
-                  settings: _currentSettings, // Pass settings here
-                )
-                : DayPhaseScreen(
-                  currentUserId: _currentUserId,
-                  myRole: _myRole,
-                  myRoleDesc: _myRoleDesc,
-                  players: _players,
-                  votedPlayerId: _votedPlayerId,
-                  isLoading: _isLoading,
-                  onVotePlayer: _submitVote,
-                  onSetNightActionResult:
-                      (result) => setState(() => _nightActionResult = result),
-                  dayPhaseDuration: _currentSettings['discussionTime'] ?? 60, // Example: discussion time
-                  settings: _currentSettings, // Pass settings here
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF4E2C0B),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _getDisplayPhase().toUpperCase(),
+              style: const TextStyle(
+                fontFamily: 'Rye',
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+            if (_myRole != null) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.brown[900],
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Text(
+                  'You: $_myRole',
+                  style: const TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        centerTitle: true,
+        actions: [
+          if (widget.isHost)
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: _endGame,
+              tooltip: 'End Game',
+            ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage("assets/images/saloon_bg.png"),
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: _buildPhaseWidget(),
+          ),
+
+          // Host controls for manual phase advancement
+          if (widget.isHost && _manualPhaseControl)
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _manualAdvancePhase,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E2C0B),
+                    minimumSize: const Size(250, 60),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 5,
+                  ),
+                  child: Text(
+                    _getManualAdvanceButtonText(),
+                    style: const TextStyle(
+                      fontFamily: 'Rye',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
