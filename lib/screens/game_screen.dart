@@ -454,27 +454,30 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   ) {
     switch (gameState) {
       case 'role_reveal':
-        // Show role reveal popup when game starts
         if (!_hasShownRoleReveal && _myRole != null && _myRole!.isNotEmpty) {
           _hasShownRoleReveal = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _showRoleRevealPopup();
           });
+          setState(() {
+            _remainingTime = 5; // Set timer to 5 seconds for role_reveal phase
+          });
         }
         break;
 
       case 'night_outcome':
-        // Show private night outcome events
         if (!_hasShownNightOutcome && _nightOutcomes.isNotEmpty) {
           _hasShownNightOutcome = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _showNightOutcomePhase();
           });
+          setState(() {
+            _remainingTime = 5; // Set timer to 5 seconds for night_outcome phase
+          });
         }
         break;
 
       case 'event_sharing':
-        // Show public event sharing popup
         if (!_hasShownEventSharing) {
           _hasShownEventSharing = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -483,11 +486,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               _showEventSharingPopup(events);
             }
           });
+          setState(() {
+            _remainingTime = 5; // Set timer to 5 seconds for event_sharing phase
+          });
         }
         break;
 
       case 'voting_outcome':
-        // Show vote result popup
         if (!_hasShownVoteResult) {
           _hasShownVoteResult = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
