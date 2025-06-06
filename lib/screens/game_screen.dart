@@ -58,9 +58,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     WidgetsBinding.instance.addObserver(this);
     _setupLobbyListener();
-    _fetchPhaseDurations().then(() {
-      _startGameLoop();
-    });
+    _initializeGame();
+  }
+
+  void _initializeGame() async {
+    await _fetchPhaseDurations();
+    _startGameLoop();
   }
 
   @override
