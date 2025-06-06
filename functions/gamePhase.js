@@ -453,6 +453,10 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
 
 // Helper function to process night actions
 async function processNightActions(lobbyData, players) {
+    console.log('🌙 Starting processNightActions...');
+    console.log('📊 Lobby roleData:', JSON.stringify(lobbyData.roleData, null, 2));
+    console.log('👥 Players count:', players.length);
+
     let roleDataUpdate = { ...lobbyData.roleData } || {};
     let updatedPlayers = [...players];
     let nightEvents = []; // Public events - visible to everyone
@@ -610,35 +614,48 @@ async function processNightActions(lobbyData, players) {
                 }
             }
         }
-    }
+    }    // Process night kills from Gunman (multiple gunmen possible)
+    console.log('🔫 Processing gunman kills...');
+    console.log('🔍 RoleData gunman section:', JSON.stringify(roleDataUpdate.gunman, null, 2));
 
-    // Process night kills from Gunman (multiple gunmen possible)
     if (roleDataUpdate.gunman) {
         for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
+            console.log(`🔫 Processing gunman ${gunmanUid}:`, gunmanData);
+
             if (gunmanData && gunmanData.targetId) {
                 const gunmanPlayer = players.find(p => p.id === gunmanUid && p.role === 'Gunman' && p.isAlive);
                 const isGunmanBlocked = blockedPlayerIds.includes(gunmanUid);
 
-                if (!isGunmanBlocked && gunmanPlayer) {
+                console.log(`🔫 Gunman ${gunmanUid} found:`, !!gunmanPlayer);
+                console.log(`🔫 Gunman ${gunmanUid} blocked:`, isGunmanBlocked);
+                console.log(`🔫 Target ID:`, gunmanData.targetId); if (!isGunmanBlocked && gunmanPlayer) {
                     const targetId = gunmanData.targetId;
+                    console.log(`🎯 Gunman ${gunmanPlayer.name} targeting player ${targetId}`);
+
                     const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
+                    console.log(`🎯 Target index found:`, targetIndex);
 
                     if (targetIndex !== -1) {
                         const targetPlayer = updatedPlayers[targetIndex];
+                        console.log(`🎯 Target player:`, targetPlayer.name);
 
                         // Check if target is protected by any doctor (if doctors are not blocked)
                         let isProtected = false;
                         if (roleDataUpdate.doctor) {
                             for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
                                 if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                    console.log(`🛡️ Target protected by doctor ${doctorUid}`);
                                     isProtected = true;
                                     break;
                                 }
                             }
                         }
 
+                        console.log(`🛡️ Target protection status:`, isProtected);
+
                         // Kill the target if they're not protected
                         if (!isProtected) {
+                            console.log(`💀 Killing target: ${targetPlayer.name}`);
                             updatedPlayers[targetIndex] = {
                                 ...targetPlayer,
                                 isAlive: false,
@@ -648,6 +665,7 @@ async function processNightActions(lobbyData, players) {
 
                             // Public event - everyone sees this
                             nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+                            console.log(`📢 Added public event: ${targetPlayer.name} was killed by Bandits.`);
 
                             // Private event - only the Gunman sees this
                             privateEvents[gunmanPlayer.id] = {
@@ -655,6 +673,7 @@ async function processNightActions(lobbyData, players) {
                                 targetName: targetPlayer.name,
                                 message: `You successfully killed ${targetPlayer.name}.`
                             };
+                            console.log(`📝 Added private success event for gunman`);
                         } else {
                             // Find the doctor(s) who protected this target and give them success notification
                             if (roleDataUpdate.doctor) {

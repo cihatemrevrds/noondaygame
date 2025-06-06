@@ -101,33 +101,49 @@ exports.gunmanKill = async (req, res) => {
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return;
-    } try {
-        const { lobbyCode, userId, targetId } = req.body;
+    }
 
-        if (!lobbyCode || !userId) {
+    try {
+        console.log('🔫 gunmanKill called with:', req.body);
+        const { lobbyCode, userId, targetId } = req.body; if (!lobbyCode || !userId) {
+            console.log('❌ Missing required parameters:', { lobbyCode, userId });
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
+        console.log('🔍 Looking for lobby:', lobbyCode.toUpperCase());
         const lobbyRef = db.collection('lobbies').doc(lobbyCode.toUpperCase());
         const lobbyDoc = await lobbyRef.get();
 
         if (!lobbyDoc.exists) {
+            console.log('❌ Lobby not found:', lobbyCode.toUpperCase());
             return res.status(404).json({ error: 'Lobby not found' });
-        } const lobbyData = lobbyDoc.data();
+        }
+
+        const lobbyData = lobbyDoc.data();
+        console.log('📊 Lobby data found. Game state:', lobbyData.gameState);
 
         // Check if it's night actions phase
         if (lobbyData.gameState !== 'night_phase') {
+            console.log('❌ Not in night_phase. Current state:', lobbyData.gameState);
             return res.status(400).json({ error: 'Not in night actions phase' });
-        } const players = lobbyData.players || [];
+        }
+
+        const players = lobbyData.players || [];
+        console.log('👥 Players in lobby:', players.length);
         const gunman = players.find(p => p.id === userId);
+        console.log('🔫 Found gunman player:', gunman ? `${gunman.name} (${gunman.role})` : 'Not found');
 
         // Verify player is gunman and alive
         if (!gunman || gunman.role !== 'Gunman' || !gunman.isAlive) {
+            console.log('❌ Gunman validation failed:', {
+                found: !!gunman,
+                role: gunman?.role,
+                isAlive: gunman?.isAlive
+            });
             return res.status(403).json({ error: 'You are not the gunman or not alive' });
-        }
-
-        // If no target, just return success (allows removing target)
+        }        // If no target, just return success (allows removing target)
         if (!targetId) {
+            console.log('🚫 Removing gunman target');
             const updatedRoleData = {
                 ...(lobbyData.roleData || {}),
                 gunman: {
@@ -143,19 +159,27 @@ exports.gunmanKill = async (req, res) => {
                 roleData: updatedRoleData
             });
 
+            console.log('✅ Kill target removed successfully');
             return res.status(200).json({ message: 'Kill target removed' });
         }
 
         // Check if target is alive
         const target = players.find(p => p.id === targetId);
+        console.log('🎯 Target player:', target ? `${target.name} (${target.role})` : 'Not found');
+
         if (!target || !target.isAlive) {
+            console.log('❌ Target not alive or not found');
             return res.status(400).json({ error: 'Target is not alive' });
         }
 
         // Prevent self-targeting
         if (targetId === userId) {
+            console.log('❌ Self-targeting attempt');
             return res.status(400).json({ error: 'You cannot kill yourself' });
-        }        // Store gunman's kill choice
+        }
+
+        console.log('💾 Storing gunman kill choice in roleData');
+        // Store gunman's kill choice
         const updatedRoleData = {
             ...(lobbyData.roleData || {}),
             gunman: {
@@ -167,10 +191,13 @@ exports.gunmanKill = async (req, res) => {
             }
         };
 
+        console.log('📝 Updated roleData:', JSON.stringify(updatedRoleData, null, 2));
+
         await lobbyRef.update({
             roleData: updatedRoleData
         });
 
+        console.log('✅ Kill target selected successfully');
         return res.status(200).json({ message: 'Kill target selected successfully' });
     } catch (error) {
         console.error('gunmanKill error:', error);
