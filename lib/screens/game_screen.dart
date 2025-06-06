@@ -1003,7 +1003,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       case 'voting_outcome':
         // Show waiting screen while vote result popup is shown
-        return _buildWaitingScreen('Counting votes...', Icons.how_to_vote);
+        return _buildWaitingScreen('Sharing vote results...', Icons.how_to_vote);
 
       default:
         // Fallback to a generic waiting screen
