@@ -52,14 +52,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   // Event and popup state management
   bool _hasShownNightOutcome = false;
   bool _hasShownEventSharing = false;
-  bool _hasShownVoteResult = false;
-  @override
+  bool _hasShownVoteResult = false;  @override
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     WidgetsBinding.instance.addObserver(this);
     _setupLobbyListener();
-    fetchPhaseDurations().then(() {
+    _fetchPhaseDurations().then(() {
       _startGameLoop();
     });
   }
