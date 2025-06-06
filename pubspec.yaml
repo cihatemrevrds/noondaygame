@@ -28,8 +28,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/western_town_bg.png
-    - assets/images/saloon_bg.png
+    - assets/images/backgrounds/western_town_bg.png
+    - assets/images/backgrounds/saloon_bg.png
     - assets/images/roles/
 
   fonts:
