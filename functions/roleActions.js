@@ -32,7 +32,7 @@ exports.doctorProtect = async (req, res) => {
         if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
-        const doctor = players.find(p => p.uid === userId);
+        const doctor = players.find(p => p.id === userId);
 
         // Verify player is doctor and alive
         if (!doctor || doctor.role !== 'Doctor' || !doctor.isAlive) {
@@ -52,13 +52,11 @@ exports.doctorProtect = async (req, res) => {
 
             await lobbyRef.update({
                 roleData: updatedRoleData
-            });
-
-            return res.status(200).json({ message: 'Protection target removed' });
+            }); return res.status(200).json({ message: 'Protection target removed' });
         }
 
         // Check if target is alive
-        const target = players.find(p => p.uid === targetId);
+        const target = players.find(p => p.id === targetId);
         if (!target || !target.isAlive) {
             return res.status(400).json({ error: 'Target is not alive' });
         }
@@ -121,7 +119,7 @@ exports.gunmanKill = async (req, res) => {
         if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
-        const gunman = players.find(p => p.uid === userId);
+        const gunman = players.find(p => p.id === userId);
 
         // Verify player is gunman and alive
         if (!gunman || gunman.role !== 'Gunman' || !gunman.isAlive) {
@@ -149,7 +147,7 @@ exports.gunmanKill = async (req, res) => {
         }
 
         // Check if target is alive
-        const target = players.find(p => p.uid === targetId);
+        const target = players.find(p => p.id === targetId);
         if (!target || !target.isAlive) {
             return res.status(400).json({ error: 'Target is not alive' });
         }
@@ -208,7 +206,7 @@ exports.sheriffInvestigate = async (req, res) => {
         if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
-        const sheriff = players.find(p => p.uid === userId);
+        const sheriff = players.find(p => p.id === userId);
 
         // Verify player is sheriff and alive
         if (!sheriff || sheriff.role !== 'Sheriff' || !sheriff.isAlive) {
@@ -235,7 +233,7 @@ exports.sheriffInvestigate = async (req, res) => {
 
             return res.status(200).json({ message: 'Investigation target removed' });
         }        // Check if target is alive
-        const target = players.find(p => p.uid === targetId);
+        const target = players.find(p => p.id === targetId);
         if (!target || !target.isAlive) {
             return res.status(400).json({ error: 'Target is not alive' });
         }
@@ -307,7 +305,7 @@ exports.escortBlock = async (req, res) => {
         if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
-        const escort = players.find(p => p.uid === userId);
+        const escort = players.find(p => p.id === userId);
 
         // Verify player is escort and alive
         if (!escort || escort.role !== 'Escort' || !escort.isAlive) {
@@ -333,7 +331,7 @@ exports.escortBlock = async (req, res) => {
 
             return res.status(200).json({ message: 'Block target removed' });
         }        // Check if target is alive
-        const target = players.find(p => p.uid === targetId);
+        const target = players.find(p => p.id === targetId);
         if (!target || !target.isAlive) {
             return res.status(400).json({ error: 'Target is not alive' });
         }
@@ -394,7 +392,7 @@ exports.peeperSpy = async (req, res) => {
         if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
-        const peeper = players.find(p => p.uid === userId);
+        const peeper = players.find(p => p.id === userId);
 
         // Verify player is peeper and alive
         if (!peeper || peeper.role !== 'Peeper' || !peeper.isAlive) {
@@ -420,10 +418,8 @@ exports.peeperSpy = async (req, res) => {
             });
 
             return res.status(200).json({ message: 'Spy target removed' });
-        }
-
-        // Check if target is alive
-        const target = players.find(p => p.uid === targetId);
+        }        // Check if target is alive
+        const target = players.find(p => p.id === targetId);
         if (!target || !target.isAlive) {
             return res.status(400).json({ error: 'Target is not alive' });
         }
