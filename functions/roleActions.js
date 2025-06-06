@@ -26,12 +26,10 @@ exports.doctorProtect = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: 'Lobby not found' });
-        }
-
-        const lobbyData = lobbyDoc.data();
+        }        const lobbyData = lobbyDoc.data();
 
         // Check if it's night actions phase
-        if (lobbyData.gameState !== 'night_actions') {
+        if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
         const doctor = players.find(p => p.uid === userId);
@@ -117,12 +115,10 @@ exports.gunmanKill = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: 'Lobby not found' });
-        }
-
-        const lobbyData = lobbyDoc.data();
+        }        const lobbyData = lobbyDoc.data();
 
         // Check if it's night actions phase
-        if (lobbyData.gameState !== 'night_actions') {
+        if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
         const gunman = players.find(p => p.uid === userId);
@@ -206,12 +202,10 @@ exports.sheriffInvestigate = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: 'Lobby not found' });
-        }
-
-        const lobbyData = lobbyDoc.data();
+        }        const lobbyData = lobbyDoc.data();
 
         // Check if it's night actions phase
-        if (lobbyData.gameState !== 'night_actions') {
+        if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
         const sheriff = players.find(p => p.uid === userId);
@@ -307,12 +301,10 @@ exports.escortBlock = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: 'Lobby not found' });
-        }
-
-        const lobbyData = lobbyDoc.data();
+        }        const lobbyData = lobbyDoc.data();
 
         // Check if it's night actions phase
-        if (lobbyData.gameState !== 'night_actions') {
+        if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
         const escort = players.find(p => p.uid === userId);
@@ -396,12 +388,10 @@ exports.peeperSpy = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: 'Lobby not found' });
-        }
-
-        const lobbyData = lobbyDoc.data();
+        }        const lobbyData = lobbyDoc.data();
 
         // Check if it's night actions phase
-        if (lobbyData.gameState !== 'night_actions') {
+        if (lobbyData.gameState !== 'night_phase') {
             return res.status(400).json({ error: 'Not in night actions phase' });
         } const players = lobbyData.players || [];
         const peeper = players.find(p => p.uid === userId);
