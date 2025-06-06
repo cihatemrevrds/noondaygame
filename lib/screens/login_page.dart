@@ -38,41 +38,29 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() {
       _isLoading = true;
-    });
-    try {
+    });    try {
       final result = await _authService.signIn(
         _emailController.text.trim(),
         _passwordController.text,
-      );
-
-      if (result['success'] == true) {
-        // Successfully logged in - pop back to let AuthWrapper handle navigation
+      );      if (result['success'] == true) {
+        // Successfully logged in - AuthWrapper will automatically handle navigation
+        // Just show success message and let the stream handle the navigation
         if (mounted) {
-          // Show brief success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
                 'Login successful!',
                 style: TextStyle(fontFamily: 'Rye'),
               ),
-              duration: Duration(milliseconds: 800),
+              duration: Duration(seconds: 2),
               backgroundColor: Colors.green,
             ),
           );
-
-          // Pop the LoginPage so AuthWrapper can show MainMenu
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              Navigator.pop(context);
-            }
-          });
         }
       } else {
         // Login failed with specific error
-        final errorMessage =
-            result['errorMessage'] ??
-            'Login failed. Please check your credentials.';
-
+        final errorMessage = result['errorMessage'] ?? 'Login failed. Please check your credentials.';
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -84,11 +72,9 @@ class _LoginPageState extends State<LoginPage> {
               backgroundColor: Colors.redAccent,
             ),
           );
-
+          
           // Log detailed error information
-          print(
-            'Login failed: ${result['errorCode'] ?? 'Unknown error'} - $errorMessage',
-          );
+          print('Login failed: ${result['errorCode'] ?? 'Unknown error'} - $errorMessage');
         }
       }
     } catch (e) {
@@ -195,8 +181,11 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 30),
               _isLoading
-                  ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
-                  : MenuButton(text: 'LOGIN', onPressed: _login),
+                ? const CircularProgressIndicator(color: Color(0xFF4E2C0B))
+                : MenuButton(
+                    text: 'LOGIN',
+                    onPressed: _login,
+                  ),
             ],
           ),
         ),

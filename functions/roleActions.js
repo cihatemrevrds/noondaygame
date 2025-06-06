@@ -612,3 +612,86 @@ exports.chieftainOrder = async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+// Gunslinger's action - kill a player (only once)
+exports.gunslingerShoot = async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        const { lobbyCode, userId, targetId } = req.body;
+
+        if (!lobbyCode || !userId) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        const lobbyRef = db.collection('lobbies').doc(lobbyCode.toUpperCase());
+        const lobbyDoc = await lobbyRef.get();
+
+        if (!lobbyDoc.exists) {
+            return res.status(404).json({ error: 'Lobby not found' });
+        }
+
+        const lobbyData = lobbyDoc.data();
+        const players = lobbyData.players || [];
+        const gunslinger = players.find(p => p.id === userId);
+
+        // Verify player is gunslinger and alive
+        if (!gunslinger || gunslinger.role !== 'Gunslinger' || !gunslinger.isAlive) {
+            return res.status(403).json({ error: 'You are not the gunslinger or not alive' });
+        }
+
+        // Check if Gunslinger has already used their bullet
+        if (lobbyData.roleData?.gunslinger?.[userId]?.usedBullet) {
+            return res.status(400).json({ error: 'You have already used your bullet' });
+        }
+
+        // Check if target is alive
+        const target = players.find(p => p.id === targetId);
+        if (!target || !target.isAlive) {
+            return res.status(400).json({ error: 'Target is not alive' });
+        }
+
+        // Update role data to mark bullet as used
+        const updatedRoleData = {
+            ...(lobbyData.roleData || {}),
+            gunslinger: {
+                ...(lobbyData.roleData?.gunslinger || {}),
+                [userId]: {
+                    usedBullet: true,
+                    targetId: targetId
+                }
+            }
+        };
+
+        // Mark target as killed
+        const updatedPlayers = players.map(player => {
+            if (player.id === targetId) {
+                return { ...player, isAlive: false, killedBy: 'Gunslinger' };
+            }
+            return player;
+        });
+
+        // Add public event for night results
+        const nightEvents = lobbyData.nightEvents || [];
+        nightEvents.push(`${target.name} was killed by the Gunslinger.`);
+
+        await lobbyRef.update({
+            roleData: updatedRoleData,
+            players: updatedPlayers,
+            nightEvents: nightEvents
+        });
+
+        return res.status(200).json({ message: 'Shot fired successfully' });
+    } catch (error) {
+        console.error('gunslingerShoot error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
