@@ -6,7 +6,6 @@ import '../widgets/profile_picture_selector.dart';
 import '../widgets/password_change_dialog.dart';
 import '../models/user_settings.dart';
 import '../services/user_settings_service.dart';
-import 'login_or_register_menu.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -404,13 +403,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     onPressed: () async {
                       try {
                         await FirebaseAuth.instance.signOut();
-                        // Navigate to login screen after sign out
+                        // AuthWrapper will automatically handle navigation to login screen
                         if (mounted) {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => const LoginOrRegisterMenu(),
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Successfully logged out',
+                                style: TextStyle(fontFamily: 'Rye'),
+                              ),
+                              duration: Duration(seconds: 2),
+                              backgroundColor: Colors.green,
                             ),
-                            (route) => false, // Remove all previous routes
                           );
                         }
                       } catch (e) {

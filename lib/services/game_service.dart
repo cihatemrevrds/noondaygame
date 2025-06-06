@@ -175,10 +175,9 @@ class GameService {
   Future<String?> sheriffInvestigate(String lobbyCode, String userId, String targetId) async {
     return _performRoleAction('sheriffInvestigate', lobbyCode, userId, targetId);
   }
-
   // Fahişe engelleme aksiyonu
   Future<String?> prostituteBlock(String lobbyCode, String userId, String targetId) async {
-    return _performRoleAction('prostituteBlock', lobbyCode, userId, targetId);
+    return _performRoleAction('escortBlock', lobbyCode, userId, targetId);
   }
 
   // Gözcü gözetleme aksiyonu

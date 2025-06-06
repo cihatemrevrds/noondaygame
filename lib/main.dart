@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'screens/login_or_register_menu.dart';
+import 'screens/auth_wrapper.dart';
 import 'utils/app_theme.dart';
 import 'services/lobby_service.dart';
 import 'firebase_options.dart';
@@ -111,7 +111,7 @@ class _NoondayAppState extends State<NoondayApp> with WidgetsBindingObserver {
           primary: AppColors.primary,
         ),
       ),
-      home: const LoginOrRegisterMenu(),
+      home: const AuthWrapper(),
     );
   }
 }

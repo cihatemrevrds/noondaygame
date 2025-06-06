@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../widgets/menu_button.dart';
 import '../widgets/input_field.dart';
 import '../services/auth_service.dart';
-import 'main_menu.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,17 +42,18 @@ class _LoginPageState extends State<LoginPage> {
       final result = await _authService.signIn(
         _emailController.text.trim(),
         _passwordController.text,
-      );
-
-      if (result['success'] == true) {
-        // Successfully logged in, navigate to main menu
-        final user = result['user'];        if (mounted && user != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainMenu(
-                username: user.displayName ?? user.email?.split('@')[0] ?? 'Player',
+      );      if (result['success'] == true) {
+        // Successfully logged in - AuthWrapper will automatically handle navigation
+        // Just show success message and let the stream handle the navigation
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Login successful!',
+                style: TextStyle(fontFamily: 'Rye'),
               ),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.green,
             ),
           );
         }
