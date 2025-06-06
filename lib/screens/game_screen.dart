@@ -172,20 +172,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 .round()
                 .clamp(0, double.infinity)
                 .toInt();
-      }
-
-      // Get night action result and outcomes
+      } // Get night action result and outcomes
       final nightActionResult =
-          data['nightActionResult']?[_currentUserId]
-              as String?; // Get individual night outcomes for this player
+          data['nightActionResult']?[_currentUserId] as String?;
+
+      // Get individual night outcomes for this player
       final privateEvents =
           data['privateEvents'] as Map<String, dynamic>? ?? {};
 
-      print("DEBUG: privateEvents structure: $privateEvents");
-
       // Check if there's a private event specifically for the current user
       final myPrivateEvent = privateEvents[_currentUserId];
-      print("DEBUG: myPrivateEvent for $_currentUserId: $myPrivateEvent");
 
       // Handle both potential structures - either a full event object or a map of events
       final Map<String, dynamic> myNightOutcome;
@@ -365,16 +361,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
           break;
       }
-
       if (mounted && result != null) {
         setState(() => _nightActionResult = result);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result, style: const TextStyle(fontFamily: 'Rye')),
-            backgroundColor: Colors.green[800],
-          ),
-        );
+        // Note: Night action result will be shown during the night_outcome phase
+        // Don't show immediate feedback to maintain game flow
       }
     } catch (e) {
       if (mounted) {
@@ -428,7 +419,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _showNightOutcomePhase() {
     // Show individual night outcomes (Sheriff investigation results, etc.)
-    print("DEBUG: Showing night outcome with _nightOutcomes: $_nightOutcomes");
 
     // Always show something, even if _nightOutcomes is empty
     String mainMessage = 'You had a quiet night.';
@@ -442,7 +432,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       }
     } // Show a single popup with the night outcome message
-    print("DEBUG: Showing night outcome popup with message: '$mainMessage'");
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -469,11 +458,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     duration: const Duration(seconds: 3),
                   ),
                 );
-              }
-
-              // Try to manually advance phase if auto-advance is enabled and timer is done
+              } // Try to manually advance phase if auto-advance is enabled and timer is done
               if (!_manualPhaseControl && _remainingTime <= 0) {
-                print("DEBUG: Attempting auto-advance after popup completion");
                 _autoAdvancePhase();
               }
             },
@@ -956,7 +942,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               _performNightAction(action, targetId);
             }
           },
-          onSetNightActionResult: (result) => setState(() => _nightActionResult = result),
+          onSetNightActionResult:
+              (result) => setState(() => _nightActionResult = result),
           nightNumber: _dayCount,
         );
 
@@ -985,9 +972,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       case 'voting_phase':
         // Show voting phase widget
         return VotingPhaseWidget(
-          players: _players
-              .where((p) => p.isAlive && p.id != _currentUserId)
-              .toList(),
+          players:
+              _players
+                  .where((p) => p.isAlive && p.id != _currentUserId)
+                  .toList(),
           remainingTime: _remainingTime,
           currentUserId: _currentUserId,
           myRole: _myRole,
@@ -1002,7 +990,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       case 'voting_outcome':
         // Show waiting screen while vote result popup is shown
-        return _buildWaitingScreen('Sharing vote results...', Icons.how_to_vote);
+        return _buildWaitingScreen(
+          'Sharing vote results...',
+          Icons.how_to_vote,
+        );
 
       default:
         // Fallback to a generic waiting screen
