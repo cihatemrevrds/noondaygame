@@ -38,7 +38,6 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
   String? _selectedPlayerId; // Track the selected player
   Timer? _timer;
   int _remainingTime = 0;
-
   // Helper method to get the correct action based on role
   String _getRoleAction(String? role) {
     switch (role) {
@@ -52,6 +51,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         return 'prostituteBlock'; // Using prostituteBlock as per game_service.dart
       case 'Peeper':
         return 'peeperSpy';
+      case 'Chieftain':
+        return 'chieftainOrder';
       default:
         return ''; // No action for other roles
     }
@@ -70,6 +71,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         return 'Block';
       case 'Peeper':
         return 'Spy';
+      case 'Chieftain':
+        return 'Order Kill';
       default:
         return 'Action';
     }
@@ -83,9 +86,10 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
       case 'Sheriff':
       case 'Escort':
       case 'Peeper':
+      case 'Chieftain':
         return true;
       default:
-        return false; // Jester, Gunslinger, Chieftain don't have night actions
+        return false; // Jester, Gunslinger don't have night actions
     }
   }
 
@@ -137,67 +141,85 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
       ),
       child: Center(
         child: Wrap(
           spacing: MediaQuery.of(context).size.width > 800 ? 30 : 20,
           runSpacing: MediaQuery.of(context).size.width > 800 ? 30 : 20,
           alignment: WrapAlignment.center,
-          children: widget.players
-              .where((p) => p.isAlive)
-              .map((player) => GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedPlayerId = player.id;
-                      });
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          width: MediaQuery.of(context).size.width > 800 ? 90 : 80,
-                          height: MediaQuery.of(context).size.width > 800 ? 90 : 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _selectedPlayerId == player.id
-                                ? Colors.green.withOpacity(0.8)
-                                : Colors.grey[300],
-                            border: Border.all(
-                              color: _selectedPlayerId == player.id
-                                  ? Colors.white
-                                  : Colors.grey[400]!,
-                              width: 3,
+          children:
+              widget.players
+                  .where((p) => p.isAlive)
+                  .map(
+                    (player) => GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedPlayerId = player.id;
+                        });
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            width:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 90
+                                    : 80,
+                            height:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 90
+                                    : 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  _selectedPlayerId == player.id
+                                      ? Colors.green.withOpacity(0.8)
+                                      : Colors.grey[300],
+                              border: Border.all(
+                                color:
+                                    _selectedPlayerId == player.id
+                                        ? Colors.white
+                                        : Colors.grey[400]!,
+                                width: 3,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.person,
+                              size:
+                                  MediaQuery.of(context).size.width > 800
+                                      ? 50
+                                      : 45,
+                              color:
+                                  _selectedPlayerId == player.id
+                                      ? Colors.white
+                                      : Colors.grey[600],
                             ),
                           ),
-                          child: Icon(
-                            Icons.person,
-                            size: MediaQuery.of(context).size.width > 800 ? 50 : 45,
-                            color: _selectedPlayerId == player.id
-                                ? Colors.white
-                                : Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: MediaQuery.of(context).size.width > 800 ? 100 : 80,
-                          child: Text(
-                            player.name,
-                            style: TextStyle(
-                              fontSize: MediaQuery.of(context).size.width > 800 ? 16 : 14,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 100
+                                    : 80,
+                            child: Text(
+                              player.name,
+                              style: TextStyle(
+                                fontSize:
+                                    MediaQuery.of(context).size.width > 800
+                                        ? 16
+                                        : 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ))
-              .toList(),
+                  )
+                  .toList(),
         ),
       ),
     );
@@ -208,13 +230,12 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     String message;
     switch (widget.myRole) {
       case 'Jester':
-        message = 'You have no night ability.\nWait for the day phase to achieve your goal.';
+        message =
+            'You have no night ability.\nWait for the day phase to achieve your goal.';
         break;
       case 'Gunslinger':
-        message = 'You can use your bullets during the day phase.\nWait for discussion time.';
-        break;
-      case 'Chieftain':
-        message = 'You can give orders to the Gunman or take over if needed.\nWait for your turn.';
+        message =
+            'You can use your bullets during the day phase.\nWait for discussion time.';
         break;
       default:
         message = 'You have no night action.\nWait for the night to end.';
@@ -231,10 +252,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
       ),
       child: Text(
         message,
@@ -260,13 +278,14 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
           SizedBox(
             width: 140,
             child: ElevatedButton(
-              onPressed: widget.isLoading
-                  ? null
-                  : () {
-                      widget.onSetNightActionResult(
-                        "You chose to skip this night.",
-                      );
-                    },
+              onPressed:
+                  widget.isLoading
+                      ? null
+                      : () {
+                        widget.onSetNightActionResult(
+                          "You chose to skip this night.",
+                        );
+                      },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.brown[600],
                 padding: const EdgeInsets.symmetric(
@@ -290,20 +309,20 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
           ),
 
           const SizedBox(width: 30), // Space between buttons
-
           // Role action button - conditional on role capability
           if (_hasNightAction(widget.myRole))
             SizedBox(
               width: 140,
               child: ElevatedButton(
-                onPressed: widget.isLoading || _selectedPlayerId == null
-                    ? null
-                    : () {
-                        String action = _getRoleAction(widget.myRole);
-                        if (action.isNotEmpty) {
-                          widget.onNightAction(action, _selectedPlayerId!);
-                        }
-                      },
+                onPressed:
+                    widget.isLoading || _selectedPlayerId == null
+                        ? null
+                        : () {
+                          String action = _getRoleAction(widget.myRole);
+                          if (action.isNotEmpty) {
+                            widget.onNightAction(action, _selectedPlayerId!);
+                          }
+                        },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.brown[600],
                   padding: const EdgeInsets.symmetric(
@@ -442,7 +461,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
 
                 SizedBox(
                   height: MediaQuery.of(context).size.width > 800 ? 30 : 20,
-                ),                // Player selection area - responsive layout
+                ), // Player selection area - responsive layout
                 if (_hasNightAction(widget.myRole))
                   _buildPlayerSelectionArea()
                 else

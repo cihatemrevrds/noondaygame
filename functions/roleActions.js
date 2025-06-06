@@ -131,9 +131,7 @@ exports.gunmanKill = async (req, res) => {
         const players = lobbyData.players || [];
         console.log('👥 Players in lobby:', players.length);
         const gunman = players.find(p => p.id === userId);
-        console.log('🔫 Found gunman player:', gunman ? `${gunman.name} (${gunman.role})` : 'Not found');
-
-        // Verify player is gunman and alive
+        console.log('🔫 Found gunman player:', gunman ? `${gunman.name} (${gunman.role})` : 'Not found');        // Verify player is gunman and alive
         if (!gunman || gunman.role !== 'Gunman' || !gunman.isAlive) {
             console.log('❌ Gunman validation failed:', {
                 found: !!gunman,
@@ -141,7 +139,14 @@ exports.gunmanKill = async (req, res) => {
                 isAlive: gunman?.isAlive
             });
             return res.status(403).json({ error: 'You are not the gunman or not alive' });
-        }        // If no target, just return success (allows removing target)
+        }
+
+        // Check if there's an alive chieftain - if so, gunman cannot act independently
+        const aliveChieftain = players.find(p => p.role === 'Chieftain' && p.isAlive);
+        if (aliveChieftain) {
+            console.log('👑 Alive chieftain found, gunman cannot act independently');
+            return res.status(403).json({ error: 'Chieftain is alive. You must wait for orders.' });
+        }// If no target, just return success (allows removing target)
         if (!targetId) {
             console.log('🚫 Removing gunman target');
             const updatedRoleData = {
@@ -476,6 +481,134 @@ exports.peeperSpy = async (req, res) => {
         });
     } catch (error) {
         console.error('peeperSpy error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+// Chieftain's action - give kill orders to gunmen during the night
+exports.chieftainOrder = async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        console.log('👑 chieftainOrder called with:', req.body);
+        const { lobbyCode, userId, targetId } = req.body;
+
+        if (!lobbyCode || !userId) {
+            console.log('❌ Missing required parameters:', { lobbyCode, userId });
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log('🔍 Looking for lobby:', lobbyCode.toUpperCase());
+        const lobbyRef = db.collection('lobbies').doc(lobbyCode.toUpperCase());
+        const lobbyDoc = await lobbyRef.get();
+
+        if (!lobbyDoc.exists) {
+            console.log('❌ Lobby not found:', lobbyCode.toUpperCase());
+            return res.status(404).json({ error: 'Lobby not found' });
+        }
+
+        const lobbyData = lobbyDoc.data();
+        console.log('📊 Lobby data found. Game state:', lobbyData.gameState);
+
+        // Check if it's night actions phase
+        if (lobbyData.gameState !== 'night_phase') {
+            console.log('❌ Not in night_phase. Current state:', lobbyData.gameState);
+            return res.status(400).json({ error: 'Not in night actions phase' });
+        }
+
+        const players = lobbyData.players || [];
+        console.log('👥 Players in lobby:', players.length);
+        const chieftain = players.find(p => p.id === userId);
+        console.log('👑 Found chieftain player:', chieftain ? `${chieftain.name} (${chieftain.role})` : 'Not found');
+
+        // Verify player is chieftain and alive
+        if (!chieftain || chieftain.role !== 'Chieftain' || !chieftain.isAlive) {
+            console.log('❌ Chieftain validation failed:', {
+                found: !!chieftain,
+                role: chieftain?.role,
+                isAlive: chieftain?.isAlive
+            });
+            return res.status(403).json({ error: 'You are not the chieftain or not alive' });
+        }
+
+        // Check if there are any alive gunmen
+        const aliveGunmen = players.filter(p => p.role === 'Gunman' && p.isAlive);
+        console.log('🔫 Alive gunmen count:', aliveGunmen.length);
+
+        if (aliveGunmen.length === 0) {
+            console.log('❌ No alive gunmen to give orders to');
+            return res.status(400).json({ error: 'No alive gunmen to give orders to' });
+        }
+
+        // If no target, just return success (allows removing target)
+        if (!targetId) {
+            console.log('🚫 Removing chieftain target order');
+            const updatedRoleData = {
+                ...(lobbyData.roleData || {}),
+                chieftain: {
+                    ...(lobbyData.roleData?.chieftain || {}),
+                    [userId]: {
+                        ...(lobbyData.roleData?.chieftain?.[userId] || {}),
+                        targetId: null
+                    }
+                }
+            };
+
+            await lobbyRef.update({
+                roleData: updatedRoleData
+            });
+
+            console.log('✅ Chieftain order removed successfully');
+            return res.status(200).json({ message: 'Kill order removed' });
+        }
+
+        // Check if target is alive
+        const target = players.find(p => p.id === targetId);
+        console.log('🎯 Target player:', target ? `${target.name} (${target.role})` : 'Not found');
+
+        if (!target || !target.isAlive) {
+            console.log('❌ Target not alive or not found');
+            return res.status(400).json({ error: 'Target is not alive' });
+        }
+
+        // Prevent targeting other bandits
+        const targetTeam = require('./teamManager').getTeamByRole(target.role);
+        if (targetTeam === 'Bandit') {
+            console.log('❌ Cannot target fellow bandit');
+            return res.status(400).json({ error: 'You cannot target fellow bandits' });
+        }
+
+        console.log('💾 Storing chieftain kill order in roleData');
+        // Store chieftain's kill order
+        const updatedRoleData = {
+            ...(lobbyData.roleData || {}),
+            chieftain: {
+                ...(lobbyData.roleData?.chieftain || {}),
+                [userId]: {
+                    ...(lobbyData.roleData?.chieftain?.[userId] || {}),
+                    targetId: targetId
+                }
+            }
+        };
+
+        console.log('📝 Updated roleData:', JSON.stringify(updatedRoleData, null, 2));
+
+        await lobbyRef.update({
+            roleData: updatedRoleData
+        });
+
+        console.log('✅ Kill order given successfully');
+        return res.status(200).json({ message: 'Kill order given successfully' });
+    } catch (error) {
+        console.error('chieftainOrder error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };

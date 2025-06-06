@@ -13,10 +13,7 @@ class GameService {
       final response = await http.post(
         Uri.parse('$_baseUrl/startGame'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'lobbyCode': lobbyCode,
-          'hostId': hostId,
-        }),
+        body: json.encode({'lobbyCode': lobbyCode, 'hostId': hostId}),
       );
 
       if (response.statusCode == 200) {
@@ -33,15 +30,15 @@ class GameService {
   }
 
   // Oyun fazını ilerlet (gündüz/gece)
-  Future<Map<String, dynamic>?> advancePhase(String lobbyCode, String hostId) async {
+  Future<Map<String, dynamic>?> advancePhase(
+    String lobbyCode,
+    String hostId,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/advancePhase'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'lobbyCode': lobbyCode,
-          'hostId': hostId,
-        }),
+        body: json.encode({'lobbyCode': lobbyCode, 'hostId': hostId}),
       );
 
       if (response.statusCode == 200) {
@@ -57,7 +54,11 @@ class GameService {
   }
 
   // Oy gönder
-  Future<bool> submitVote(String lobbyCode, String voterId, String targetId) async {
+  Future<bool> submitVote(
+    String lobbyCode,
+    String voterId,
+    String targetId,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/submitVote'),
@@ -103,7 +104,11 @@ class GameService {
   }
 
   // Oyun ayarlarını güncelle
-  Future<bool> updateSettings(String lobbyCode, String hostId, Map<String, dynamic> settings) async {
+  Future<bool> updateSettings(
+    String lobbyCode,
+    String hostId,
+    Map<String, dynamic> settings,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/updateSettings'),
@@ -128,9 +133,13 @@ class GameService {
   }
 
   // Rol ayarlarını güncelle (özel fonksiyon)
-  Future<bool> updateRoleSettings(String lobbyCode, String hostId, List<Role> roles) async {
+  Future<bool> updateRoleSettings(
+    String lobbyCode,
+    String hostId,
+    List<Role> roles,
+  ) async {
     final Map<String, int> roleSettings = {};
-    
+
     // Role listesini map'e çevir
     for (final role in roles) {
       if (role.count > 0) {
@@ -162,31 +171,71 @@ class GameService {
   }
 
   // Doktor koruma aksiyonu
-  Future<String?> doctorProtect(String lobbyCode, String userId, String targetId) async {
+  Future<String?> doctorProtect(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
     return _performRoleAction('doctorProtect', lobbyCode, userId, targetId);
   }
 
   // Silahşör öldürme aksiyonu
-  Future<String?> gunmanKill(String lobbyCode, String userId, String targetId) async {
+  Future<String?> gunmanKill(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
     return _performRoleAction('gunmanKill', lobbyCode, userId, targetId);
   }
 
   // Şerif sorgulama aksiyonu
-  Future<String?> sheriffInvestigate(String lobbyCode, String userId, String targetId) async {
-    return _performRoleAction('sheriffInvestigate', lobbyCode, userId, targetId);
+  Future<String?> sheriffInvestigate(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
+    return _performRoleAction(
+      'sheriffInvestigate',
+      lobbyCode,
+      userId,
+      targetId,
+    );
   }
+
   // Fahişe engelleme aksiyonu
-  Future<String?> prostituteBlock(String lobbyCode, String userId, String targetId) async {
+  Future<String?> prostituteBlock(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
     return _performRoleAction('escortBlock', lobbyCode, userId, targetId);
   }
 
   // Gözcü gözetleme aksiyonu
-  Future<String?> peeperSpy(String lobbyCode, String userId, String targetId) async {
+  Future<String?> peeperSpy(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
     return _performRoleAction('peeperSpy', lobbyCode, userId, targetId);
   }
 
+  // Çete lideri emir verme aksiyonu
+  Future<String?> chieftainOrder(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
+    return _performRoleAction('chieftainOrder', lobbyCode, userId, targetId);
+  }
+
   // Ortak rol aksiyonu fonksiyonu
-  Future<String?> _performRoleAction(String action, String lobbyCode, String userId, String targetId) async {
+  Future<String?> _performRoleAction(
+    String action,
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/$action'),

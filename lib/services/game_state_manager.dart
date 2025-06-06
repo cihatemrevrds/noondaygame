@@ -148,6 +148,14 @@ class GameStateManager {
             targetId,
           );
           break;
+
+        case 'chieftainOrder':
+          result = await _gameService.chieftainOrder(
+            lobbyCode,
+            currentUserId,
+            targetId,
+          );
+          break;
       }
 
       if (result != null) {
