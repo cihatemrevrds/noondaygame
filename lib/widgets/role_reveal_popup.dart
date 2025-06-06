@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../utils/role_icons.dart';
+import '../config/message_config.dart';
 
 class RoleRevealPopup extends StatefulWidget {
   final String roleName;
@@ -180,11 +181,10 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
                           ),
                         ),
                         const SizedBox(height: 16),
-
                         // "Your Role" title
-                        const Text(
-                          'Your Role',
-                          style: TextStyle(
+                        Text(
+                          MessageConfig.getPopupTitle('role_reveal'),
+                          style: const TextStyle(
                             fontFamily: 'Rye',
                             fontSize: 16,
                             color: Colors.white70,

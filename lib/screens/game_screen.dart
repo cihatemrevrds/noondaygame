@@ -15,6 +15,7 @@ import '../widgets/role_reveal_popup.dart';
 import '../widgets/night_outcome_popup.dart';
 import '../widgets/event_share_popup.dart';
 import '../widgets/vote_result_popup.dart';
+import '../config/message_config.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -419,16 +420,55 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _showNightOutcomePhase() {
     // Show individual night outcomes (Sheriff investigation results, etc.)
+    // using the keyword-based message configuration system
 
-    // Always show something, even if _nightOutcomes is empty
+    String title = 'Night Outcome';
     String mainMessage = 'You had a quiet night.';
 
     if (_nightOutcomes.isNotEmpty) {
-      // Check if _nightOutcomes itself has a message property (it's the entire event object)
-      if (_nightOutcomes.containsKey('message')) {
-        final message = _nightOutcomes['message'];
-        if (message is String && message.isNotEmpty) {
-          mainMessage = message;
+      // Get the event type from Firebase
+      final eventType = _nightOutcomes['type'] as String?;
+
+      if (eventType != null) {
+        // Get popup content from message config
+        final popupContent = MessageConfig.getPrivateEventContent(eventType);
+
+        if (popupContent != null) {
+          title = popupContent.title;
+
+          // Format message with variables from Firebase
+          final variables = <String, String>{};
+
+          // Extract variables from Firebase data
+          if (_nightOutcomes['targetName'] != null) {
+            variables['targetName'] = _nightOutcomes['targetName'] as String;
+          }
+          if (_nightOutcomes['result'] != null) {
+            variables['result'] = _nightOutcomes['result'] as String;
+          }
+          if (_nightOutcomes['visitors'] != null) {
+            final visitors = _nightOutcomes['visitors'] as List;
+            if (visitors.isNotEmpty) {
+              variables['visitorsText'] =
+                  'They were visited by: ${visitors.join(', ')}.';
+            } else {
+              variables['visitorsText'] = 'No one visited them tonight.';
+            }
+          }
+
+          // Format the message
+          mainMessage = MessageConfig.formatMessage(
+            popupContent.message,
+            variables,
+          );
+        }
+      } else {
+        // Fallback: Check if _nightOutcomes itself has a message property
+        if (_nightOutcomes.containsKey('message')) {
+          final message = _nightOutcomes['message'];
+          if (message is String && message.isNotEmpty) {
+            mainMessage = message;
+          }
         }
       }
     } // Show a single popup with the night outcome message
@@ -437,7 +477,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       barrierDismissible: false,
       builder:
           (context) => NightOutcomePopup(
-            title: 'Night Outcome',
+            title: title,
             message: mainMessage,
             onComplete: () {
               Navigator.of(context).pop();
@@ -656,9 +696,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   // Show event sharing popup with public events
   void _showEventSharingPopup(List<String> events) {
-    if (events.isEmpty) return;
-
-    // Show first event - for multiple events, we could chain them
+    if (events.isEmpty)
+      return; // Show first event - for multiple events, we could chain them
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -666,6 +705,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (context) => EventSharePopup(
             eventDescription: events.first,
             playerName: 'Everyone', // Generic player name for public events
+            events: events, // Pass the events list for type determination
             onComplete: () {
               Navigator.of(context).pop();
             },

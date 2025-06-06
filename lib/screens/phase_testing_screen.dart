@@ -6,6 +6,7 @@ import '../widgets/event_share_popup.dart';
 import '../widgets/night_outcome_popup.dart';
 import '../widgets/vote_result_popup.dart';
 import '../models/player.dart';
+import '../config/message_config.dart';
 
 class PhaseTestingScreen extends StatefulWidget {
   const PhaseTestingScreen({super.key});
@@ -80,13 +81,20 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
       case 'kill_success':
         playerName = 'Gunman Pete';
         playerRole = null; // Don't reveal role in public events
-        eventDescription = 'Gunman Pete was killed by the Gunman.';
+        // Use MessageConfig for public event messages
+        final content = MessageConfig.getPublicEventContent('player_killed');
+        eventDescription = MessageConfig.formatMessage(
+          content?.message ?? 'A player was killed.',
+          {'playerName': playerName},
+        );
         isDeath = true;
         break;
       case 'quiet_night':
         playerName = 'No One';
         playerRole = null;
-        eventDescription = 'The night was quiet. No one was harmed.';
+        // Use MessageConfig for quiet night message
+        final content = MessageConfig.getPublicEventContent('quiet_night');
+        eventDescription = content?.message ?? 'The night was quiet.';
         break;
       default:
         playerName = 'Unknown Player';
@@ -102,6 +110,9 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
             playerName: playerName,
             playerRole: playerRole,
             isDeath: isDeath,
+            events: [
+              eventDescription,
+            ], // Pass event as list for type determination
             onComplete: () {
               Navigator.of(context).pop();
             },
@@ -157,32 +168,73 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
 
     switch (_selectedPrivateEvent) {
       case 'kill_success_private':
-        title = 'Night Action Result';
-        message = 'You successfully killed Gunman Pete.';
+        final content = MessageConfig.getPrivateEventContent('kill_success');
+        title = content?.title ?? 'Night Action Result';
+        message = MessageConfig.formatMessage(
+          content?.message ?? 'You successfully killed {targetName}.',
+          {'targetName': 'Gunman Pete'},
+        );
         break;
       case 'kill_failed_private':
-        title = 'Night Action Result';
-        message = 'You tried to kill Doc Smith, but they were protected.';
+        final content = MessageConfig.getPrivateEventContent('kill_failed');
+        title = content?.title ?? 'Night Action Result';
+        message = MessageConfig.formatMessage(
+          content?.message ??
+              'You tried to kill {targetName}, but they were protected.',
+          {'targetName': 'Doc Smith'},
+        );
         break;
       case 'investigation_result':
-        title = 'Investigation Result';
-        message = 'You investigated Gunman Pete. They appear Suspicious.';
+        final content = MessageConfig.getPrivateEventContent(
+          'investigation_result',
+        );
+        title = content?.title ?? 'Investigation Result';
+        message = MessageConfig.formatMessage(
+          content?.message ??
+              'You investigated {targetName}. They appear {result}.',
+          {'targetName': 'Gunman Pete', 'result': 'Suspicious'},
+        );
         break;
       case 'protection_result':
-        title = 'Protection Result';
-        message = 'You protected Doc Smith tonight.';
+        final content = MessageConfig.getPrivateEventContent(
+          'protection_result',
+        );
+        title = content?.title ?? 'Protection Result';
+        message = MessageConfig.formatMessage(
+          content?.message ?? 'You protected {targetName} tonight.',
+          {'targetName': 'Doc Smith'},
+        );
         break;
       case 'protection_successful':
-        title = 'Heroic Save!';
-        message = 'You successfully saved Doc Smith from an attack!';
+        final content = MessageConfig.getPrivateEventContent(
+          'protection_successful',
+        );
+        title = content?.title ?? 'Heroic Save!';
+        message = MessageConfig.formatMessage(
+          content?.message ??
+              'You successfully saved {targetName} from an attack!',
+          {'targetName': 'Doc Smith'},
+        );
         break;
       case 'block_result':
-        title = 'Block Result';
-        message = 'You blocked Gunman Pete from performing their night action.';
+        final content = MessageConfig.getPrivateEventContent('block_result');
+        title = content?.title ?? 'Block Result';
+        message = MessageConfig.formatMessage(
+          content?.message ??
+              'You blocked {targetName} from performing their night action.',
+          {'targetName': 'Gunman Pete'},
+        );
         break;
       case 'peep_result':
-        title = 'Spy Result';
-        message = 'You spied on Doc Smith. They were visited by: Sheriff Jack.';
+        final content = MessageConfig.getPrivateEventContent('peep_result');
+        title = content?.title ?? 'Spy Result';
+        message = MessageConfig.formatMessage(
+          content?.message ?? 'You spied on {targetName}. {visitorsText}',
+          {
+            'targetName': 'Doc Smith',
+            'visitorsText': 'They were visited by: Sheriff Jack.',
+          },
+        );
         break;
       default:
         title = 'Night Result';
