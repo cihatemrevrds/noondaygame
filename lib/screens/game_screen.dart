@@ -52,18 +52,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   // Event and popup state management
   bool _hasShownNightOutcome = false;
   bool _hasShownEventSharing = false;
-  bool _hasShownVoteResult = false;  @override
+  bool _hasShownVoteResult = false;
+  @override
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     WidgetsBinding.instance.addObserver(this);
     _setupLobbyListener();
-    _initializeGame();
-  }
-
-  void _initializeGame() async {
-    await _fetchPhaseDurations();
-    _startGameLoop();
+    _fetchPhaseDurations().then((_) {
+      _startGameLoop();
+    });
   }
 
   @override
@@ -639,7 +637,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       } else if (response.statusCode == 400 &&
           response.body.contains("Phase time not expired yet")) {
         // Phase isn't ready to advance yet, will be handled by the next Firebase update
-        print('⏱ Phase not ready to advance yet, waiting for next update');
+        print('⏱️ Phase not ready to advance yet, waiting for next update');
       } else {
         print(
           '❌ Auto-advance failed: ${response.statusCode} - ${response.body}',

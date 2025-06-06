@@ -336,7 +336,7 @@ exports.getRoleInfo = async (req, res) => {
             'Sheriff': 'You investigate players at night to determine if they are suspicious or innocent. Chieftain appears innocent despite being a Bandit. Town team.',
             'Escort': 'You block another player from using their night ability. Target\'s role action won\'t be processed that night. Town team.',
             'Peeper': 'You watch a player at night and see who visits them. You don\'t learn the roles of visitors, just that they visited. Town team.',
-            'Gunslinger': 'You can kill a player during any phase (day or night). You have 1 bullet total. If you kill a player, it will be announced to everyone during night results. Town team.',
+            'Gunslinger': 'You can kill a player during any phase (day or night). You have 2 bullets total. If you kill a Town member, you lose your second bullet. Town team.',
             'Gunman': 'You can kill one player each night. Your target can be overridden by Chieftain\'s orders. Bandit team.',
             'Chieftain': 'You issue kill orders to Gunman, overriding their choice. You appear innocent to Sheriff investigations. If no Gunman remains, you take over killing. Bandit team.',
             'Jester': 'You have no night ability. You win if voted out by the town during day phase. Neutral team.'
@@ -453,6 +453,10 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
 
 // Helper function to process night actions
 async function processNightActions(lobbyData, players) {
+    console.log('🌙 Starting processNightActions...');
+    console.log('📊 Lobby roleData:', JSON.stringify(lobbyData.roleData, null, 2));
+    console.log('👥 Players count:', players.length);
+
     let roleDataUpdate = { ...lobbyData.roleData } || {};
     let updatedPlayers = [...players];
     let nightEvents = []; // Public events - visible to everyone
@@ -759,18 +763,6 @@ async function processNightActions(lobbyData, players) {
                         type: 'kill_blocked',
                         message: 'You were blocked and could not kill anyone.'
                     };
-                }
-            }
-        }
-    }
-
-    // Process night kills from Gunslinger (multiple gunslingers possible)
-    if (roleDataUpdate.gunslinger) {
-        for (const [gunslingerUid, gunslingerData] of Object.entries(roleDataUpdate.gunslinger)) {
-            if (gunslingerData && gunslingerData.usedBullet) {
-                const targetPlayer = updatedPlayers.find(p => p.id === gunslingerData.targetId);
-                if (targetPlayer) {
-                    nightEvents.push(`${targetPlayer.name} was killed by the Gunslinger.`);
                 }
             }
         }
