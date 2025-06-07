@@ -779,7 +779,7 @@ async function processNightActions(lobbyData, players) {
                                 isAlive: false,
                                 killedBy: 'Gunman',
                                 eliminatedBy: gunmanPlayer.name
-                            };                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+                            }; nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
                             privateEvents[gunmanPlayer.id] = {
                                 type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,

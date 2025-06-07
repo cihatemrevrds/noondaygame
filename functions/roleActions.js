@@ -623,7 +623,7 @@ exports.gunslingerShoot = async (req, res) => {
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return;
-    }    try {
+    } try {
         console.log('🔫 gunslingerShoot called with:', req.body);
         const { lobbyCode, userId, targetId } = req.body;
 
@@ -707,17 +707,17 @@ exports.gunslingerShoot = async (req, res) => {
         if (bulletsUsed >= 1) {
             console.log('❌ No bullets remaining - you already used your only bullet');
             return res.status(400).json({ error: 'You have already used your only bullet' });
-        }        console.log('💾 Storing gunslinger target selection and using bullet');
+        } console.log('💾 Storing gunslinger target selection - bullet will be consumed during night processing');
 
-        // Store gunslinger's target choice AND increment bullets used
+        // Store gunslinger's target choice - bullet consumption happens during night processing
         const updatedRoleData = {
             ...(lobbyData.roleData || {}),
             gunslinger: {
                 ...(lobbyData.roleData?.gunslinger || {}),
                 [userId]: {
                     ...gunslingerData,
-                    targetId: targetId,
-                    bulletsUsed: bulletsUsed + 1  // ÖNEMLİ: Bullet sayısını artır!
+                    targetId: targetId
+                    // Note: bulletsUsed will be incremented during night processing
                 }
             }
         };
@@ -726,10 +726,10 @@ exports.gunslingerShoot = async (req, res) => {
             roleData: updatedRoleData
         });
 
-        console.log('✅ Gunslinger target selected successfully and bullet used');
+        console.log('✅ Gunslinger target selected successfully');
 
         return res.status(200).json({
-            message: `You shot ${target.name}. Your identity will be revealed if they die. You have no bullets left.`
+            message: `You aimed at ${target.name}. If they die, your identity will be revealed.`
         });
     } catch (error) {
         console.error('gunslingerShoot error:', error);
