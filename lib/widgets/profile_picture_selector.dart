@@ -17,14 +17,19 @@ class ProfilePictureSelector extends StatefulWidget {
 class _ProfilePictureSelectorState extends State<ProfilePictureSelector> {
   // List of available role images (must match the files in the assets folder)
   final List<String> availablePictures = [
-    'sheriff.jpg',
-    'peeper.jpg',
-    'jester.jpg',
-    'gunslinger.jpg',
-    'gunman.jpg',
-    'escort.jpg',
-    'doctor.jpg',
-    'chieftain.jpg',
+    'normal_man.png',
+    'normal_woman.png',
+    'bad_man.png',
+    'attractive_woman.png',
+    'revolvers_crossing.png',
+    'bad_ninja.png',
+    'graggussy_happy.png',
+    'graggussy_normal.png',
+    'happy_man.png',
+    'old_man.png',
+    'cool_bad_man.png',
+    'plague_doctor.png',
+    'tf_gambler.png',
   ];
 
   @override
@@ -113,7 +118,7 @@ class _ProfilePictureSelectorState extends State<ProfilePictureSelector> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            'assets/images/roles/$image',
+                            'assets/images/profilePictures/$image',
                             fit: BoxFit.cover,
                           ),
                         ),

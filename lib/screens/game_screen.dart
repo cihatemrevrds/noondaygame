@@ -578,7 +578,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             }
           });          setState(() {
             _remainingTime =
-                5; // Timer'ı 10 saniyeye çıkar
+                10; // Timer'ı 10 saniyeye çıkar
           });
         }
         break;
@@ -1137,7 +1137,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              _getDisplayPhase().toUpperCase(),
+               '${_getDisplayPhase().toUpperCase()} (DAY: $_dayCount)',
               style: const TextStyle(
                 fontFamily: 'Rye',
                 fontSize: 18,
