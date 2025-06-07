@@ -69,6 +69,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _phaseTimer?.cancel();
+    _phaseTimer = null;
     super.dispose();
   }
 
@@ -114,7 +115,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
       if (!snapshot.exists) {
-        // Lobby deleted, return to main menu
+        // Lobby deleted, cancel all timers immediately to prevent further HTTP requests
+        _phaseTimer?.cancel();
+        _phaseTimer = null;
+
+        // Return to main menu
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -506,6 +511,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
     );
   }
+
   void _showEventSharingPhase() {
     // Show public night events
     List<String> events = _fetchNightEvents();
@@ -513,7 +519,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _showOutcomePopups(events, 0, isPrivate: false);
     } else {
       // Events boşsa ve otomatik ilerleme modundaysak faz'ı ilerlet
-      print('No events to share in _showEventSharingPhase, auto-advancing phase');
+      print(
+        'No events to share in _showEventSharingPhase, auto-advancing phase',
+      );
       if (!_manualPhaseControl) {
         _autoAdvancePhase();
       }
@@ -562,7 +570,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 10; // Set timer to 10 seconds for night_outcome phase
           });
         }
-        break;      case 'event_sharing':
+        break;
+      case 'event_sharing':
         if (!_hasShownEventSharing) {
           _hasShownEventSharing = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -576,9 +585,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 _autoAdvancePhase();
               }
             }
-          });          setState(() {
-            _remainingTime =
-                10; // Timer'ı 10 saniyeye çıkar
+          });
+          setState(() {
+            _remainingTime = 10; // Timer'ı 10 saniyeye çıkar
           });
         }
         break;
@@ -610,7 +619,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   // Update phase timer based on current timing
   void _updatePhaseTimer() {
     _phaseTimer?.cancel();
-
     if (_remainingTime > 0) {
       _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (mounted) {
@@ -621,6 +629,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
           if (_remainingTime <= 0) {
             timer.cancel();
+            _phaseTimer = null;
             // Automatically advance phase when timer expires (only if not in manual mode)
             if (!_manualPhaseControl) {
               _autoAdvancePhase();
@@ -639,18 +648,45 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
         } else {
           timer.cancel();
+          _phaseTimer = null;
         }
       });
     }
-  }
+  } // Automatically advance phase when timer expires
 
-  // Automatically advance phase when timer expires
   void _autoAdvancePhase() async {
-    try {
-      print('⏰ Timer expired, auto-advancing phase from: $_currentGameState');
+    // Safety check - don't make HTTP requests if component is unmounted
+    if (!mounted) {
+      print('⏹️ Auto-advance cancelled: component unmounted');
+      return;
+    }
 
-      // Add a small delay to ensure Firebase has processed any state changes
-      await Future.delayed(const Duration(milliseconds: 500));
+    // Safety check - don't make HTTP requests if lobby data is null (likely deleted)
+    if (_lobbyData == null) {
+      print(
+        '⏹️ Auto-advance cancelled: lobby data is null (lobby likely deleted)',
+      );
+      return;
+    }
+
+    try {
+      print('⏰ Auto-advancing phase from: $_currentGameState');
+
+      // Shorter delay to reduce perceived lag while still ensuring Firebase sync
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Double-check if we're still mounted and lobby still exists after delay
+      if (!mounted) {
+        print('⏹️ Auto-advance cancelled after delay: component unmounted');
+        return;
+      }
+
+      if (_lobbyData == null) {
+        print(
+          '⏹️ Auto-advance cancelled after delay: lobby data is null (lobby likely deleted)',
+        );
+        return;
+      }
 
       // Call the backend auto-advance function
       final response = await http.post(
@@ -694,13 +730,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     } catch (e) {
       print('❌ Auto-advance error: $e');
 
-      // Try again after a short delay if it's a network error
-      if (e.toString().contains('XMLHttpRequest error')) {
-        print('🔄 Network error, retrying auto-advance in 1 second');
-        Future.delayed(const Duration(seconds: 1), _autoAdvancePhase);
+      // Only retry on specific network errors, and only if component is still mounted
+      if (mounted &&
+          _lobbyData != null &&
+          e.toString().contains('XMLHttpRequest error')) {
+        print('🔄 Network error, retrying auto-advance in 500ms');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          // Double check before retry
+          if (mounted && _lobbyData != null) {
+            _autoAdvancePhase();
+          }
+        });
       }
     }
   }
+
   // Show event sharing popup with public events
   void _showEventSharingPopup(List<String> events) {
     if (events.isEmpty) {
@@ -710,7 +754,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       return;
     }
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -721,12 +765,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             events: events, // Pass the events list for type determination
             onComplete: () {
               Navigator.of(context).pop();
-              
+
               // Popup kapandıktan sonra phase'i ilerlet
               setState(() {
                 _hasShownEventSharing = true;
               });
-              
+
               // Manual mode değilse otomatik ilerlet
               if (!_manualPhaseControl) {
                 _autoAdvancePhase();
@@ -819,6 +863,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // Return empty list if no events are available
     return [];
   }
+
   void _showOutcomePopups(
     List<String> messages,
     int index, {
@@ -826,7 +871,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }) {
     if (index >= messages.length) {
       // Tüm popup'lar gösterildi, eğer event sharing phase'indeysek ilerlet
-      if (!isPrivate && _currentGameState == 'event_sharing' && !_manualPhaseControl) {
+      if (!isPrivate &&
+          _currentGameState == 'event_sharing' &&
+          !_manualPhaseControl) {
         _autoAdvancePhase();
       }
       return;
@@ -856,7 +903,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       index + 1,
                       isPrivate: isPrivate,
                     );
-                  } else if (!isPrivate && _currentGameState == 'event_sharing' && !_manualPhaseControl) {
+                  } else if (!isPrivate &&
+                      _currentGameState == 'event_sharing' &&
+                      !_manualPhaseControl) {
                     // Son popup gösterildi, eğer event sharing phase'indeysek ilerlet
                     _autoAdvancePhase();
                   }
@@ -1137,7 +1186,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-               '${_getDisplayPhase().toUpperCase()} (DAY: $_dayCount)',
+              '${_getDisplayPhase().toUpperCase()} (DAY: $_dayCount)',
               style: const TextStyle(
                 fontFamily: 'Rye',
                 fontSize: 18,
