@@ -22,8 +22,8 @@ Peeper
 
 Gunslinger
   Can select a target to shoot during night phase only
-  Has 2 bullets total for the entire game
-  If kills a Town member, loses remaining bullets
+  Has only 1 bullet total for the entire game
+  When they shoot, their identity is revealed to everyone
   Belongs to the Town team
 
 Bandit Team Roles

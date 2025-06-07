@@ -77,9 +77,8 @@ class RoleUtils {
       case 'Peeper':
         return 'Each night you can learn someone\'s role.';
       case 'Chieftain':
-        return 'You are the leader of the bandit team. Sheriff sees you as innocent.';
-      case 'Gunslinger':
-        return 'You have 2 bullets to shoot players during any phase. If you kill a town member, you lose your second bullet.';
+        return 'You are the leader of the bandit team. Sheriff sees you as innocent.';      case 'Gunslinger':
+        return 'You have 1 bullet to shoot a player during the night. When you kill someone, your identity is revealed to everyone.';
       default:
         return 'Unknown role';
     }

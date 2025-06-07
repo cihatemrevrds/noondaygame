@@ -699,25 +699,17 @@ exports.gunslingerShoot = async (req, res) => {
         if (targetId === userId) {
             console.log('❌ Self-targeting attempt');
             return res.status(400).json({ error: 'You cannot shoot yourself' });
-        }
-
-        // Get gunslinger's current data
+        }        // Get gunslinger's current data
         const gunslingerData = lobbyData.roleData?.gunslinger?.[userId] || {};
         const bulletsUsed = gunslingerData.bulletsUsed || 0;
-        const hasSecondBullet = gunslingerData.hasSecondBullet !== false; // Default to true
 
-        console.log('🔫 Gunslinger data:', { bulletsUsed, hasSecondBullet });
+        console.log('🔫 Gunslinger data:', { bulletsUsed });
 
-        // Check if gunslinger has bullets left
-        if (bulletsUsed >= 2) {
-            console.log('❌ No bullets remaining');
-            return res.status(400).json({ error: 'No bullets remaining' });
-        }
-
-        if (bulletsUsed >= 1 && !hasSecondBullet) {
-            console.log('❌ Second bullet lost due to previous town kill');
-            return res.status(400).json({ error: 'You lost your second bullet for killing a town member' });
-        } console.log('💾 Storing gunslinger target selection');
+        // Check if gunslinger has bullets left (only 1 bullet total)
+        if (bulletsUsed >= 1) {
+            console.log('❌ No bullets remaining - you already used your only bullet');
+            return res.status(400).json({ error: 'You have already used your only bullet' });
+        }console.log('💾 Storing gunslinger target selection');
 
         // Store gunslinger's target choice (don't execute kill immediately)
         const updatedRoleData = {
