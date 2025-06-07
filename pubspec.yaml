@@ -31,6 +31,7 @@ flutter:
     - assets/images/backgrounds/saloon_bg.png
     - assets/images/backgrounds/western_town_night_bg.jpg
     - assets/images/roles/
+    - assets/images/profilePictures/
 
   fonts:
     - family: Rye

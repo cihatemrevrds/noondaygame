@@ -39,7 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _userSettings = UserSettings(
           nickname: FirebaseAuth.instance.currentUser?.displayName ?? 'Cowboy',
           email: FirebaseAuth.instance.currentUser?.email ?? 'user@example.com',
-          profilePicture: 'sheriff.jpg',
+          profilePicture: 'normal_man.png',
         );
         _isLoading = false;
       });
@@ -213,12 +213,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                                 child: ClipOval(
                                   child: Image.asset(
-                                    'assets/images/roles/${_userSettings.profilePicture}',
+                                    'assets/images/profilePictures/${_userSettings.profilePicture}',
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       // Fallback image if the asset doesn't exist
                                       return Image.asset(
-                                        'assets/images/roles/sheriff.jpg',
+                                        'assets/images/profilePictures/normal_man.png',
                                         fit: BoxFit.cover,
                                       );
                                     },
