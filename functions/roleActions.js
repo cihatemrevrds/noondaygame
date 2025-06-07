@@ -623,14 +623,12 @@ exports.gunslingerShoot = async (req, res) => {
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return;
-    }
-
-    try {
+    }    try {
         console.log('🔫 gunslingerShoot called with:', req.body);
         const { lobbyCode, userId, targetId } = req.body;
 
-        if (!lobbyCode || !userId || !targetId) {
-            console.log('❌ Missing required parameters:', { lobbyCode, userId, targetId });
+        if (!lobbyCode || !userId) {
+            console.log('❌ Missing required parameters:', { lobbyCode, userId });
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
