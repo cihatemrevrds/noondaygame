@@ -83,8 +83,7 @@ class MessageConfig {
     ),
     'gunslinger_shot_success': PopupContent(
       title: '🎯 Shot Fired',
-      message:
-          'You shot {targetName}. You have {bulletsRemaining} bullet{bulletPlural} remaining.',
+      message: 'You shot {targetName}. You can rest now.',
     ),
     'gunslinger_no_bullets': PopupContent(
       title: '🔫 Empty Chamber',
@@ -93,6 +92,12 @@ class MessageConfig {
     'gunslinger_lost_bullet': PopupContent(
       title: '💔 Second Bullet Lost',
       message: 'You lost your second bullet for killing a town member.',
+    ),
+
+    // Death Notification Messages (for victims)
+    'player_death': PopupContent(
+      title: '💀 Your Final Moment',
+      message: 'You were killed by {killerTeam}! Your role was {victimRole}.',
     ),
   };
 

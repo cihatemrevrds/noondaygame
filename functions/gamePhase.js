@@ -683,16 +683,16 @@ async function processNightActions(lobbyData, players) {
                             break;
                         }
                     }
-                }
-
-                if (!isProtected) {
+                } if (!isProtected) {
                     console.log(`💀 Killing target: ${targetPlayer.name}`);
                     updatedPlayers[targetIndex] = {
                         ...targetPlayer,
                         isAlive: false,
                         killedBy: 'Gunman',
                         eliminatedBy: selectedGunman.name
-                    };                    // Public event - everyone sees this
+                    };
+
+                    // Public event - everyone sees this
                     nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
                     // Private event - only the selected Gunman sees this
@@ -705,6 +705,13 @@ async function processNightActions(lobbyData, players) {
                     privateEvents[chieftainPlayer.id] = {
                         type: MESSAGES.EVENT_TYPES.ORDER_SUCCESS,
                         targetName: targetPlayer.name
+                    };
+
+                    // Death notification for the victim
+                    privateEvents[targetPlayer.id] = {
+                        type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                        killerTeam: 'Bandits',
+                        victimRole: targetPlayer.role
                     };
                 } else {
                     // Target was protected                    // Find the doctor(s) who protected this target
@@ -779,11 +786,20 @@ async function processNightActions(lobbyData, players) {
                                 isAlive: false,
                                 killedBy: 'Gunman',
                                 eliminatedBy: gunmanPlayer.name
-                            }; nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+                            };
+
+                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
                             privateEvents[gunmanPlayer.id] = {
                                 type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
                                 targetName: targetPlayer.name
+                            };
+
+                            // Death notification for the victim
+                            privateEvents[targetPlayer.id] = {
+                                type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                                killerTeam: 'Bandits',
+                                victimRole: targetPlayer.role
                             };
                         } else {
                             // Find the doctor(s) who protected this target
@@ -831,8 +847,7 @@ async function processNightActions(lobbyData, players) {
                     const bulletsUsed = gunslingerData.bulletsUsed || 0;
 
                     // Check if gunslinger has bullets left (only 1 bullet total)
-                    if (bulletsUsed < 1) {
-                        // Check if target is still alive (may have been killed by gunman)
+                    if (bulletsUsed < 1) {                        // Check if target is still alive (may have been killed by gunman)
                         if (targetPlayer.isAlive) {
                             // Execute the kill
                             updatedPlayers[targetIndex] = {
@@ -860,6 +875,13 @@ async function processNightActions(lobbyData, players) {
                                 type: 'gunslinger_shot_success',
                                 targetName: targetPlayer.name,
                                 message: `You successfully shot ${targetPlayer.name}. Your identity has been revealed to everyone.`
+                            };
+
+                            // Death notification for the victim
+                            privateEvents[targetPlayer.id] = {
+                                type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                                killerTeam: 'the Gunslinger',
+                                victimRole: targetPlayer.role
                             };
 
                             console.log(`🎯 Gunslinger ${gunslingerPlayer.name} shot ${targetPlayer.name} - identity revealed`);

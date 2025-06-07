@@ -20,10 +20,10 @@ const MESSAGES = {
         PEEP_BLOCKED: "peep_blocked",
         KILL_SUCCESS: "kill_success",
         KILL_FAILED: "kill_failed",
-        KILL_BLOCKED: "kill_blocked",
-        ORDER_SUCCESS: "order_success",
+        KILL_BLOCKED: "kill_blocked", ORDER_SUCCESS: "order_success",
         ORDER_FAILED: "order_failed",
-        NOT_SELECTED: "not_selected"
+        NOT_SELECTED: "not_selected",
+        PLAYER_DEATH: "player_death"
     },
 
     // Investigation results (simple keywords)
