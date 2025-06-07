@@ -679,13 +679,8 @@ async function processNightActions(lobbyData, players) {
                         isAlive: false,
                         killedBy: 'Gunman',
                         eliminatedBy: selectedGunman.name
-                    };
-
-                    // Public event - everyone sees this
-                    nightEvents.push({
-                        type: MESSAGES.EVENT_TYPES.PLAYER_KILLED,
-                        playerName: targetPlayer.name
-                    });
+                    };                    // Public event - everyone sees this
+                    nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
                     // Private event - only the selected Gunman sees this
                     privateEvents[selectedGunman.id] = {
@@ -771,12 +766,7 @@ async function processNightActions(lobbyData, players) {
                                 isAlive: false,
                                 killedBy: 'Gunman',
                                 eliminatedBy: gunmanPlayer.name
-                            };
-
-                            nightEvents.push({
-                                type: MESSAGES.EVENT_TYPES.PLAYER_KILLED,
-                                playerName: targetPlayer.name
-                            });
+                            };                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
 
                             privateEvents[gunmanPlayer.id] = {
                                 type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
@@ -809,7 +799,8 @@ async function processNightActions(lobbyData, players) {
                 }
             }
         }
-    }
+    }    // Reset role data for next night, preserving persistent data and multi-role structure
+    const newRoleData = {};
 
     // 7. Process Gunslinger actions (independent of other kills)
     console.log('🔫 Processing Gunslinger actions...');
@@ -846,14 +837,8 @@ async function processNightActions(lobbyData, players) {
                             newRoleData.gunslinger[gunslingerUid] = {
                                 bulletsUsed: newBulletsUsed,
                                 targetId: null // Reset target
-                            };
-
-                            // Public event - reveals Gunslinger identity as required
-                            nightEvents.push({
-                                type: MESSAGES.EVENT_TYPES.PLAYER_KILLED,
-                                playerName: targetPlayer.name,
-                                killerRole: 'Gunslinger'
-                            });
+                            };                            // Public event - reveals Gunslinger identity as required
+                            nightEvents.push(`${targetPlayer.name} was killed by the Gunslinger.`);
 
                             // Private event for gunslinger
                             privateEvents[gunslingerPlayer.id] = {
@@ -888,12 +873,7 @@ async function processNightActions(lobbyData, players) {
                 };
             }
         }
-    }
-
-    // Reset role data for next night, preserving persistent data and multi-role structure
-    const newRoleData = {};
-
-    // Reset gunman data for each gunman
+    }    // Reset gunman data for each gunman
     const gunmanPlayers = players.filter(p => p.role === 'Gunman' && p.isAlive);
     if (gunmanPlayers.length > 0) {
         newRoleData.gunman = {};
@@ -959,13 +939,9 @@ async function processNightActions(lobbyData, players) {
                 };
             }
         });
-    }
-
-    // If no public events occurred, add quiet night message
+    }    // If no public events occurred, add quiet night message
     if (nightEvents.length === 0) {
-        nightEvents.push({
-            type: MESSAGES.EVENT_TYPES.QUIET_NIGHT
-        });
+        nightEvents.push("The night was quiet. No one was harmed.");
     }
 
     return {
