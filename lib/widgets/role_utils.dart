@@ -41,6 +41,8 @@ class RoleUtils {
         return Icons.visibility;
       case 'Chieftain':
         return Icons.verified_user;
+      case 'Gunslinger':
+        return Icons.local_fire_department; // Gun/shooting icon
       default:
         return Icons.help;
     }
@@ -53,6 +55,7 @@ class RoleUtils {
       case 'Sheriff':
       case 'Prostitute':
       case 'Peeper':
+      case 'Gunslinger': // Gunslinger can act during day or night
         return true;
       default:
         return false;
@@ -75,6 +78,8 @@ class RoleUtils {
         return 'Each night you can learn someone\'s role.';
       case 'Chieftain':
         return 'You are the leader of the bandit team. Sheriff sees you as innocent.';
+      case 'Gunslinger':
+        return 'You have 2 bullets to shoot players during any phase. If you kill a town member, you lose your second bullet.';
       default:
         return 'Unknown role';
     }
