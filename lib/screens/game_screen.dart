@@ -506,12 +506,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
     );
   }
-
   void _showEventSharingPhase() {
     // Show public night events
     List<String> events = _fetchNightEvents();
     if (events.isNotEmpty) {
       _showOutcomePopups(events, 0, isPrivate: false);
+    } else {
+      // Events boşsa ve otomatik ilerleme modundaysak faz'ı ilerlet
+      print('No events to share in _showEventSharingPhase, auto-advancing phase');
+      if (!_manualPhaseControl) {
+        _autoAdvancePhase();
+      }
     }
   }
 
@@ -557,20 +562,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 10; // Set timer to 10 seconds for night_outcome phase
           });
         }
-        break;
-
-      case 'event_sharing':
+        break;      case 'event_sharing':
         if (!_hasShownEventSharing) {
           _hasShownEventSharing = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             final events = _fetchNightEvents();
             if (events.isNotEmpty) {
               _showEventSharingPopup(events);
+            } else {
+              // Events boşsa direkt phase'i ilerlet
+              print('No events to share, auto-advancing phase');
+              if (!_manualPhaseControl) {
+                _autoAdvancePhase();
+              }
             }
-          });
-          setState(() {
+          });          setState(() {
             _remainingTime =
-                5; // Set timer to 5 seconds for event_sharing phase
+                10; // Timer'ı 10 saniyeye çıkar
           });
         }
         break;
@@ -693,11 +701,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     }
   }
-
   // Show event sharing popup with public events
   void _showEventSharingPopup(List<String> events) {
-    if (events.isEmpty)
-      return; // Show first event - for multiple events, we could chain them
+    if (events.isEmpty) {
+      // Events boşsa phase'i ilerlet
+      if (!_manualPhaseControl) {
+        _autoAdvancePhase();
+      }
+      return;
+    }
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -708,6 +721,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             events: events, // Pass the events list for type determination
             onComplete: () {
               Navigator.of(context).pop();
+              
+              // Popup kapandıktan sonra phase'i ilerlet
+              setState(() {
+                _hasShownEventSharing = true;
+              });
+              
+              // Manual mode değilse otomatik ilerlet
+              if (!_manualPhaseControl) {
+                _autoAdvancePhase();
+              } else if (widget.isHost) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "You can now advance to the next phase",
+                      style: const TextStyle(fontFamily: 'Rye'),
+                    ),
+                    backgroundColor: Colors.green[800],
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
             },
           ),
     );
@@ -785,13 +819,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // Return empty list if no events are available
     return [];
   }
-
   void _showOutcomePopups(
     List<String> messages,
     int index, {
     bool isPrivate = false,
   }) {
     if (index >= messages.length) {
+      // Tüm popup'lar gösterildi, eğer event sharing phase'indeysek ilerlet
+      if (!isPrivate && _currentGameState == 'event_sharing' && !_manualPhaseControl) {
+        _autoAdvancePhase();
+      }
       return;
     }
 
@@ -819,6 +856,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       index + 1,
                       isPrivate: isPrivate,
                     );
+                  } else if (!isPrivate && _currentGameState == 'event_sharing' && !_manualPhaseControl) {
+                    // Son popup gösterildi, eğer event sharing phase'indeysek ilerlet
+                    _autoAdvancePhase();
                   }
                 },
                 child: const Text(
