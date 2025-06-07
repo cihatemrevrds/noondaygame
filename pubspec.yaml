@@ -26,10 +26,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/backgrounds/western_town_bg.png
     - assets/images/backgrounds/saloon_bg.png
+    - assets/images/backgrounds/western_town_night_bg.jpg
     - assets/images/roles/
 
   fonts:

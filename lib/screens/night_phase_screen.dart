@@ -156,7 +156,12 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
           alignment: WrapAlignment.center,
           children:
               widget.players
-                  .where((p) => p.isAlive)
+                  .where(
+                    (p) =>
+                        p.isAlive &&
+                        (widget.myRole == 'Doctor' ||
+                            p.id != widget.currentUserId),
+                  )
                   .map(
                     (player) => GestureDetector(
                       onTap: () {
@@ -382,7 +387,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         // Background image
         Positioned.fill(
           child: Image.asset(
-            'assets/images/backgrounds/western_town_bg.png',
+            'assets/images/backgrounds/western_town_night_bg.jpg',
             fit: BoxFit.cover,
           ),
         ),
