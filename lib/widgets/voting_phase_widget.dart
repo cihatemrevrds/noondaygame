@@ -308,17 +308,34 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget>
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange, width: 3),
                   )
-                  : null,
-          child: Column(
+                  : null,          child: Column(
             children: [
               // Player Avatar
-              Expanded(                child: PlayerAvatar(
+              Expanded(
+                child: PlayerAvatar(
                   name: player.name,
                   isLeader: player.isLeader,
                   isDead: !player.isAlive,
                   profilePicture: player.profilePicture,
                 ),
-              ), // Vote Button
+              ),
+              // Player Name
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 1.0),
+                child: Text(
+                  player.name,
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 10,
+                    color: player.isAlive ? Colors.white : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    decoration: player.isAlive ? null : TextDecoration.lineThrough,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),// Vote Button
               if (canVote)
                 Padding(
                   padding: const EdgeInsets.only(

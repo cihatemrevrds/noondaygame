@@ -229,20 +229,41 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
           );
         }
         // Player slot
-        final isCurrentUser = player.id == widget.currentUserId;
-
-        return Container(
+        final isCurrentUser = player.id == widget.currentUserId;        return Container(
           decoration:
               isCurrentUser
                   ? BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.blue, width: 3),
                   )
-                  : null,          child: PlayerAvatar(
-            name: player.name,
-            isLeader: player.isLeader,
-            isDead: !player.isAlive,
-            profilePicture: player.profilePicture,
+                  : null,
+          child: Column(
+            children: [
+              Expanded(
+                child: PlayerAvatar(
+                  name: player.name,
+                  isLeader: player.isLeader,
+                  isDead: !player.isAlive,
+                  profilePicture: player.profilePicture,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Text(
+                  player.name,
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 10,
+                    color: player.isAlive ? Colors.white : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    decoration: player.isAlive ? null : TextDecoration.lineThrough,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
           ),
         );
       },
