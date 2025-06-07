@@ -623,14 +623,12 @@ exports.gunslingerShoot = async (req, res) => {
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return;
-    }
-
-    try {
+    }    try {
         console.log('🔫 gunslingerShoot called with:', req.body);
         const { lobbyCode, userId, targetId } = req.body;
 
-        if (!lobbyCode || !userId || !targetId) {
-            console.log('❌ Missing required parameters:', { lobbyCode, userId, targetId });
+        if (!lobbyCode || !userId) {
+            console.log('❌ Missing required parameters:', { lobbyCode, userId });
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
@@ -699,34 +697,27 @@ exports.gunslingerShoot = async (req, res) => {
         if (targetId === userId) {
             console.log('❌ Self-targeting attempt');
             return res.status(400).json({ error: 'You cannot shoot yourself' });
-        }
-
-        // Get gunslinger's current data
+        }        // Get gunslinger's current data
         const gunslingerData = lobbyData.roleData?.gunslinger?.[userId] || {};
         const bulletsUsed = gunslingerData.bulletsUsed || 0;
-        const hasSecondBullet = gunslingerData.hasSecondBullet !== false; // Default to true
 
-        console.log('🔫 Gunslinger data:', { bulletsUsed, hasSecondBullet });
+        console.log('🔫 Gunslinger data:', { bulletsUsed });
 
-        // Check if gunslinger has bullets left
-        if (bulletsUsed >= 2) {
-            console.log('❌ No bullets remaining');
-            return res.status(400).json({ error: 'No bullets remaining' });
-        }
+        // Check if gunslinger has bullets left (only 1 bullet total)
+        if (bulletsUsed >= 1) {
+            console.log('❌ No bullets remaining - you already used your only bullet');
+            return res.status(400).json({ error: 'You have already used your only bullet' });
+        }        console.log('💾 Storing gunslinger target selection and using bullet');
 
-        if (bulletsUsed >= 1 && !hasSecondBullet) {
-            console.log('❌ Second bullet lost due to previous town kill');
-            return res.status(400).json({ error: 'You lost your second bullet for killing a town member' });
-        } console.log('💾 Storing gunslinger target selection');
-
-        // Store gunslinger's target choice (don't execute kill immediately)
+        // Store gunslinger's target choice AND increment bullets used
         const updatedRoleData = {
             ...(lobbyData.roleData || {}),
             gunslinger: {
                 ...(lobbyData.roleData?.gunslinger || {}),
                 [userId]: {
                     ...gunslingerData,
-                    targetId: targetId
+                    targetId: targetId,
+                    bulletsUsed: bulletsUsed + 1  // ÖNEMLİ: Bullet sayısını artır!
                 }
             }
         };
@@ -735,10 +726,10 @@ exports.gunslingerShoot = async (req, res) => {
             roleData: updatedRoleData
         });
 
-        console.log('✅ Gunslinger target selected successfully');
+        console.log('✅ Gunslinger target selected successfully and bullet used');
 
         return res.status(200).json({
-            message: `You selected ${target.name} as your target. You will learn the outcome at the end of the night.`
+            message: `You shot ${target.name}. Your identity will be revealed if they die. You have no bullets left.`
         });
     } catch (error) {
         console.error('gunslingerShoot error:', error);

@@ -111,9 +111,8 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
       case 'Escort':
         return 'Each night, you can block a player from using their night action.';
       case 'Peeper':
-        return 'Each night, you can spy on a player house to see who visited them.';
-      case 'Gunslinger':
-        return 'You have 2 bullets. Each night, you can select a target to shoot. If you kill a Town member, you lose your second bullet.';
+        return 'Each night, you can spy on a player house to see who visited them.';      case 'Gunslinger':
+        return 'You have 1 bullet. Each night, you can select a target to shoot. When you kill someone, your identity is revealed to everyone.';
       case 'Gunman':
         return 'Each night, you can eliminate one player.';
       case 'Chieftain':
