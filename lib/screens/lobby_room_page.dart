@@ -149,8 +149,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             'manualPhaseControl': settingsData['manualPhaseControl'] ?? false,
           };
 
-          final playersData = data['players'] as List<dynamic>? ?? [];
-          final playersList =
+          final playersData = data['players'] as List<dynamic>? ?? [];          final playersList =
               playersData.map((p) {
                 final map = p as Map<String, dynamic>;
                 final playerId = map['id'] ?? map['uid'] ?? '';
@@ -346,9 +345,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                     height: constraints.maxHeight,
                     decoration: const BoxDecoration(
                       image: DecorationImage(
-                        image: AssetImage(
-                          "assets/images/backgrounds/saloon_bg.png",
-                        ),
+                        image: AssetImage("assets/images/backgrounds/saloon_bg.png"),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -402,8 +399,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                             child: Row(
                               children: [
                                 Expanded(
-                                  flex: 3,
-                                  child: Container(
+                                  flex: 3,                                  child: Container(
                                     margin: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.9),
@@ -446,76 +442,68 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                             padding: const EdgeInsets.all(12),
                                             itemCount: players.length,
                                             itemBuilder: (context, index) {
-                                              final player = players[index];
-                                              return ListTile(
-                                                title: Text(
-                                                  player.name,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Rye',
-                                                  ),
-                                                ),
-                                                leading: SizedBox(
-                                                  width: 40,
-                                                  height: 40,
-                                                  child: PlayerAvatar(
-                                                    name: player.name,
-                                                    isLeader: player.isLeader,
-                                                    isDead: !player.isAlive,
-                                                    profilePicture:
-                                                        player.profilePicture,
-                                                  ),
-                                                ),
-                                                trailing:
-                                                    _isHost &&
-                                                            player.id !=
-                                                                _currentUserId
-                                                        ? Row(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            IconButton(
-                                                              icon: const Icon(
-                                                                Icons.close,
-                                                                color:
-                                                                    Colors.red,
-                                                              ),
-                                                              onPressed:
-                                                                  () => _lobbyService
-                                                                      .kickPlayer(
-                                                                        widget
-                                                                            .lobbyCode,
-                                                                        player
-                                                                            .id,
-                                                                        _currentUserId,
-                                                                      ),
-                                                            ),
-                                                            IconButton(
-                                                              icon: const Icon(
-                                                                Icons.star,
-                                                                color:
-                                                                    Colors
-                                                                        .orange,
-                                                              ),
-                                                              onPressed:
-                                                                  () => _lobbyService
-                                                                      .transferHost(
-                                                                        widget
-                                                                            .lobbyCode,
-                                                                        player
-                                                                            .id,
-                                                                      ),
-                                                            ),
-                                                          ],
-                                                        )
-                                                        : null,
-                                              );
-                                            },
+                                        final player = players[index];                                        return ListTile(
+                                          title: Text(
+                                            player.name,
+                                            style: const TextStyle(
+                                              fontFamily: 'Rye',
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          leading: SizedBox(
+                                            width: 40,
+                                            height: 40,
+                                            child: PlayerAvatar(
+                                              name: player.name,
+                                              isLeader: player.isLeader,
+                                              isDead: !player.isAlive,
+                                              profilePicture: player.profilePicture,
+                                            ),
+                                          ),
+                                          trailing:
+                                              _isHost &&
+                                                      player.id !=
+                                                          _currentUserId
+                                                  ? Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.close,
+                                                          color: Colors.red,
+                                                        ),
+                                                        onPressed:
+                                                            () => _lobbyService
+                                                                .kickPlayer(
+                                                                  widget
+                                                                      .lobbyCode,
+                                                                  player.id,
+                                                                  _currentUserId,
+                                                                ),
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.star,
+                                                          color: Colors.orange,
+                                                        ),
+                                                        onPressed:
+                                                            () => _lobbyService
+                                                                .transferHost(
+                                                                  widget
+                                                                      .lobbyCode,
+                                                                  player.id,
+                                                                ),
+                                                      ),
+                                                    ],
+                                                  )
+                                                  : null,                                        );
+                                      },
                                     ),
                                   ),
-                                ),
+                                ],
+                              ),
+                            ),
+                          ),
                                 Expanded(
                                   flex: 3,
                                   child: Container(
@@ -710,13 +698,10 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                                     BorderRadius.circular(
                                                                       4,
                                                                     ),
+                                                              ),                                                              child: RoleIcons.buildRoleIcon(
+                                                                roleName: roleName,
+                                                                size: 20,
                                                               ),
-                                                              child:
-                                                                  RoleIcons.buildRoleIcon(
-                                                                    roleName:
-                                                                        roleName,
-                                                                    size: 20,
-                                                                  ),
                                                             ),
                                                             const SizedBox(
                                                               width: 8,
@@ -965,12 +950,42 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                       ),
                                                       const SizedBox(
                                                         height: 12,
-                                                      ), // Game Rule Settings
+                                                      ),
+
+                                                      // Game Rule Settings
                                                       _buildBooleanSettingItem(
                                                         'First Night Kill',
                                                         _currentSettings['allowFirstNightKill'] ??
                                                             false,
                                                         Icons.nightlight_round,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Show Vote Counts',
+                                                        _currentSettings['showVoteCounts'] ??
+                                                            true,
+                                                        Icons.poll,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Show Vote Targets',
+                                                        _currentSettings['showVoteTargets'] ??
+                                                            false,
+                                                        Icons.visibility,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Show Role on Death',
+                                                        _currentSettings['showRoleOnDeath'] ??
+                                                            true,
+                                                        Icons.person_off,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Manual Phase Control',
+                                                        _currentSettings['manualPhaseControl'] ??
+                                                            false,
+                                                        Icons.touch_app,
                                                       ),
                                                     ],
                                                   ),
@@ -1095,8 +1110,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
+          ),        ],
       ),
     );
   }
