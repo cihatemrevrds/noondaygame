@@ -397,22 +397,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
             child: Column(
               children: [
                 // Night bar at the top
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  color: Colors.brown,
-                  child: Text(
-                    'Night: ${widget.nightNumber}',
-                    style: const TextStyle(
-                      fontFamily: 'Rye',
-                      fontSize: 22,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 40),
+
 
                 // Role logo - responsive sizing
                 Container(
