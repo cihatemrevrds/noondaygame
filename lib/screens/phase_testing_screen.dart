@@ -425,6 +425,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           remainingTime: 120, // 2 minutes
           currentUserId: '1',
           myRole: 'Sheriff',
+          totalTime: 120, // 2 minutes total time for bullet timer
         );
       case 'role_reveal':
         return Center(
@@ -711,6 +712,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
           remainingTime: 30, // 30 seconds for voting
           currentUserId: '1',
           myRole: 'Sheriff',
+          totalTime: 30, // 30 seconds total time for bullet timer
           onVoteChanged: (selectedPlayerId) {
             // Handle vote change (could be used for real-time updates)
             print('Vote changed to: $selectedPlayerId');

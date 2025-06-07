@@ -6,6 +6,7 @@ import '../widgets/bullet_timer_widget.dart';
 class VotingPhaseWidget extends StatefulWidget {
   final List<Player> players;
   final int remainingTime; // in seconds
+  final int totalTime; // total phase duration in seconds
   final String currentUserId;
   final String? myRole;
   final Function(String?)? onVoteChanged; // Callback when vote changes
@@ -14,6 +15,7 @@ class VotingPhaseWidget extends StatefulWidget {
     super.key,
     required this.players,
     required this.remainingTime,
+    required this.totalTime,
     required this.currentUserId,
     this.myRole,
     this.onVoteChanged,
@@ -76,7 +78,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                   // Bullet Timer
                   BulletTimerWidget(
                     remainingTime: widget.remainingTime,
-                    totalTime: 120, // 2 minutes voting time
+                    totalTime: widget.totalTime, // Use actual voting time
                     size: 120,
                     activeBulletColor: Colors.orange,
                     inactiveBulletColor: Colors.grey.withOpacity(0.3),

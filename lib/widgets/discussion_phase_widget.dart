@@ -6,6 +6,7 @@ import '../widgets/bullet_timer_widget.dart';
 class DiscussionPhaseWidget extends StatefulWidget {
   final List<Player> players;
   final int remainingTime; // in seconds
+  final int totalTime; // total phase duration in seconds
   final String currentUserId;
   final String? myRole;
 
@@ -13,6 +14,7 @@ class DiscussionPhaseWidget extends StatefulWidget {
     super.key,
     required this.players,
     required this.remainingTime,
+    required this.totalTime,
     required this.currentUserId,
     this.myRole,
   });
@@ -56,7 +58,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                   // Bullet Timer
                   BulletTimerWidget(
                     remainingTime: widget.remainingTime,
-                    totalTime: 120, // 2 minutes discussion time
+                    totalTime: widget.totalTime, // Use actual discussion time
                     size: 120,
                     activeBulletColor: Colors.white,
                     inactiveBulletColor: Colors.grey.withOpacity(0.3),

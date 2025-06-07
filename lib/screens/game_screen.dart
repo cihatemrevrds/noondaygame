@@ -1003,6 +1003,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Helper methods to get phase durations from lobby data
+  int _getDiscussionTime() {
+    if (_lobbyData == null) return 60; // Default fallback
+
+    final gameSettings =
+        _lobbyData!['gameSettings'] as Map<String, dynamic>? ?? {};
+    return gameSettings['discussionTime'] as int? ?? 60; // Default 60 seconds
+  }
+
+  int _getVotingTime() {
+    if (_lobbyData == null) return 30; // Default fallback
+
+    final gameSettings =
+        _lobbyData!['gameSettings'] as Map<String, dynamic>? ?? {};
+    return gameSettings['votingTime'] as int? ?? 30; // Default 30 seconds
+  }
+
   // Get text for manual advance button based on current game state
   String _getManualAdvanceButtonText() {
     switch (_currentGameState) {
@@ -1089,23 +1106,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           'Sharing night events...',
           Icons.announcement,
         );
-
       case 'discussion_phase':
         // Show discussion phase widget
+        final discussionTime = _getDiscussionTime();
         return DiscussionPhaseWidget(
           players: _players.where((p) => p.isAlive).toList(),
           remainingTime: _remainingTime,
+          totalTime: discussionTime,
           currentUserId: _currentUserId,
           myRole: _myRole,
         );
       case 'voting_phase':
         // Show voting phase widget
+        final votingTime = _getVotingTime();
         return VotingPhaseWidget(
           players:
               _players
                   .where((p) => p.isAlive && p.id != _currentUserId)
                   .toList(),
           remainingTime: _remainingTime,
+          totalTime: votingTime,
           currentUserId: _currentUserId,
           myRole: _myRole,
           onVoteChanged: (selectedPlayerId) {
