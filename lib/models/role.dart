@@ -93,11 +93,10 @@ class Role {
     count: 0,
     team: RoleTeam.town,
     shortDescription:
-        'Can select a target to shoot at night with limited bullets',
-    description:
+        'Can select a target to shoot at night with limited bullets',    description:
         'Can select a target to shoot during night phase only.\n'
-        'Has 2 bullets total for the entire game.\n'
-        'If kills a Town member, loses remaining bullets.\n'
+        'Has 1 bullet total for the entire game.\n'
+        'When shooting, identity is revealed to everyone.\n'
         'Belongs to the Town team.',
   );
 
