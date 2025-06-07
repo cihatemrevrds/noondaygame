@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../config/message_config.dart';
 
 class EventSharePopup extends StatefulWidget {
   final String eventDescription;
@@ -7,6 +8,7 @@ class EventSharePopup extends StatefulWidget {
   final String? playerRole;
   final bool isDeath;
   final VoidCallback onComplete;
+  final List<String> events; // Add events list for determining type
 
   const EventSharePopup({
     super.key,
@@ -15,6 +17,7 @@ class EventSharePopup extends StatefulWidget {
     this.playerRole,
     this.isDeath = false,
     required this.onComplete,
+    this.events = const [], // Default empty list
   });
 
   @override
@@ -143,17 +146,40 @@ class _EventSharePopupState extends State<EventSharePopup>
                           ),
                         ),
                         const SizedBox(height: 16),
+                        // Event Title - determine from events or isDeath flag
+                        Builder(
+                          builder: (context) {
+                            // Determine event type
+                            String eventType;
+                            if (widget.events.isNotEmpty) {
+                              eventType = MessageConfig.getPublicEventType(
+                                widget.events,
+                              );
+                            } else {
+                              eventType =
+                                  widget.isDeath
+                                      ? 'player_killed'
+                                      : 'quiet_night';
+                            }
 
-                        // Event Title
-                        Text(
-                          widget.isDeath ? 'Rest in Peace' : 'zZzZz',
-                          style: const TextStyle(
-                            fontFamily: 'Rye',
-                            fontSize: 20,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
+                            // Get popup content
+                            final popupContent =
+                                MessageConfig.getPublicEventContent(eventType);
+                            final title =
+                                popupContent?.title ??
+                                (widget.isDeath ? 'Rest in Peace' : 'zZzZz');
+
+                            return Text(
+                              title,
+                              style: const TextStyle(
+                                fontFamily: 'Rye',
+                                fontSize: 20,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            );
+                          },
                         ),
                         const SizedBox(height: 16),
 

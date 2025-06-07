@@ -612,3 +612,136 @@ exports.chieftainOrder = async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+// Gunslinger's action - shoot with limited bullets (day or night phases)
+exports.gunslingerShoot = async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        console.log('🔫 gunslingerShoot called with:', req.body);
+        const { lobbyCode, userId, targetId } = req.body;
+
+        if (!lobbyCode || !userId || !targetId) {
+            console.log('❌ Missing required parameters:', { lobbyCode, userId, targetId });
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log('🔍 Looking for lobby:', lobbyCode.toUpperCase());
+        const lobbyRef = db.collection('lobbies').doc(lobbyCode.toUpperCase());
+        const lobbyDoc = await lobbyRef.get();
+
+        if (!lobbyDoc.exists) {
+            console.log('❌ Lobby not found:', lobbyCode.toUpperCase());
+            return res.status(404).json({ error: 'Lobby not found' });
+        }
+
+        const lobbyData = lobbyDoc.data();
+        console.log('📊 Lobby data found. Game state:', lobbyData.gameState);        // Gunslinger can only shoot during night phase
+        if (lobbyData.gameState !== 'night_phase') {
+            console.log('❌ Not in night_phase. Current state:', lobbyData.gameState);
+            return res.status(400).json({ error: 'Not in night actions phase' });
+        }
+
+        const players = lobbyData.players || [];
+        console.log('👥 Players in lobby:', players.length);
+        const gunslinger = players.find(p => p.id === userId);
+        console.log('🔫 Found gunslinger player:', gunslinger ? `${gunslinger.name} (${gunslinger.role})` : 'Not found');        // Verify player is gunslinger and alive
+        if (!gunslinger || gunslinger.role !== 'Gunslinger' || !gunslinger.isAlive) {
+            console.log('❌ Gunslinger validation failed:', {
+                found: !!gunslinger,
+                role: gunslinger?.role,
+                isAlive: gunslinger?.isAlive
+            });
+            return res.status(403).json({ error: 'You are not the gunslinger or not alive' });
+        }
+
+        // If no target, just return success (allows removing target)
+        if (!targetId) {
+            console.log('🚫 Removing gunslinger target');
+            const gunslingerData = lobbyData.roleData?.gunslinger?.[userId] || {};
+            const updatedRoleData = {
+                ...(lobbyData.roleData || {}),
+                gunslinger: {
+                    ...(lobbyData.roleData?.gunslinger || {}),
+                    [userId]: {
+                        ...gunslingerData,
+                        targetId: null
+                    }
+                }
+            };
+
+            await lobbyRef.update({
+                roleData: updatedRoleData
+            });
+
+            console.log('✅ Gunslinger target removed successfully');
+            return res.status(200).json({ message: 'Target selection removed' });
+        }
+
+        // Check if target is alive
+        const target = players.find(p => p.id === targetId);
+        console.log('🎯 Target player:', target ? `${target.name} (${target.role})` : 'Not found');
+
+        if (!target || !target.isAlive) {
+            console.log('❌ Target not alive or not found');
+            return res.status(400).json({ error: 'Target is not alive' });
+        }
+
+        // Prevent self-targeting
+        if (targetId === userId) {
+            console.log('❌ Self-targeting attempt');
+            return res.status(400).json({ error: 'You cannot shoot yourself' });
+        }
+
+        // Get gunslinger's current data
+        const gunslingerData = lobbyData.roleData?.gunslinger?.[userId] || {};
+        const bulletsUsed = gunslingerData.bulletsUsed || 0;
+        const hasSecondBullet = gunslingerData.hasSecondBullet !== false; // Default to true
+
+        console.log('🔫 Gunslinger data:', { bulletsUsed, hasSecondBullet });
+
+        // Check if gunslinger has bullets left
+        if (bulletsUsed >= 2) {
+            console.log('❌ No bullets remaining');
+            return res.status(400).json({ error: 'No bullets remaining' });
+        }
+
+        if (bulletsUsed >= 1 && !hasSecondBullet) {
+            console.log('❌ Second bullet lost due to previous town kill');
+            return res.status(400).json({ error: 'You lost your second bullet for killing a town member' });
+        } console.log('💾 Storing gunslinger target selection');
+
+        // Store gunslinger's target choice (don't execute kill immediately)
+        const updatedRoleData = {
+            ...(lobbyData.roleData || {}),
+            gunslinger: {
+                ...(lobbyData.roleData?.gunslinger || {}),
+                [userId]: {
+                    ...gunslingerData,
+                    targetId: targetId
+                }
+            }
+        };
+
+        await lobbyRef.update({
+            roleData: updatedRoleData
+        });
+
+        console.log('✅ Gunslinger target selected successfully');
+
+        return res.status(200).json({
+            message: `You selected ${target.name} as your target. You will learn the outcome at the end of the night.`
+        });
+    } catch (error) {
+        console.error('gunslingerShoot error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};

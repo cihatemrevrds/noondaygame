@@ -21,9 +21,9 @@ Peeper
   Belongs to the Town team
 
 Gunslinger
-  Can kill a player during any phase (day or night)
+  Can select a target to shoot during night phase only
   Has 2 bullets total for the entire game
-  If kills a Town member, cannot use second bullet
+  If kills a Town member, loses remaining bullets
   Belongs to the Town team
 
 Bandit Team Roles

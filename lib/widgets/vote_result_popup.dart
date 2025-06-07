@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../config/message_config.dart';
 
 class VoteResultPopup extends StatefulWidget {
   final String playerName;
@@ -74,7 +75,7 @@ class _VoteResultPopupState extends State<VoteResultPopup>
 
   Color _getRoleColor(String? role) {
     if (role == null) return const Color(0xFF424242);
-    
+
     switch (role) {
       // Citizens (Green shades)
       case 'Doctor':
@@ -154,11 +155,10 @@ class _VoteResultPopupState extends State<VoteResultPopup>
                         ),
                       ),
                       const SizedBox(height: 16),
-
                       // Title
-                      const Text(
-                        'Vote Result',
-                        style: TextStyle(
+                      Text(
+                        MessageConfig.getPopupTitle('vote_result'),
+                        style: const TextStyle(
                           fontFamily: 'Rye',
                           fontSize: 20,
                           color: Colors.white,
@@ -191,7 +191,9 @@ class _VoteResultPopupState extends State<VoteResultPopup>
                                   color: Colors.white,
                                 ),
                                 children: [
-                                  const TextSpan(text: 'The town has voted to hang '),
+                                  const TextSpan(
+                                    text: 'The town has voted to hang ',
+                                  ),
                                   TextSpan(
                                     text: widget.playerName,
                                     style: TextStyle(
@@ -204,7 +206,7 @@ class _VoteResultPopupState extends State<VoteResultPopup>
                               ),
                             ),
                             const SizedBox(height: 12),
-                            
+
                             // Vote count
                             Text(
                               'Votes received: ${widget.voteCount}',
@@ -215,7 +217,7 @@ class _VoteResultPopupState extends State<VoteResultPopup>
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            
+
                             // Role reveal if available
                             if (widget.playerRole != null) ...[
                               const SizedBox(height: 12),

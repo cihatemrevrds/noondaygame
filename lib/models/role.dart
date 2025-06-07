@@ -87,17 +87,17 @@ class Role {
         'Doesn\'t learn the roles of visitors, just that they visited.\n'
         'Belongs to the Town team.',
   );
-
   static Role get gunslinger => Role(
     name: 'Gunslinger',
     imageName: 'gunslinger.png',
     count: 0,
     team: RoleTeam.town,
-    shortDescription: 'Can kill a player during any phase (day or night)',
+    shortDescription:
+        'Can select a target to shoot at night with limited bullets',
     description:
-        'Can kill a player during any phase (day or night).\n'
+        'Can select a target to shoot during night phase only.\n'
         'Has 2 bullets total for the entire game.\n'
-        'If kills a Town member, cannot use second bullet.\n'
+        'If kills a Town member, loses remaining bullets.\n'
         'Belongs to the Town team.',
   );
 
