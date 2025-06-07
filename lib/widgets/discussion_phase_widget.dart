@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/bullet_timer_widget.dart';
 
 class DiscussionPhaseWidget extends StatefulWidget {
   final List<Player> players;
@@ -20,40 +21,10 @@ class DiscussionPhaseWidget extends StatefulWidget {
   State<DiscussionPhaseWidget> createState() => _DiscussionPhaseWidgetState();
 }
 
-class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
-    with TickerProviderStateMixin {
-  late AnimationController _timerController;
-  late Animation<double> _timerAnimation;
-
+class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
   @override
   void initState() {
     super.initState();
-
-    // Initialize timer animation
-    _timerController = AnimationController(
-      duration: Duration(seconds: widget.remainingTime),
-      vsync: this,
-    );
-
-    _timerAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(parent: _timerController, curve: Curves.linear));
-
-    // Start the timer
-    _timerController.forward();
-  }
-
-  @override
-  void dispose() {
-    _timerController.dispose();
-    super.dispose();
-  }
-
-  String _formatTime(int seconds) {
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    return '${minutes}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -82,76 +53,13 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Circular Timer
-                  Container(
-                    width: 120,
-                    height: 120,
-                    child: Stack(
-                      children: [
-                        // Background circle
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 3,
-                            ),
-                          ),
-                        ),
-                        // Progress circle
-                        AnimatedBuilder(
-                          animation: _timerAnimation,
-                          builder: (context, child) {
-                            return Container(
-                              width: 120,
-                              height: 120,
-                              child: CircularProgressIndicator(
-                                value: _timerAnimation.value,
-                                strokeWidth: 6,
-                                backgroundColor: Colors.transparent,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  _timerAnimation.value > 0.3
-                                      ? Colors.white
-                                      : Colors.red,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        // Time text
-                        Center(
-                          child: AnimatedBuilder(
-                            animation: _timerAnimation,
-                            builder: (context, child) {
-                              final remainingSeconds =
-                                  (widget.remainingTime * _timerAnimation.value)
-                                      .round();
-                              return Text(
-                                _formatTime(remainingSeconds),
-                                style: TextStyle(
-                                  fontFamily: 'Rye',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      remainingSeconds <= 30
-                                          ? Colors.red
-                                          : Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black.withOpacity(0.8),
-                                      blurRadius: 4,
-                                      offset: const Offset(1, 1),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                  // Bullet Timer
+                  BulletTimerWidget(
+                    remainingTime: widget.remainingTime,
+                    totalTime: 120, // 2 minutes discussion time
+                    size: 120,
+                    activeBulletColor: Colors.white,
+                    inactiveBulletColor: Colors.grey.withOpacity(0.3),
                   ),
                   const SizedBox(height: 32),
                   // Discussion text
