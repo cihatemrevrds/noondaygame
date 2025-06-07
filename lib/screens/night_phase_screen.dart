@@ -387,7 +387,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         // Background image
         Positioned.fill(
           child: Image.asset(
-            'assets/images/backgrounds/western_town_bg.png',
+            'assets/images/backgrounds/western_town_night_bg.jpg',
             fit: BoxFit.cover,
           ),
         ),
