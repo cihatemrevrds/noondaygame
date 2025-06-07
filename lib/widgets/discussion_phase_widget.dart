@@ -106,54 +106,27 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
   }
 
   Widget _buildPlayersGrid() {
-    // Ensure we have exactly 20 slots (4 columns x 5 rows)
-    final gridPlayers = List<Player?>.filled(20, null);
-
-    // Fill with actual players
-    for (int i = 0; i < widget.players.length && i < 20; i++) {
-      gridPlayers[i] = widget.players[i];
-    }
-
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 1.0,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: 20,
-      itemBuilder: (context, index) {
-        final player = gridPlayers[index];
-
-        if (player == null) {
-          // Empty slot
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.withOpacity(0.5), width: 1),
-            ),
-            child: const Center(
-              child: Icon(Icons.person_outline, color: Colors.grey, size: 24),
-            ),
-          );
-        }
-        // Player slot
-        final isCurrentUser = player.id == widget.currentUserId;
-
-        return Container(
-          decoration:
-              isCurrentUser
-                  ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue, width: 3),
-                  )
-                  : null,
-          child: PlayerAvatar(
-            name: player.name,
-            isLeader: player.isLeader,
-            isDead: !player.isAlive,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: 1.0,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
           ),
+          itemCount: widget.players.length,
+          itemBuilder: (context, index) {
+            final player = widget.players[index];
+
+            return PlayerAvatar(
+              name: player.name,
+              isLeader: player.isLeader,
+              isDead: !player.isAlive,
+            );
+          },
         );
       },
     );

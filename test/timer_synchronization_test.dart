@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:noondaygame/widgets/discussion_phase_widget.dart';
 import 'package:noondaygame/widgets/voting_phase_widget.dart';
+import 'package:noondaygame/widgets/bullet_timer_widget.dart';
 import 'package:noondaygame/models/player.dart';
 
 void main() {
@@ -22,11 +23,11 @@ void main() {
         role: 'werewolf',
       ),
     ];
-
     testWidgets('Discussion widget displays correct remaining time', (
       WidgetTester tester,
     ) async {
       const int remainingTime = 90; // 1:30
+      const int totalTime = 120; // 2:00 total
 
       await tester.pumpWidget(
         MaterialApp(
@@ -36,6 +37,7 @@ void main() {
               remainingTime: remainingTime,
               currentUserId: 'player1',
               myRole: 'villager',
+              totalTime: totalTime,
             ),
           ),
         ),
@@ -44,19 +46,19 @@ void main() {
       // Find the timer text
       expect(find.text('1:30'), findsOneWidget);
 
-      // Verify the circular progress indicator value is correctly calculated
-      final circularProgress = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
+      // Verify the BulletTimerWidget exists and has correct values
+      final bulletTimer = tester.widget<BulletTimerWidget>(
+        find.byType(BulletTimerWidget),
       );
 
-      // Progress should be remainingTime / 120.0 (2 minutes max)
-      expect(circularProgress.value, equals(90.0 / 120.0));
+      expect(bulletTimer.remainingTime, equals(remainingTime));
+      expect(bulletTimer.totalTime, equals(totalTime));
     });
-
     testWidgets('Voting widget displays correct remaining time', (
       WidgetTester tester,
     ) async {
       const int remainingTime = 45; // 0:45
+      const int totalTime = 60; // 1:00 total
 
       await tester.pumpWidget(
         MaterialApp(
@@ -66,6 +68,7 @@ void main() {
               remainingTime: remainingTime,
               currentUserId: 'player1',
               myRole: 'villager',
+              totalTime: totalTime,
             ),
           ),
         ),
@@ -74,19 +77,19 @@ void main() {
       // Find the timer text
       expect(find.text('0:45'), findsOneWidget);
 
-      // Verify the circular progress indicator value is correctly calculated
-      final circularProgress = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
+      // Verify the BulletTimerWidget exists and has correct values
+      final bulletTimer = tester.widget<BulletTimerWidget>(
+        find.byType(BulletTimerWidget),
       );
 
-      // Progress should be remainingTime / 120.0 (2 minutes max)
-      expect(circularProgress.value, equals(45.0 / 120.0));
+      expect(bulletTimer.remainingTime, equals(remainingTime));
+      expect(bulletTimer.totalTime, equals(totalTime));
     });
-
     testWidgets('Discussion widget updates timer when remainingTime changes', (
       WidgetTester tester,
     ) async {
       int remainingTime = 120; // 2:00
+      const int totalTime = 120; // 2:00 total
 
       // Create a StatefulWidget to control remainingTime updates
       await tester.pumpWidget(
@@ -101,6 +104,7 @@ void main() {
                       remainingTime: remainingTime,
                       currentUserId: 'player1',
                       myRole: 'villager',
+                      totalTime: totalTime,
                     ),
                     ElevatedButton(
                       onPressed: () {
@@ -129,11 +133,11 @@ void main() {
       expect(find.text('1:00'), findsOneWidget);
       expect(find.text('2:00'), findsNothing);
     });
-
     testWidgets('Voting widget updates timer when remainingTime changes', (
       WidgetTester tester,
     ) async {
       int remainingTime = 90; // 1:30
+      const int totalTime = 90; // 1:30 total
 
       // Create a StatefulWidget to control remainingTime updates
       await tester.pumpWidget(
@@ -148,6 +152,7 @@ void main() {
                       remainingTime: remainingTime,
                       currentUserId: 'player1',
                       myRole: 'villager',
+                      totalTime: totalTime,
                     ),
                     ElevatedButton(
                       onPressed: () {
@@ -176,11 +181,12 @@ void main() {
       expect(find.text('0:30'), findsOneWidget);
       expect(find.text('1:30'), findsNothing);
     });
-
     testWidgets('Timer widgets handle edge cases correctly', (
       WidgetTester tester,
     ) async {
       // Test with 0 seconds remaining
+      const int totalTime = 120; // 2:00 total
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -189,6 +195,7 @@ void main() {
               remainingTime: 0,
               currentUserId: 'player1',
               myRole: 'villager',
+              totalTime: totalTime,
             ),
           ),
         ),
@@ -196,17 +203,20 @@ void main() {
 
       expect(find.text('0:00'), findsOneWidget);
 
-      // Verify progress indicator shows 0
-      final circularProgress = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
+      // Verify the BulletTimerWidget exists and has correct values
+      final bulletTimer = tester.widget<BulletTimerWidget>(
+        find.byType(BulletTimerWidget),
       );
-      expect(circularProgress.value, equals(0.0));
-    });
 
+      expect(bulletTimer.remainingTime, equals(0));
+      expect(bulletTimer.totalTime, equals(totalTime));
+    });
     testWidgets('Timer color changes when time is low', (
       WidgetTester tester,
     ) async {
       // Test with low time (red color threshold)
+      const int totalTime = 120; // 2:00 total
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -215,6 +225,7 @@ void main() {
               remainingTime: 15, // Less than 30 seconds
               currentUserId: 'player1',
               myRole: 'villager',
+              totalTime: totalTime,
             ),
           ),
         ),
