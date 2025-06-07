@@ -337,7 +337,7 @@ exports.getRoleInfo = async (req, res) => {
             'Sheriff': 'You investigate players at night to determine if they are suspicious or innocent. Chieftain appears innocent despite being a Bandit. Town team.',
             'Escort': 'You block another player from using their night ability. Target\'s role action won\'t be processed that night. Town team.',
             'Peeper': 'You spy on players at night to see who visited them. This gives valuable information about roles and actions. Town team.',
-            'Gunslinger': 'You have 1 bullet. You can shoot one player during the night. When you shoot, your identity is revealed. Town team.',
+            'Gunslinger': 'You are a civilian with a gun. Help the town find and vote out the Bandits during the day. Town team.',
             'Gunman': 'You kill players at night. Work with your Chieftain to eliminate the Town team. Bandit team.',
             'Chieftain': 'You choose which Gunman kills each night and who they target. Gunmen must follow your orders. Bandit team.',
             'Jester': 'You win if you get voted out during the day. Try to act suspicious but not too suspicious. Neutral team.'
@@ -557,7 +557,9 @@ async function processNightActions(lobbyData, players) {
                                     }
                                 }
                             }
-                        }                        // Check if any Doctor visited
+                        }
+
+                        // Check if any Doctor visited
                         if (roleDataUpdate.doctor) {
                             for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
                                 if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
@@ -567,21 +569,7 @@ async function processNightActions(lobbyData, players) {
                                     }
                                 }
                             }
-                        }
-
-                        // Check if any Gunslinger visited
-                        if (roleDataUpdate.gunslinger) {
-                            for (const [gunslingerUid, gunslingerData] of Object.entries(roleDataUpdate.gunslinger)) {
-                                if (gunslingerData && gunslingerData.targetId === targetId && !blockedPlayerIds.includes(gunslingerUid)) {
-                                    const gunslingerPlayer = players.find(p => p.id === gunslingerUid && p.role === 'Gunslinger');
-                                    if (gunslingerPlayer) {
-                                        visitors.push(gunslingerPlayer.name);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Private event - only the Peeper sees this
+                        }                        // Private event - only the Peeper sees this
                         privateEvents[peeperPlayer.id] = {
                             type: MESSAGES.EVENT_TYPES.PEEP_RESULT,
                             targetName: targetPlayer.name,
@@ -823,13 +811,20 @@ async function processNightActions(lobbyData, players) {
                 const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
 
                 if (targetIndex !== -1) {
-                    const targetPlayer = updatedPlayers[targetIndex];                    // Get gunslinger's current bullet data
-                    const bulletsUsed = gunslingerData.bulletsUsed || 0;
+                    const targetPlayer = updatedPlayers[targetIndex];
 
-                    // Check if gunslinger has bullets left (only 1 bullet according to requirements)
-                    if (bulletsUsed < 1) {
+                    // Get gunslinger's current bullet data
+                    const bulletsUsed = gunslingerData.bulletsUsed || 0;
+                    const hasSecondBullet = gunslingerData.hasSecondBullet !== false;
+
+                    // Check if gunslinger has bullets left
+                    if (bulletsUsed < 2 && (bulletsUsed === 0 || hasSecondBullet)) {
                         // Check if target is still alive (may have been killed by gunman)
                         if (targetPlayer.isAlive) {
+                            // Determine if target is a town member
+                            const targetTeam = require('./teamManager').getTeamByRole(targetPlayer.role);
+                            const killedTownMember = targetTeam === 'Town';
+
                             // Execute the kill
                             updatedPlayers[targetIndex] = {
                                 ...targetPlayer,
@@ -839,44 +834,54 @@ async function processNightActions(lobbyData, players) {
                             };
 
                             // Update gunslinger's bullet data
-                            const newBulletsUsed = 1; // Used their only bullet
+                            const newBulletsUsed = bulletsUsed + 1;
+                            const newHasSecondBullet = killedTownMember ? false : hasSecondBullet;
 
                             // Store updated gunslinger data for next night
                             if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
                             newRoleData.gunslinger[gunslingerUid] = {
                                 bulletsUsed: newBulletsUsed,
+                                hasSecondBullet: newHasSecondBullet,
                                 targetId: null // Reset target
                             };
 
-                            // Public event - reveals Gunslinger identity as required
+                            // Public event
                             nightEvents.push({
                                 type: MESSAGES.EVENT_TYPES.PLAYER_KILLED,
-                                playerName: targetPlayer.name,
-                                killerRole: 'Gunslinger'
+                                playerName: targetPlayer.name
                             });
 
                             // Private event for gunslinger
-                            privateEvents[gunslingerPlayer.id] = {
-                                type: 'gunslinger_shot_success',
-                                targetName: targetPlayer.name,
-                                bulletsRemaining: 0
-                            };
+                            if (killedTownMember) {
+                                privateEvents[gunslingerPlayer.id] = {
+                                    type: 'gunslinger_shot_town',
+                                    targetName: targetPlayer.name
+                                };
+                            } else {
+                                const remainingBullets = 2 - newBulletsUsed;
+                                privateEvents[gunslingerPlayer.id] = {
+                                    type: 'gunslinger_shot_success',
+                                    targetName: targetPlayer.name,
+                                    bulletsRemaining: remainingBullets
+                                };
+                            }
 
                             console.log(`🎯 Gunslinger ${gunslingerPlayer.name} shot ${targetPlayer.name}`);
                         } else {
                             // Target was already killed, gunslinger wasted a bullet
-                            const newBulletsUsed = 1;
+                            const newBulletsUsed = bulletsUsed + 1;
 
                             if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
                             newRoleData.gunslinger[gunslingerUid] = {
                                 bulletsUsed: newBulletsUsed,
+                                hasSecondBullet: gunslingerData.hasSecondBullet,
                                 targetId: null
                             };
 
                             privateEvents[gunslingerPlayer.id] = {
-                                type: 'gunslinger_shot_wasted',
+                                type: 'gunslinger_shot_success',
                                 targetName: targetPlayer.name,
-                                bulletsRemaining: 0
+                                bulletsRemaining: 2 - newBulletsUsed
                             };
                         }
                     }
@@ -946,7 +951,9 @@ async function processNightActions(lobbyData, players) {
         chieftainPlayers.forEach(player => {
             newRoleData.chieftain[player.id] = { targetId: null };
         });
-    }    // Reset gunslinger data for each gunslinger, preserving bullet count
+    }
+
+    // Reset gunslinger data for each gunslinger, preserving bullet count and hasSecondBullet
     const gunslingerPlayers = players.filter(p => p.role === 'Gunslinger' && p.isAlive);
     if (gunslingerPlayers.length > 0) {
         if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
@@ -955,6 +962,7 @@ async function processNightActions(lobbyData, players) {
             if (!newRoleData.gunslinger[player.id]) {
                 newRoleData.gunslinger[player.id] = {
                     bulletsUsed: roleDataUpdate.gunslinger?.[player.id]?.bulletsUsed || 0,
+                    hasSecondBullet: roleDataUpdate.gunslinger?.[player.id]?.hasSecondBullet !== false,
                     targetId: null
                 };
             }
