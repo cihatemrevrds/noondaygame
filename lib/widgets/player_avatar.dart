@@ -6,15 +6,13 @@ class PlayerAvatar extends StatelessWidget {
   final bool isLeader;
   final bool isDead;
   final String? profilePicture;
-
   const PlayerAvatar({
     super.key,
     required this.name,
     this.isLeader = false,
     this.isDead = false,
     this.profilePicture,
-  });
-  @override
+  });  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -55,15 +53,13 @@ class PlayerAvatar extends StatelessWidget {
                             isLeader ? Colors.yellow[700]! : Colors.brown[700]!,
                         width: isLeader ? 3 : 2,
                       ),
-                    ),
-                    child: ClipOval(
+                    ),                    child: ClipOval(
                       child: profilePicture != null 
                         ? Image.asset(
                             'assets/images/profilePictures/$profilePicture',
                             fit: BoxFit.cover,
                             width: avatarSize,
-                            height: avatarSize,
-                            errorBuilder: (context, error, stackTrace) {
+                            height: avatarSize,                            errorBuilder: (context, error, stackTrace) {
                               return _buildFallbackAvatar(avatarSize, fontSize);
                             },
                           )
