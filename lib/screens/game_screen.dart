@@ -324,9 +324,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() => _isLoading = true);
 
     try {
-      String? result;
-
-      switch (action) {
+      String? result;      switch (action) {
         case 'doctorProtect':
           result = await _gameService.doctorProtect(
             widget.lobbyCode,
@@ -361,6 +359,22 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
         case 'peeperSpy':
           result = await _gameService.peeperSpy(
+            widget.lobbyCode,
+            _currentUserId,
+            targetId,
+          );
+          break;
+          
+        case 'gunslingerShoot':
+          result = await _gameService.gunslingerShoot(
+            widget.lobbyCode,
+            _currentUserId,
+            targetId,
+          );
+          break;
+          
+        case 'chieftainOrder':
+          result = await _gameService.chieftainOrder(
             widget.lobbyCode,
             _currentUserId,
             targetId,
