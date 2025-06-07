@@ -148,9 +148,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             'manualPhaseControl': settingsData['manualPhaseControl'] ?? false,
           };
 
-          final playersData = data['players'] as List<dynamic>? ?? [];
-
-          final playersList =
+          final playersData = data['players'] as List<dynamic>? ?? [];          final playersList =
               playersData.map((p) {
                 final map = p as Map<String, dynamic>;
                 final playerId = map['id'] ?? map['uid'] ?? '';
@@ -161,6 +159,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                   role: map['role'],
                   isAlive: map['isAlive'] ?? true,
                   team: map['team'],
+                  profilePicture: map['profilePicture'] as String?,
                 );
               }).toList();
           if (data['status'] == 'started') {

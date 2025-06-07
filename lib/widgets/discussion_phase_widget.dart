@@ -238,11 +238,11 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget>
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.blue, width: 3),
                   )
-                  : null,
-          child: PlayerAvatar(
+                  : null,          child: PlayerAvatar(
             name: player.name,
             isLeader: player.isLeader,
             isDead: !player.isAlive,
+            profilePicture: player.profilePicture,
           ),
         );
       },

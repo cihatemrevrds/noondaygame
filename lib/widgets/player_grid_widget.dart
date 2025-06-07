@@ -83,11 +83,11 @@ class PlayerGridWidget extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Stack(
-                  children: [
-                    PlayerAvatar(
+                  children: [                    PlayerAvatar(
                       name: player.name,
                       isLeader: player.isLeader,
                       isDead: !player.isAlive,
+                      profilePicture: player.profilePicture,
                     ),
                     if (voteCount > 0 && isVotingPhase)
                       Positioned(

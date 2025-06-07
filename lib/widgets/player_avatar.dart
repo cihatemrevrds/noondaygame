@@ -5,12 +5,14 @@ class PlayerAvatar extends StatelessWidget {
   final String name;
   final bool isLeader;
   final bool isDead;
+  final String? profilePicture;
 
   const PlayerAvatar({
     super.key,
     required this.name,
     this.isLeader = false,
     this.isDead = false,
+    this.profilePicture,
   });
   @override
   Widget build(BuildContext context) {
@@ -42,8 +44,7 @@ class PlayerAvatar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Stack(
-                children: [
-                  Container(
+                children: [                  Container(
                     width: avatarSize,
                     height: avatarSize,
                     decoration: BoxDecoration(
@@ -55,17 +56,18 @@ class PlayerAvatar extends StatelessWidget {
                         width: isLeader ? 3 : 2,
                       ),
                     ),
-                    child: Center(
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : 'P',
-                        style: TextStyle(
-                          color: isDead ? Colors.white70 : Colors.brown[800],
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.bold,
-                          decoration:
-                              isDead ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
+                    child: ClipOval(
+                      child: profilePicture != null 
+                        ? Image.asset(
+                            'assets/images/profilePictures/$profilePicture',
+                            fit: BoxFit.cover,
+                            width: avatarSize,
+                            height: avatarSize,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildFallbackAvatar(avatarSize, fontSize);
+                            },
+                          )
+                        : _buildFallbackAvatar(avatarSize, fontSize),
                     ),
                   ),
                   if (isLeader)
@@ -138,9 +140,23 @@ class PlayerAvatar extends StatelessWidget {
                 ),
               ],
             ],
-          ),
-        );
+          ),        );
       },
+    );
+  }
+
+  // Helper method to build fallback avatar with initials
+  Widget _buildFallbackAvatar(double avatarSize, double fontSize) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : 'P',
+        style: TextStyle(
+          color: isDead ? Colors.white70 : Colors.brown[800],
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+          decoration: isDead ? TextDecoration.lineThrough : null,
+        ),
+      ),
     );
   }
 }

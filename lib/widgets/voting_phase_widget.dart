@@ -312,11 +312,11 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget>
           child: Column(
             children: [
               // Player Avatar
-              Expanded(
-                child: PlayerAvatar(
+              Expanded(                child: PlayerAvatar(
                   name: player.name,
                   isLeader: player.isLeader,
                   isDead: !player.isAlive,
+                  profilePicture: player.profilePicture,
                 ),
               ), // Vote Button
               if (canVote)
