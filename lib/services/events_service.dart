@@ -107,6 +107,8 @@ class EventsService {
           case 'protection_blocked':
           case 'peep_blocked':
             return 'blocked';
+          case 'player_death':
+            return 'death';
           default:
             return 'neutral';
         }

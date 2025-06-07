@@ -136,6 +136,8 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
         return 'Block Result (Escort)';
       case 'peep_result':
         return 'Peep Result (Peeper)';
+      case 'player_death':
+        return 'Death Notification (Victim)';
       default:
         return 'Unknown Private Event';
     }
@@ -234,6 +236,15 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
             'targetName': 'Doc Smith',
             'visitorsText': 'They were visited by: Sheriff Jack.',
           },
+        );
+        break;
+      case 'player_death':
+        final content = MessageConfig.getPrivateEventContent('player_death');
+        title = content?.title ?? 'Death Notification';
+        message = MessageConfig.formatMessage(
+          content?.message ??
+              'You were killed by {killerTeam}! Your role was {victimRole}.',
+          {'killerTeam': 'Bandits', 'victimRole': 'Doctor'},
         );
         break;
       default:
@@ -577,6 +588,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
                         'protection_successful',
                         'block_result',
                         'peep_result',
+                        'player_death',
                       ].map((String event) {
                         return DropdownMenuItem<String>(
                           value: event,

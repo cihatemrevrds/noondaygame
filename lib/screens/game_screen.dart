@@ -324,7 +324,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() => _isLoading = true);
 
     try {
-      String? result;      switch (action) {
+      String? result;
+      switch (action) {
         case 'doctorProtect':
           result = await _gameService.doctorProtect(
             widget.lobbyCode,
@@ -364,7 +365,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             targetId,
           );
           break;
-          
+
         case 'gunslingerShoot':
           result = await _gameService.gunslingerShoot(
             widget.lobbyCode,
@@ -372,7 +373,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             targetId,
           );
           break;
-          
+
         case 'chieftainOrder':
           result = await _gameService.chieftainOrder(
             widget.lobbyCode,
@@ -456,9 +457,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           title = popupContent.title;
 
           // Format message with variables from Firebase
-          final variables = <String, String>{};
-
-          // Extract variables from Firebase data
+          final variables =
+              <String, String>{}; // Extract variables from Firebase data
           if (_nightOutcomes['targetName'] != null) {
             variables['targetName'] = _nightOutcomes['targetName'] as String;
           }
@@ -473,6 +473,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             } else {
               variables['visitorsText'] = 'No one visited them tonight.';
             }
+          }
+          // Death notification variables
+          if (_nightOutcomes['killerTeam'] != null) {
+            variables['killerTeam'] = _nightOutcomes['killerTeam'] as String;
+          }
+          if (_nightOutcomes['victimRole'] != null) {
+            variables['victimRole'] = _nightOutcomes['victimRole'] as String;
           }
 
           // Format the message
