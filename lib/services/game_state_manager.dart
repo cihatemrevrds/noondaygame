@@ -148,9 +148,16 @@ class GameStateManager {
             targetId,
           );
           break;
-
         case 'chieftainOrder':
           result = await _gameService.chieftainOrder(
+            lobbyCode,
+            currentUserId,
+            targetId,
+          );
+          break;
+
+        case 'gunslingerShoot':
+          result = await _gameService.gunslingerShoot(
             lobbyCode,
             currentUserId,
             targetId,

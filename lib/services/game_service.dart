@@ -229,6 +229,15 @@ class GameService {
     return _performRoleAction('chieftainOrder', lobbyCode, userId, targetId);
   }
 
+  // Gunslinger ateş etme aksiyonu
+  Future<String?> gunslingerShoot(
+    String lobbyCode,
+    String userId,
+    String targetId,
+  ) async {
+    return _performRoleAction('gunslingerShoot', lobbyCode, userId, targetId);
+  }
+
   // Ortak rol aksiyonu fonksiyonu
   Future<String?> _performRoleAction(
     String action,

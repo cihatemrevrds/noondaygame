@@ -38,6 +38,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
   String? _selectedPlayerId; // Track the selected player
   Timer? _timer;
   int _remainingTime = 0;
+
   // Helper method to get the correct action based on role
   String _getRoleAction(String? role) {
     switch (role) {
@@ -53,6 +54,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         return 'peeperSpy';
       case 'Chieftain':
         return 'chieftainOrder';
+      case 'Gunslinger':
+        return 'gunslingerShoot';
       default:
         return ''; // No action for other roles
     }
@@ -73,6 +76,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         return 'Spy';
       case 'Chieftain':
         return 'Order Kill';
+      case 'Gunslinger':
+        return 'Shoot';
       default:
         return 'Action';
     }
@@ -87,9 +92,10 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
       case 'Escort':
       case 'Peeper':
       case 'Chieftain':
+      case 'Gunslinger':
         return true;
       default:
-        return false; // Jester, Gunslinger don't have night actions
+        return false; // Jester doesn't have night actions
     }
   }
 
@@ -232,10 +238,6 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
       case 'Jester':
         message =
             'You have no night ability.\nWait for the day phase to achieve your goal.';
-        break;
-      case 'Gunslinger':
-        message =
-            'You can use your bullets during the day phase.\nWait for discussion time.';
         break;
       default:
         message = 'You have no night action.\nWait for the night to end.';

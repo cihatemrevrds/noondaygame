@@ -62,9 +62,7 @@ class MessageConfig {
     'not_selected': PopupContent(
       title: '⏸️ Standing By',
       message: 'The Chieftain gave orders to another Gunman tonight.',
-    ),
-
-    // Chieftain Messages
+    ), // Chieftain Messages
     'order_success': PopupContent(
       title: '👑 Order Executed',
       message: 'Your order was carried out. {targetName} was killed.',
@@ -72,6 +70,29 @@ class MessageConfig {
     'order_failed': PopupContent(
       title: '🛡️ Order Failed',
       message: 'Your order failed. {targetName} was protected.',
+    ), // Gunslinger Messages
+    'gunslinger_target_selected': PopupContent(
+      title: '🎯 Target Selected',
+      message:
+          'You selected {targetName} as your target. You will learn the outcome at the end of the night.',
+    ),
+    'gunslinger_shot_town': PopupContent(
+      title: '💔 Friendly Fire',
+      message:
+          'You shot {targetName}. They were a town member. You lost your second bullet.',
+    ),
+    'gunslinger_shot_success': PopupContent(
+      title: '🎯 Shot Fired',
+      message:
+          'You shot {targetName}. You have {bulletsRemaining} bullet{bulletPlural} remaining.',
+    ),
+    'gunslinger_no_bullets': PopupContent(
+      title: '🔫 Empty Chamber',
+      message: 'You have no bullets remaining.',
+    ),
+    'gunslinger_lost_bullet': PopupContent(
+      title: '💔 Second Bullet Lost',
+      message: 'You lost your second bullet for killing a town member.',
     ),
   };
 

@@ -105,17 +105,17 @@ class _RoleRevealPopupState extends State<RoleRevealPopup>
   String _getRoleDescription(String role) {
     switch (role) {
       case 'Doctor':
-        return 'You can protect one person each night from being eliminated. You can protect yourself.';
+        return 'You can protect one person each night from being eliminated. You can protect yourself for once.';
       case 'Sheriff':
         return 'Each night, you can investigate a player to learn their team allegiance.';
       case 'Escort':
         return 'Each night, you can block a player from using their night action.';
       case 'Peeper':
-        return 'Each night, you can spy on a player to learn their exact role.';
+        return 'Each night, you can spy on a player house to see who visited them.';
       case 'Gunslinger':
-        return 'During the day, you can challenge another player to a duel.';
+        return 'You have 2 bullets. Each night, you can select a target to shoot. If you kill a Town member, you lose your second bullet.';
       case 'Gunman':
-        return 'Each night, you can eliminate one player. Choose wisely!';
+        return 'Each night, you can eliminate one player.';
       case 'Chieftain':
         return 'You are the leader of the outlaws. The Sheriff sees you as innocent.';
       case 'Jester':
