@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/player.dart';
 import '../widgets/role_utils.dart';
+import '../widgets/player_avatar.dart';
 import '../services/lobby_service.dart';
 
 class TimerWidget extends StatefulWidget {
@@ -204,26 +205,23 @@ class DayPhaseScreen extends StatelessWidget {
                         ),
                       ),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                        mainAxisAlignment: MainAxisAlignment.center,                        children: [
                           // Oyuncu avatarı
                           Container(
                             width: 60,
                             height: 60,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color:
-                                  player.isAlive == false
-                                      ? Colors.grey
-                                      : Colors.blue[300],
+                              border: Border.all(
+                                color: isSelected ? Colors.red : Colors.transparent,
+                                width: 2,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.person,
-                              size: 40,
-                              color:
-                                  player.isAlive == false
-                                      ? Colors.grey[400]
-                                      : Colors.white,
+                            child: PlayerAvatar(
+                              name: player.name,
+                              isLeader: player.isLeader,
+                              isDead: !player.isAlive,
+                              profilePicture: player.profilePicture,
                             ),
                           ),
                           const SizedBox(height: 8),

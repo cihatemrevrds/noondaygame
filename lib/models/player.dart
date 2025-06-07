@@ -5,6 +5,7 @@ class Player {
   final String? role;
   final bool isAlive;
   final String? team;
+  final String? profilePicture;
 
   Player({
     required this.name, 
@@ -13,8 +14,8 @@ class Player {
     this.role,
     this.isAlive = true,
     this.team,
+    this.profilePicture,
   });
-
   // Create Player from Firestore map
   factory Player.fromMap(Map<String, dynamic> map) {
     return Player(
@@ -24,9 +25,9 @@ class Player {
       role: map['role'] as String?,
       isAlive: map['isAlive'] as bool? ?? true,
       team: map['team'] as String?,
+      profilePicture: map['profilePicture'] as String?,
     );
   }
-
   // Convert Player to Firestore map
   Map<String, dynamic> toMap() {
     return {
@@ -36,9 +37,9 @@ class Player {
       'role': role,
       'isAlive': isAlive,
       'team': team,
+      'profilePicture': profilePicture,
     };
   }
-
   // Create a copy with modified fields
   Player copyWith({
     String? id,
@@ -47,6 +48,7 @@ class Player {
     String? role,
     bool? isAlive,
     String? team,
+    String? profilePicture,
   }) {
     return Player(
       id: id ?? this.id,
@@ -55,6 +57,7 @@ class Player {
       role: role ?? this.role,
       isAlive: isAlive ?? this.isAlive,
       team: team ?? this.team,
+      profilePicture: profilePicture ?? this.profilePicture,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/lobby_service.dart';
 import '../models/player.dart';
 import '../utils/role_icons.dart';
+import '../widgets/player_avatar.dart';
 
 class NightPhaseScreen extends StatefulWidget {
   final String lobbyCode;
@@ -168,8 +169,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                         setState(() {
                           _selectedPlayerId = player.id;
                         });
-                      },
-                      child: Column(
+                      },                      child: Column(
                         children: [
                           Container(
                             width:
@@ -182,28 +182,19 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                                     : 80,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color:
-                                  _selectedPlayerId == player.id
-                                      ? Colors.green.withOpacity(0.8)
-                                      : Colors.grey[300],
                               border: Border.all(
                                 color:
                                     _selectedPlayerId == player.id
-                                        ? Colors.white
-                                        : Colors.grey[400]!,
+                                        ? Colors.green
+                                        : Colors.transparent,
                                 width: 3,
                               ),
                             ),
-                            child: Icon(
-                              Icons.person,
-                              size:
-                                  MediaQuery.of(context).size.width > 800
-                                      ? 50
-                                      : 45,
-                              color:
-                                  _selectedPlayerId == player.id
-                                      ? Colors.white
-                                      : Colors.grey[600],
+                            child: PlayerAvatar(
+                              name: player.name,
+                              isLeader: player.isLeader,
+                              isDead: !player.isAlive,
+                              profilePicture: player.profilePicture,
                             ),
                           ),
                           const SizedBox(height: 8),

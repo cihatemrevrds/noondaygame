@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../widgets/menu_button.dart';
+import '../widgets/player_avatar.dart';
 import '../models/player.dart';
 import '../models/role.dart';
 import '../utils/role_icons.dart';
@@ -148,9 +149,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             'manualPhaseControl': settingsData['manualPhaseControl'] ?? false,
           };
 
-          final playersData = data['players'] as List<dynamic>? ?? [];
-
-          final playersList =
+          final playersData = data['players'] as List<dynamic>? ?? [];          final playersList =
               playersData.map((p) {
                 final map = p as Map<String, dynamic>;
                 final playerId = map['id'] ?? map['uid'] ?? '';
@@ -161,6 +160,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                   role: map['role'],
                   isAlive: map['isAlive'] ?? true,
                   team: map['team'],
+                  profilePicture: map['profilePicture'] as String?,
                 );
               }).toList();
           if (data['status'] == 'started') {
@@ -410,16 +410,22 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                       padding: const EdgeInsets.all(12),
                                       itemCount: players.length,
                                       itemBuilder: (context, index) {
-                                        final player = players[index];
-                                        return ListTile(
+                                        final player = players[index];                                        return ListTile(
                                           title: Text(
                                             player.name,
                                             style: const TextStyle(
                                               fontFamily: 'Rye',
                                             ),
                                           ),
-                                          leading: const CircleAvatar(
-                                            backgroundColor: Colors.brown,
+                                          leading: SizedBox(
+                                            width: 40,
+                                            height: 40,
+                                            child: PlayerAvatar(
+                                              name: player.name,
+                                              isLeader: player.isLeader,
+                                              isDead: !player.isAlive,
+                                              profilePicture: player.profilePicture,
+                                            ),
                                           ),
                                           trailing:
                                               _isHost &&

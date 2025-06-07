@@ -187,62 +187,90 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
             final canVote = player.id != widget.currentUserId && player.isAlive;
             final isSelected = _selectedPlayerId == player.id;
 
-            return Column(
-              children: [
-                // Player Avatar
-                Expanded(
-                  child: PlayerAvatar(
-                    name: player.name,
-                    isLeader: player.isLeader,
-                    isDead: !player.isAlive,
-                  ),
+        return Container(
+          decoration:
+              isCurrentUser
+                  ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue, width: 3),
+                  )
+                  : isSelected
+                  ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange, width: 3),
+                  )
+                  : null,          child: Column(
+            children: [
+              // Player Avatar
+              Expanded(
+                child: PlayerAvatar(
+                  name: player.name,
+                  isLeader: player.isLeader,
+                  isDead: !player.isAlive,
+                  profilePicture: player.profilePicture,
                 ),
-                // Vote Button
-                if (canVote)
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: 2.0,
-                      left: 4.0,
-                      right: 4.0,
-                      bottom: 2.0,
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 20,
-                      child: ElevatedButton(
-                        onPressed: () => _toggleVote(player.id),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              isSelected
-                                  ? Colors.orange
-                                  : const Color(0xFF8B4513),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 1,
-                            horizontal: 4,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          minimumSize: const Size(0, 20),
+              ),
+              // Player Name
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 1.0),
+                child: Text(
+                  player.name,
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 10,
+                    color: player.isAlive ? Colors.white : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    decoration: player.isAlive ? null : TextDecoration.lineThrough,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),// Vote Button
+              if (canVote)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: 2.0,
+                    left: 4.0,
+                    right: 4.0,
+                    bottom: 2.0,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 20,
+                    child: ElevatedButton(
+                      onPressed: () => _toggleVote(player.id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isSelected
+                                ? Colors.orange
+                                : const Color(0xFF8B4513),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 1,
+                          horizontal: 4,
                         ),
-                        child: Text(
-                          isSelected ? 'REMOVE' : 'VOTE',
-                          style: const TextStyle(
-                            fontFamily: 'Rye',
-                            fontSize: 7,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        minimumSize: const Size(0, 20),
+                      ),
+                      child: Text(
+                        isSelected ? 'REMOVE' : 'VOTE',
+                        style: const TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 7,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  )
-                else
-                  // Placeholder for dead players or current user
-                  const SizedBox(height: 20),
-              ],
-            );
-          },
+                  ),
+                )
+              else
+                // Placeholder for dead players or current user
+                const SizedBox(height: 20),
+            ],
+          ),
         );
       },
     );

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'user_settings_service.dart';
 
 class LobbyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -38,13 +39,16 @@ class LobbyService {
     final rand = Random();
     return List.generate(5, (_) => chars[rand.nextInt(chars.length)]).join();
   }
-
   Future<String?> createLobby(
     String hostUid,
     String hostName,
     int maxPlayers,
   ) async {
     try {
+      // Get user's profile picture from settings
+      final userSettingsService = UserSettingsService();
+      final userSettings = await userSettingsService.getUserSettings();
+      
       final lobbyCode = generateLobbyCode();
 
       final lobbyRef = _firestore.collection('lobbies').doc(lobbyCode);
@@ -62,6 +66,7 @@ class LobbyService {
             'role': null, // Host için de role değeri eklendi
             'isAlive': true, // Host için de isAlive değeri eklendi
             'team': null, // Host için de team değeri eklendi
+            'profilePicture': userSettings.profilePicture,
           },
         ],
       });
@@ -72,7 +77,6 @@ class LobbyService {
       return null;
     }
   }
-
   Future<bool> joinLobby(
     String lobbyCode,
     String playerId,
@@ -82,6 +86,10 @@ class LobbyService {
       print(
         'Player $playerName (ID: $playerId) attempting to join lobby: $lobbyCode',
       );
+
+      // Get user's profile picture from settings
+      final userSettingsService = UserSettingsService();
+      final userSettings = await userSettingsService.getUserSettings();
 
       final lobbyRef = FirebaseFirestore.instance
           .collection('lobbies')
@@ -138,9 +146,20 @@ class LobbyService {
           needsUpdate = true;
         }
 
+        if (!existingPlayer.containsKey('profilePicture')) {
+          existingPlayer['profilePicture'] = userSettings.profilePicture;
+          needsUpdate = true;
+        }
+
         // Update name if it has changed
         if (existingPlayer['name'] != playerName) {
           existingPlayer['name'] = playerName;
+          needsUpdate = true;
+        }
+
+        // Update profile picture if it has changed
+        if (existingPlayer['profilePicture'] != userSettings.profilePicture) {
+          existingPlayer['profilePicture'] = userSettings.profilePicture;
           needsUpdate = true;
         }
 
@@ -153,9 +172,7 @@ class LobbyService {
         // Verify player can see the lobby
         await Future.delayed(const Duration(milliseconds: 500));
         return await verifyPlayerInLobby(lobbyCode, playerId);
-      }
-
-      // Add new player with all required fields
+      }      // Add new player with all required fields
       final newPlayer = {
         'id': playerId,
         'name': playerName,
@@ -163,6 +180,7 @@ class LobbyService {
         'role': null,
         'isAlive': true,
         'team': null,
+        'profilePicture': userSettings.profilePicture,
       };
 
       players.add(newPlayer);

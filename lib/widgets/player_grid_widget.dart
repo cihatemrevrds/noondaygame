@@ -81,46 +81,68 @@ class PlayerGridWidget extends StatelessWidget {
                           ? Border.all(color: Colors.green, width: 3)
                           : null,
                   borderRadius: BorderRadius.circular(12),
-                ),
-                child: Stack(
+                ),                child: Column(
                   children: [
-                    PlayerAvatar(
-                      name: player.name,
-                      isLeader: player.isLeader,
-                      isDead: !player.isAlive,
-                    ),
-                    if (voteCount > 0 && isVotingPhase)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                spreadRadius: 1,
-                                blurRadius: 3,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          PlayerAvatar(
+                            name: player.name,
+                            isLeader: player.isLeader,
+                            isDead: !player.isAlive,
+                            profilePicture: player.profilePicture,
                           ),
-                          child: Center(
-                            child: Text(
-                              '$voteCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                          if (voteCount > 0 && isVotingPhase)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      spreadRadius: 1,
+                                      blurRadius: 3,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$voteCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                        ],
                       ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Text(
+                        player.name,
+                        style: TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 12,
+                          color: player.isAlive ? Colors.white : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          decoration: player.isAlive ? null : TextDecoration.lineThrough,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),
