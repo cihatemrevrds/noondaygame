@@ -62,15 +62,40 @@ exports.startGame = async (req, res) => {
         const updatedPlayers = players.map((player, index) => ({
             ...player,
             role: rolesPool[index],
-        }));
-
-        // Initialize all players as alive
+        }));        // Initialize all players as alive
         const initializedPlayers = updatedPlayers.map(player => ({
             ...player,
             isAlive: true,
             eliminatedBy: null,
             killedBy: null
         }));
+
+        // Initialize role-specific data structures
+        const initialRoleData = {};
+
+        // Initialize Gunslinger data - they start with 0 bullets used
+        const gunslingers = initializedPlayers.filter(p => p.role === 'Gunslinger');
+        if (gunslingers.length > 0) {
+            initialRoleData.gunslinger = {};
+            gunslingers.forEach(player => {
+                initialRoleData.gunslinger[player.id] = {
+                    bulletsUsed: 0,
+                    targetId: null
+                };
+            });
+        }
+
+        // Initialize Doctor data - they start with self-protection available
+        const doctors = initializedPlayers.filter(p => p.role === 'Doctor');
+        if (doctors.length > 0) {
+            initialRoleData.doctor = {};
+            doctors.forEach(player => {
+                initialRoleData.doctor[player.id] = {
+                    protectedId: null,
+                    selfProtectionUsed: false
+                };
+            });
+        }
 
         await lobbyRef.update({
             players: initializedPlayers,
@@ -82,7 +107,7 @@ exports.startGame = async (req, res) => {
             gameState: 'role_reveal', // Players see their roles first
             phaseTimeLimit: 5000, // 5 seconds for role reveal (non-skippable)
             votes: {},
-            roleData: {},
+            roleData: initialRoleData,
             nightEvents: [], // Public events for event sharing phase
             privateEvents: {}, // Private individual results for night outcome phase
             lastDayResult: null
