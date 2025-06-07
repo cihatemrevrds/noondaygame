@@ -39,6 +39,7 @@ class LobbyService {
     final rand = Random();
     return List.generate(5, (_) => chars[rand.nextInt(chars.length)]).join();
   }
+
   Future<String?> createLobby(
     String hostUid,
     String hostName,
@@ -48,7 +49,7 @@ class LobbyService {
       // Get user's profile picture from settings
       final userSettingsService = UserSettingsService();
       final userSettings = await userSettingsService.getUserSettings();
-      
+
       final lobbyCode = generateLobbyCode();
 
       final lobbyRef = _firestore.collection('lobbies').doc(lobbyCode);
@@ -77,6 +78,7 @@ class LobbyService {
       return null;
     }
   }
+
   Future<bool> joinLobby(
     String lobbyCode,
     String playerId,
@@ -172,7 +174,7 @@ class LobbyService {
         // Verify player can see the lobby
         await Future.delayed(const Duration(milliseconds: 500));
         return await verifyPlayerInLobby(lobbyCode, playerId);
-      }      // Add new player with all required fields
+      } // Add new player with all required fields
       final newPlayer = {
         'id': playerId,
         'name': playerName,
@@ -799,21 +801,14 @@ class LobbyService {
 
       final data = lobbyDoc.data() as Map<String, dynamic>;
       final gameSettings = data['gameSettings'] as Map<String, dynamic>? ?? {};
-
       return {
         'nightPhaseDuration': gameSettings['nightTime'] ?? 30,
         'eventPhaseDuration': gameSettings['eventPhaseDuration'] ?? 5,
         'dayPhaseDuration': gameSettings['discussionTime'] ?? 60,
-        'manualPhaseControl': gameSettings['manualPhaseControl'] ?? false,
       };
     } catch (e) {
       print('Error fetching lobby settings: $e');
-      return {
-        'nightTime': 30,
-        'eventPhaseDuration': 5,
-        'discussionTime': 60,
-        'manualPhaseControl': false,
-      };
+      return {'nightTime': 30, 'eventPhaseDuration': 5, 'discussionTime': 60};
     }
   }
 }

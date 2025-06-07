@@ -486,10 +486,32 @@ async function processNightActions(lobbyData, players) {
     console.log('📊 Lobby roleData:', JSON.stringify(lobbyData.roleData, null, 2));
     console.log('👥 Players count:', players.length);
 
+    // Check game settings for first night kill restriction
+    const gameSettings = lobbyData.gameSettings || {};
+    const allowFirstNightKill = gameSettings.allowFirstNightKill ?? false;
+    const dayCount = lobbyData.dayCount || 1;
+    const isFirstNight = dayCount === 1;
+
+    console.log(`🌙 Day ${dayCount}, First night: ${isFirstNight}, Allow first night kill: ${allowFirstNightKill}`);
+
+    // If it's the first night and first night kills are disabled, skip all kill actions
+    if (isFirstNight && !allowFirstNightKill) {
+        console.log('🚫 First night kills disabled - skipping all kill actions');
+
+        // Still process non-kill actions (investigation, protection, blocking, spying)
+        let roleDataUpdate = { ...lobbyData.roleData } || {};
+        let updatedPlayers = [...players];
+        let nightEvents = []; // Public events - visible to everyone
+        let privateEvents = {}; // Private events - visible only to specific players
+
+        // Process only non-kill actions on first night when kills are disabled
+        return await processNonKillActions(lobbyData, players, roleDataUpdate, updatedPlayers, nightEvents, privateEvents);
+    }
+
     let roleDataUpdate = { ...lobbyData.roleData } || {};
     let updatedPlayers = [...players];
     let nightEvents = []; // Public events - visible to everyone
-    let privateEvents = {}; // Private events - visible only to specific players    // NIGHT ACTION ORDER OF OPERATIONS:
+    let privateEvents = {}; // Private events - visible only to specific players// NIGHT ACTION ORDER OF OPERATIONS:
     // 1. Escort blocking (processed first)
     // 2. Doctor protection (if not blocked)
     // 3. Sheriff investigation (if not blocked)
@@ -829,78 +851,63 @@ async function processNightActions(lobbyData, players) {
             }
         }
     }    // Reset role data for next night, preserving persistent data and multi-role structure
-    const newRoleData = {};
-
-    // 7. Process Gunslinger actions (independent of other kills)
+    const newRoleData = {};    // 7. Process Gunslinger actions (simultaneous with Gunman kills for mutual kill scenarios)
     console.log('🔫 Processing Gunslinger actions...');
     if (roleDataUpdate.gunslinger) {
         for (const [gunslingerUid, gunslingerData] of Object.entries(roleDataUpdate.gunslinger)) {
+            // Check gunslinger status from ORIGINAL players (not updated, to allow mutual kills)
             const gunslingerPlayer = players.find(p => p.id === gunslingerUid && p.role === 'Gunslinger' && p.isAlive);
             const isGunslingerBlocked = blockedPlayerIds.includes(gunslingerUid);
 
+            // Process if gunslinger was originally alive and not blocked (allows mutual kills)
             if (gunslingerPlayer && !isGunslingerBlocked && gunslingerData && gunslingerData.targetId) {
                 const targetId = gunslingerData.targetId;
                 const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
 
                 if (targetIndex !== -1) {
-                    const targetPlayer = updatedPlayers[targetIndex];                    // Get gunslinger's current bullet data
+                    const targetPlayer = updatedPlayers[targetIndex];
+
+                    // Get gunslinger's current bullet data
                     const bulletsUsed = gunslingerData.bulletsUsed || 0;
 
                     // Check if gunslinger has bullets left (only 1 bullet total)
-                    if (bulletsUsed < 1) {                        // Check if target is still alive (may have been killed by gunman)
-                        if (targetPlayer.isAlive) {
-                            // Execute the kill
-                            updatedPlayers[targetIndex] = {
-                                ...targetPlayer,
-                                isAlive: false,
-                                killedBy: 'Gunslinger',
-                                eliminatedBy: gunslingerPlayer.name
-                            };
+                    if (bulletsUsed < 1) {
+                        // Execute the kill regardless of target's current status (allows mutual kills)
+                        updatedPlayers[targetIndex] = {
+                            ...targetPlayer,
+                            isAlive: false,
+                            killedBy: 'Gunslinger',
+                            eliminatedBy: gunslingerPlayer.name
+                        };
 
-                            // Update gunslinger's bullet data (used their only bullet)
-                            const newBulletsUsed = bulletsUsed + 1;
+                        // Update gunslinger's bullet data (used their only bullet)
+                        const newBulletsUsed = bulletsUsed + 1;
 
-                            // Store updated gunslinger data for next night
-                            if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
-                            newRoleData.gunslinger[gunslingerUid] = {
-                                bulletsUsed: newBulletsUsed,
-                                targetId: null // Reset target
-                            };
+                        // Store updated gunslinger data for next night
+                        if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
+                        newRoleData.gunslinger[gunslingerUid] = {
+                            bulletsUsed: newBulletsUsed,
+                            targetId: null // Reset target
+                        };
 
-                            // Public event - include Gunslinger identity revelation
-                            nightEvents.push(`${targetPlayer.name} was killed by the Gunslinger.`);
+                        // Public event - include Gunslinger identity revelation
+                        nightEvents.push(`${targetPlayer.name} was killed by the Gunslinger.`);
 
-                            // Private event for gunslinger
-                            privateEvents[gunslingerPlayer.id] = {
-                                type: 'gunslinger_shot_success',
-                                targetName: targetPlayer.name,
-                                message: `You successfully shot ${targetPlayer.name}. Your identity has been revealed to everyone.`
-                            };
+                        // Private event for gunslinger (they get this even if they die)
+                        privateEvents[gunslingerPlayer.id] = {
+                            type: 'gunslinger_shot_success',
+                            targetName: targetPlayer.name,
+                            message: `You successfully shot ${targetPlayer.name}. Your identity has been revealed to everyone.`
+                        };
 
-                            // Death notification for the victim
-                            privateEvents[targetPlayer.id] = {
-                                type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
-                                killerTeam: 'the Gunslinger',
-                                victimRole: targetPlayer.role
-                            };
+                        // Death notification for the victim
+                        privateEvents[targetPlayer.id] = {
+                            type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                            killerTeam: 'the Gunslinger',
+                            victimRole: targetPlayer.role
+                        };
 
-                            console.log(`🎯 Gunslinger ${gunslingerPlayer.name} shot ${targetPlayer.name} - identity revealed`);
-                        } else {
-                            // Target was already killed, gunslinger wasted a bullet
-                            const newBulletsUsed = bulletsUsed + 1;
-
-                            if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
-                            newRoleData.gunslinger[gunslingerUid] = {
-                                bulletsUsed: newBulletsUsed,
-                                targetId: null
-                            };
-
-                            privateEvents[gunslingerPlayer.id] = {
-                                type: 'gunslinger_shot_wasted',
-                                targetName: targetPlayer.name,
-                                message: `${targetPlayer.name} was already dead. You wasted your only bullet.`
-                            };
-                        }
+                        console.log(`🎯 Gunslinger ${gunslingerPlayer.name} shot ${targetPlayer.name} - identity revealed`);
                     }
                 }
             } else if (gunslingerPlayer && isGunslingerBlocked) {
@@ -908,9 +915,17 @@ async function processNightActions(lobbyData, players) {
                 privateEvents[gunslingerPlayer.id] = {
                     type: MESSAGES.EVENT_TYPES.KILL_BLOCKED
                 };
+            } else if (gunslingerData && gunslingerData.targetId) {
+                // Gunslinger was dead/not found but had a target - preserve bullet count
+                if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
+                newRoleData.gunslinger[gunslingerUid] = {
+                    bulletsUsed: gunslingerData.bulletsUsed || 0, // Keep original bullet count
+                    targetId: null // Reset target
+                };
+                console.log(`💀 Gunslinger ${gunslingerUid} was not found or dead - preserving bullet state`);
             }
         }
-    }    // Reset gunman data for each gunman
+    }// Reset gunman data for each gunman
     const gunmanPlayers = players.filter(p => p.role === 'Gunman' && p.isAlive);
     if (gunmanPlayers.length > 0) {
         newRoleData.gunman = {};
@@ -983,6 +998,290 @@ async function processNightActions(lobbyData, players) {
 
     return {
         players: updatedPlayers,
+        roleData: newRoleData,
+        nightEvents: nightEvents, // Public events for event sharing phase
+        privateEvents: privateEvents // Private events for night outcome phase
+    };
+}
+
+// Helper function to process only non-kill actions (for first night when kills are disabled)
+async function processNonKillActions(lobbyData, players, roleDataUpdate, updatedPlayers, nightEvents, privateEvents) {
+    console.log('🚫 Processing non-kill actions only (first night, kills disabled)');
+
+    // NIGHT ACTION ORDER OF OPERATIONS (Non-kill actions only):
+    // 1. Escort blocking (processed first)
+    // 2. Doctor protection (if not blocked)
+    // 3. Sheriff investigation (if not blocked)
+    // 4. Peeper spying (if not blocked)
+
+    // 1. First check who is blocked by Escort (multiple escorts possible)
+    const blockedPlayerIds = [];
+    if (roleDataUpdate.escort) {
+        for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
+            if (escortData && escortData.blockedId) {
+                blockedPlayerIds.push(escortData.blockedId);
+            }
+        }
+    }
+
+    // 2. Process Doctor protection (multiple doctors possible) - BEFORE investigations
+    if (roleDataUpdate.doctor) {
+        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+            if (doctorData && doctorData.protectedId) {
+                const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor' && p.isAlive);
+                const isDoctorBlocked = blockedPlayerIds.includes(doctorUid);
+
+                if (!isDoctorBlocked && doctorPlayer) {
+                    const targetPlayer = players.find(p => p.id === doctorData.protectedId);
+
+                    if (targetPlayer) {
+                        // Private event - only the Doctor sees this
+                        privateEvents[doctorPlayer.id] = {
+                            type: MESSAGES.EVENT_TYPES.PROTECTION_RESULT,
+                            targetName: targetPlayer.name
+                        };
+                    }
+                } else if (isDoctorBlocked && doctorPlayer) {
+                    // Private event - only the Doctor sees this
+                    privateEvents[doctorPlayer.id] = {
+                        type: MESSAGES.EVENT_TYPES.PROTECTION_BLOCKED
+                    };
+                }
+            }
+        }
+    }
+
+    // 3. Process Sheriff investigations (multiple sheriffs possible) - AFTER protection
+    if (roleDataUpdate.sheriff) {
+        for (const [sheriffUid, sheriffData] of Object.entries(roleDataUpdate.sheriff)) {
+            if (sheriffData && sheriffData.targetId) {
+                const sheriffPlayer = players.find(p => p.id === sheriffUid && p.role === 'Sheriff' && p.isAlive);
+                const isSheriffBlocked = blockedPlayerIds.includes(sheriffUid);
+
+                if (!isSheriffBlocked && sheriffPlayer) {
+                    const targetId = sheriffData.targetId;
+                    const targetPlayer = players.find(p => p.id === targetId);
+
+                    if (targetPlayer) {
+                        const isSuspicious = targetPlayer.role === 'Gunman' || targetPlayer.role === 'Jester';
+                        const result = isSuspicious ? MESSAGES.INVESTIGATION_RESULTS.SUSPICIOUS : MESSAGES.INVESTIGATION_RESULTS.INNOCENT;
+
+                        // Private event - only the Sheriff sees this
+                        privateEvents[sheriffPlayer.id] = {
+                            type: MESSAGES.EVENT_TYPES.INVESTIGATION_RESULT,
+                            targetName: targetPlayer.name,
+                            targetRole: targetPlayer.role,
+                            result: result
+                        };
+                    }
+                } else if (isSheriffBlocked && sheriffPlayer) {
+                    // Private event - only the Sheriff sees this
+                    privateEvents[sheriffPlayer.id] = {
+                        type: MESSAGES.EVENT_TYPES.INVESTIGATION_BLOCKED
+                    };
+                }
+            }
+        }
+    }
+
+    // 4. Process Peeper spying (multiple peepers possible)
+    if (roleDataUpdate.peeper) {
+        for (const [peeperUid, peeperData] of Object.entries(roleDataUpdate.peeper)) {
+            if (peeperData && peeperData.targetId) {
+                const peeperPlayer = players.find(p => p.id === peeperUid && p.role === 'Peeper' && p.isAlive);
+                const isPeeperBlocked = blockedPlayerIds.includes(peeperUid);
+
+                if (!isPeeperBlocked && peeperPlayer) {
+                    const targetId = peeperData.targetId;
+                    const targetPlayer = players.find(p => p.id === targetId);
+
+                    if (targetPlayer) {
+                        // Determine who visited the target (only non-kill actions on first night)
+                        let visitors = [];
+
+                        // Check if any Doctor visited (non-kill action)
+                        if (roleDataUpdate.doctor) {
+                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                    const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
+                                    if (doctorPlayer) {
+                                        visitors.push(doctorPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Private event - only the Peeper sees this
+                        privateEvents[peeperPlayer.id] = {
+                            type: MESSAGES.EVENT_TYPES.PEEP_RESULT,
+                            targetName: targetPlayer.name,
+                            visitors: visitors
+                        };
+                    }
+                } else if (isPeeperBlocked && peeperPlayer) {
+                    // Private event - only the Peeper sees this
+                    privateEvents[peeperPlayer.id] = {
+                        type: MESSAGES.EVENT_TYPES.PEEP_BLOCKED
+                    };
+                }
+            }
+        }
+    }    // 5. Process Escort blocking notifications (after actions processed)
+    if (roleDataUpdate.escort) {
+        for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
+            if (escortData && escortData.blockedId) {
+                const escortPlayer = players.find(p => p.id === escortUid && p.role === 'Escort' && p.isAlive);
+
+                if (escortPlayer) {
+                    const targetPlayer = players.find(p => p.id === escortData.blockedId);
+
+                    if (targetPlayer) {
+                        // Private event - only the Escort sees this
+                        privateEvents[escortPlayer.id] = {
+                            type: MESSAGES.EVENT_TYPES.BLOCK_RESULT,
+                            targetName: targetPlayer.name
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // 6. Notify kill-role players that their actions were disabled on first night
+    // Notify Gunmen who tried to kill
+    if (roleDataUpdate.gunman) {
+        for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
+            if (gunmanData && gunmanData.targetId) {
+                const gunmanPlayer = players.find(p => p.id === gunmanUid && p.role === 'Gunman' && p.isAlive);
+                if (gunmanPlayer) {
+                    const targetPlayer = players.find(p => p.id === gunmanData.targetId);
+                    if (targetPlayer) {
+                        privateEvents[gunmanPlayer.id] = {
+                            type: 'first_night_kill_disabled',
+                            message: `Kill actions are disabled on the first night. Your target ${targetPlayer.name} was not harmed.`
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // Notify Chieftains who tried to order kills
+    if (roleDataUpdate.chieftain) {
+        for (const [chieftainUid, chieftainData] of Object.entries(roleDataUpdate.chieftain)) {
+            if (chieftainData && chieftainData.targetId) {
+                const chieftainPlayer = players.find(p => p.id === chieftainUid && p.role === 'Chieftain' && p.isAlive);
+                if (chieftainPlayer) {
+                    const targetPlayer = players.find(p => p.id === chieftainData.targetId);
+                    if (targetPlayer) {
+                        privateEvents[chieftainPlayer.id] = {
+                            type: 'first_night_kill_disabled',
+                            message: `Kill orders are disabled on the first night. Your target ${targetPlayer.name} was not harmed.`
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // Notify Gunslingers who tried to shoot
+    if (roleDataUpdate.gunslinger) {
+        for (const [gunslingerUid, gunslingerData] of Object.entries(roleDataUpdate.gunslinger)) {
+            if (gunslingerData && gunslingerData.targetId) {
+                const gunslingerPlayer = players.find(p => p.id === gunslingerUid && p.role === 'Gunslinger' && p.isAlive);
+                if (gunslingerPlayer) {
+                    const targetPlayer = players.find(p => p.id === gunslingerData.targetId);
+                    if (targetPlayer) {
+                        privateEvents[gunslingerPlayer.id] = {
+                            type: 'first_night_kill_disabled',
+                            message: `Shooting is disabled on the first night. Your target ${targetPlayer.name} was not harmed. You still have your bullet.`
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // Reset role data for next night (non-kill roles only)
+    const newRoleData = {};
+
+    // Reset gunman data for each gunman (no kills processed, but reset for next night)
+    const gunmanPlayers = players.filter(p => p.role === 'Gunman' && p.isAlive);
+    if (gunmanPlayers.length > 0) {
+        newRoleData.gunman = {};
+        gunmanPlayers.forEach(player => {
+            newRoleData.gunman[player.id] = { targetId: null };
+        });
+    }
+
+    // Reset doctor data for each doctor, preserving selfProtectionUsed
+    const doctorPlayers = players.filter(p => p.role === 'Doctor' && p.isAlive);
+    if (doctorPlayers.length > 0) {
+        newRoleData.doctor = {};
+        doctorPlayers.forEach(player => {
+            newRoleData.doctor[player.id] = {
+                protectedId: null,
+                selfProtectionUsed: roleDataUpdate.doctor?.[player.id]?.selfProtectionUsed || false
+            };
+        });
+    }
+
+    // Reset escort data for each escort
+    const escortPlayers = players.filter(p => p.role === 'Escort' && p.isAlive);
+    if (escortPlayers.length > 0) {
+        newRoleData.escort = {};
+        escortPlayers.forEach(player => {
+            newRoleData.escort[player.id] = { blockedId: null };
+        });
+    }
+
+    // Reset sheriff data for each sheriff
+    const sheriffPlayers = players.filter(p => p.role === 'Sheriff' && p.isAlive);
+    if (sheriffPlayers.length > 0) {
+        newRoleData.sheriff = {};
+        sheriffPlayers.forEach(player => {
+            newRoleData.sheriff[player.id] = { targetId: null };
+        });
+    }
+
+    // Reset peeper data for each peeper
+    const peeperPlayers = players.filter(p => p.role === 'Peeper' && p.isAlive);
+    if (peeperPlayers.length > 0) {
+        newRoleData.peeper = {};
+        peeperPlayers.forEach(player => {
+            newRoleData.peeper[player.id] = { targetId: null };
+        });
+    }
+
+    // Reset chieftain data for each chieftain (no kills processed, but reset for next night)
+    const chieftainPlayers = players.filter(p => p.role === 'Chieftain' && p.isAlive);
+    if (chieftainPlayers.length > 0) {
+        newRoleData.chieftain = {};
+        chieftainPlayers.forEach(player => {
+            newRoleData.chieftain[player.id] = { targetId: null };
+        });
+    }
+
+    // Reset gunslinger data for each gunslinger, preserving bullet count
+    const gunslingerPlayers = players.filter(p => p.role === 'Gunslinger' && p.isAlive);
+    if (gunslingerPlayers.length > 0) {
+        if (!newRoleData.gunslinger) newRoleData.gunslinger = {};
+        gunslingerPlayers.forEach(player => {
+            newRoleData.gunslinger[player.id] = {
+                bulletsUsed: roleDataUpdate.gunslinger?.[player.id]?.bulletsUsed || 0,
+                targetId: null
+            };
+        });
+    }
+
+    // Add quiet night message for first night when kills are disabled
+    nightEvents.push("The first night was peaceful. No one was harmed.");
+
+    console.log('🚫 First night (kills disabled) processing complete');
+    console.log('🌙 Private events generated:', Object.keys(privateEvents).length);
+
+    return {
+        players: updatedPlayers, // No player deaths on first night
         roleData: newRoleData,
         nightEvents: nightEvents, // Public events for event sharing phase
         privateEvents: privateEvents // Private events for night outcome phase

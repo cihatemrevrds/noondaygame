@@ -23,7 +23,8 @@ const MESSAGES = {
         KILL_BLOCKED: "kill_blocked", ORDER_SUCCESS: "order_success",
         ORDER_FAILED: "order_failed",
         NOT_SELECTED: "not_selected",
-        PLAYER_DEATH: "player_death"
+        PLAYER_DEATH: "player_death",
+        FIRST_NIGHT_KILL_DISABLED: "first_night_kill_disabled"
     },
 
     // Investigation results (simple keywords)

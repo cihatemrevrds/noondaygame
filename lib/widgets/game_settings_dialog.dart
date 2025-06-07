@@ -16,15 +16,10 @@ class GameSettingsDialog extends StatefulWidget {
 
 class _GameSettingsDialogState extends State<GameSettingsDialog> {
   late Map<String, dynamic> _settings;
-
   @override
   void initState() {
     super.initState();
     _settings = Map<String, dynamic>.from(widget.currentSettings);
-    // Add default value for manual control if not present
-    if (!_settings.containsKey('manualPhaseControl')) {
-      _settings['manualPhaseControl'] = false;
-    }
   }
 
   void _updateSetting(String key, dynamic value) {
@@ -192,42 +187,6 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                       Icons.nightlight_round,
                       _settings['allowFirstNightKill'] ?? false,
                       (value) => _updateSetting('allowFirstNightKill', value),
-                    ),
-
-                    // Show vote counts
-                    _buildToggleSetting(
-                      'Show Vote Counts',
-                      'Display the number of votes each player received',
-                      Icons.poll,
-                      _settings['showVoteCounts'] ?? true,
-                      (value) => _updateSetting('showVoteCounts', value),
-                    ),
-
-                    // Show who votes whom
-                    _buildToggleSetting(
-                      'Show Vote Targets',
-                      'Reveal who each player voted for',
-                      Icons.visibility,
-                      _settings['showVoteTargets'] ?? false,
-                      (value) => _updateSetting('showVoteTargets', value),
-                    ),
-
-                    // Show role when player is dead
-                    _buildToggleSetting(
-                      'Show Role on Death',
-                      'Reveal player\'s role when they are eliminated',
-                      Icons.person_off,
-                      _settings['showRoleOnDeath'] ?? true,
-                      (value) => _updateSetting('showRoleOnDeath', value),
-                    ),
-
-                    // Manual Phase Control
-                    _buildToggleSetting(
-                      'Manual Phase Control',
-                      'Host manually controls phase transitions (disables automatic timers)',
-                      Icons.touch_app,
-                      _settings['manualPhaseControl'] ?? false,
-                      (value) => _updateSetting('manualPhaseControl', value),
                     ),
 
                     const SizedBox(height: 20),

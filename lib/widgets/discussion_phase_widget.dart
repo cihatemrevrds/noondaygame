@@ -106,40 +106,31 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
   }
 
   Widget _buildPlayersGrid() {
-    // Ensure we have exactly 20 slots (4 columns x 5 rows)
-    final gridPlayers = List<Player?>.filled(20, null);
+    // Use responsive grid layout based on actual player count
+    int crossAxisCount = 4; // Default to 4 columns
 
-    // Fill with actual players
-    for (int i = 0; i < widget.players.length && i < 20; i++) {
-      gridPlayers[i] = widget.players[i];
+    // Adjust columns based on player count for better layout
+    if (widget.players.length <= 6) {
+      crossAxisCount = 3;
+    } else if (widget.players.length <= 12) {
+      crossAxisCount = 4;
+    } else {
+      crossAxisCount = 5;
     }
 
     return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         childAspectRatio: 1.0,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
-      itemCount: 20,
+      itemCount: widget.players.length, // Only show actual players
       itemBuilder: (context, index) {
-        final player = gridPlayers[index];
+        final player = widget.players[index];
+        final isCurrentUser = player.id == widget.currentUserId;
 
-        if (player == null) {
-          // Empty slot
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.withOpacity(0.5), width: 1),
-            ),
-            child: const Center(
-              child: Icon(Icons.person_outline, color: Colors.grey, size: 24),
-            ),
-          );
-        }
-        // Player slot
-        final isCurrentUser = player.id == widget.currentUserId;        return Container(
+        return Container(
           decoration:
               isCurrentUser
                   ? BoxDecoration(
@@ -166,7 +157,8 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                     fontSize: 10,
                     color: player.isAlive ? Colors.white : Colors.grey,
                     fontWeight: FontWeight.bold,
-                    decoration: player.isAlive ? null : TextDecoration.lineThrough,
+                    decoration:
+                        player.isAlive ? null : TextDecoration.lineThrough,
                   ),
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,

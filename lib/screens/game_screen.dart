@@ -42,8 +42,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _nightActionResult; // Night action result
   Map<String, dynamic> _nightOutcomes = {}; // Individual night outcomes
   bool _hasShownRoleReveal = false; // Role reveal popup state
-  int _dayCount = 1; // Day/Night counter
-  // Phase configuration
+  int _dayCount = 1; // Day/Night counter  // Phase configuration
   bool _manualPhaseControl = false; // Default value
   Map<String, dynamic>? _lobbyData; // Store current lobby data
   // Timing and phase management

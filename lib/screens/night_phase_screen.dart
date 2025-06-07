@@ -169,7 +169,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                         setState(() {
                           _selectedPlayerId = player.id;
                         });
-                      },                      child: Column(
+                      },
+                      child: Column(
                         children: [
                           Container(
                             width:
@@ -270,43 +271,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Skip button - left
-          SizedBox(
-            width: 140,
-            child: ElevatedButton(
-              onPressed:
-                  widget.isLoading
-                      ? null
-                      : () {
-                        widget.onSetNightActionResult(
-                          "You chose to skip this night.",
-                        );
-                      },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.brown[600],
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 15,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Skip',
-                style: TextStyle(
-                  fontFamily: 'Rye',
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 30), // Space between buttons
           // Role action button - conditional on role capability
           if (_hasNightAction(widget.myRole))
             SizedBox(
@@ -388,7 +354,6 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
             child: Column(
               children: [
                 // Night bar at the top
-
 
                 // Role logo - responsive sizing
                 Container(

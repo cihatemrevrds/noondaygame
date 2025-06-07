@@ -92,12 +92,17 @@ class MessageConfig {
     'gunslinger_lost_bullet': PopupContent(
       title: '💔 Second Bullet Lost',
       message: 'You lost your second bullet for killing a town member.',
-    ),
-
-    // Death Notification Messages (for victims)
+    ), // Death Notification Messages (for victims)
     'player_death': PopupContent(
       title: '💀 Your Final Moment',
       message: 'You were killed by {killerTeam}! Your role was {victimRole}.',
+    ),
+
+    // First Night Kill Disabled Messages
+    'first_night_kill_disabled': PopupContent(
+      title: '🛡️ First Night Protection',
+      message:
+          'Kill actions are disabled on the first night. No one can be harmed tonight.',
     ),
   };
 
