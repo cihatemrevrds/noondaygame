@@ -480,13 +480,13 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             gameState: 'discussion_phase',
             phaseTimeLimit: discussionTime, // Use lobby setting for discussion
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-    } else if (currentGameState === 'discussion_phase') {
+        };    } else if (currentGameState === 'discussion_phase') {
         // Move to voting phase
         updateData = {
             gameState: 'voting_phase',
-            phaseTimeLimit: votingTime, // Use lobby setting for voting        phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-    };
+            phaseTimeLimit: votingTime, // Use lobby setting for voting
+            phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
     } else if (currentGameState === 'voting_phase') {
         // Process votes and show results for 5 seconds
         const eliminatedPlayer = await processVotes(lobbyData, players);
