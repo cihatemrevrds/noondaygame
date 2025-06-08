@@ -53,60 +53,63 @@ exports.checkWinConditions = async (req, res) => {
                     aliveCount[team]++;
                 }
             }
-        });
+        });        // Check win conditions
+        let winningTeam = null;
+        let gameOver = false;
 
-        // Check win conditions
-        let winningTeam = null;        // Town wins if all bandits are eliminated
+        // Town wins if all bandits are eliminated and there are still town members alive
         if (aliveCount.Bandit === 0 && aliveCount.Town > 0) {
             winningTeam = 'Town';
+            gameOver = true;
         }
 
         // Bandits win if they equal or outnumber the town
         if (aliveCount.Bandit > 0 && aliveCount.Bandit >= aliveCount.Town) {
             winningTeam = 'Bandit';
-        }// Neutral solo win conditions
-        const soloNeutralWinner = players.find(p => {
-            if (!p.isAlive) return false;
-
-            // Jester wins if voted out during day phase (handled separately in voting logic)
-            // No other neutral solo win conditions in this game
-            return false;
-
-            // Jester wins if they are eliminated by town vote
-            if (p.role === 'Jester' && !p.isAlive && p.killedBy === 'Vote') {
-                return true;
-            }
-
-            // Executioner wins if their target is eliminated by town vote
-            if (p.role === 'Executioner' && p.targetId) {
-                const target = players.find(target => target.id === p.targetId);
-                if (target && !target.isAlive && target.killedBy === 'Vote') {
-                    return true;
-                }
-            }
-
-            return false;
-        });
-
-        if (soloNeutralWinner) {
-            winningTeam = soloNeutralWinner.role;
+            gameOver = true;
         }
 
-        if (winningTeam) {
+        // Check for Jester win condition - if Jester was voted out
+        const jesterWinner = players.find(p => 
+            p.role === 'Jester' && 
+            !p.isAlive && 
+            p.eliminatedBy === 'vote'
+        );
+
+        if (jesterWinner) {
+            winningTeam = 'Jester';
+            gameOver = true;
+        }
+
+        // Special case: If only neutral players remain alive (last man standing)
+        if (!gameOver && aliveCount.Total > 0 && aliveCount.Town === 0 && aliveCount.Bandit === 0) {
+            // Find the last remaining neutral player
+            const lastNeutral = players.find(p => p.isAlive && exports.getTeamByRole(p.role) === 'Neutral');
+            if (lastNeutral && aliveCount.Total === 1) {
+                winningTeam = lastNeutral.role;
+                gameOver = true;
+            }
+        }        if (gameOver && winningTeam) {
             await lobbyRef.update({
                 status: 'ended',
                 winningTeam: winningTeam,
-                endedAt: admin.firestore.FieldValue.serverTimestamp()
+                endedAt: admin.firestore.FieldValue.serverTimestamp(),
+                finalPlayerStates: players, // Store final player states for victory screen
+                aliveCount: aliveCount // Store final alive count
             });
 
             return res.status(200).json({
                 message: 'Game ended',
-                winningTeam: winningTeam
+                winningTeam: winningTeam,
+                gameOver: true,
+                aliveCount: aliveCount,
+                finalPlayers: players
             });
         }
 
         return res.status(200).json({
             message: 'Game continues',
+            gameOver: false,
             aliveCount
         });
     } catch (error) {

@@ -15,6 +15,7 @@ import '../widgets/role_reveal_popup.dart';
 import '../widgets/night_outcome_popup.dart';
 import '../widgets/event_share_popup.dart';
 import '../widgets/vote_result_popup.dart';
+import '../widgets/victory_screen_widget.dart';
 import '../config/message_config.dart';
 import 'main_menu.dart';
 
@@ -610,9 +611,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _remainingTime = 10; // Timer'ı 10 saniyeye çıkar
           });
         }
-        break;
-
-      case 'voting_outcome':
+        break;      case 'voting_outcome':
         if (!_hasShownVoteResult) {
           _hasShownVoteResult = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -620,6 +619,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           });
         }
         break;
+
+      case 'game_over':
+        if (data.containsKey('winCondition')) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showVictoryScreen(data);
+          });
+        }
+        break;
+
       default:
         // Reset popup flags when entering new phases
         if (gameState == 'night_phase') {
@@ -1306,6 +1314,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               ),
             ),
         ],
+      ),
+    );
+  }
+  // Show victory screen popup
+  void _showVictoryScreen(Map<String, dynamic> data) {
+    final winCondition = data['winCondition'] as Map<String, dynamic>?;
+    
+    if (winCondition == null) {
+      print('Warning: Victory screen called without winCondition data');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => VictoryScreenWidget(
+        winCondition: winCondition,
+        finalPlayers: _players,
+        currentUserId: _currentUserId,
       ),
     );
   }

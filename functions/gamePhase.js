@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const MESSAGES = require('./messageConfig');
+const teamManager = require('./teamManager');
 const db = admin.firestore();
 
 // Helper function to calculate day information phase time based on events
@@ -172,13 +173,30 @@ exports.advancePhase = async (req, res) => {
                 gameState: 'night_phase',
                 phaseTimeLimit: nightTime, // Use lobby setting for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-            };
-        } else if (currentGameState === 'night_phase') {
+            };        } else if (currentGameState === 'night_phase') {
             // Process night actions and move to night outcome phase
             updateData = await processNightActions(lobbyData, players);
-            updateData.gameState = 'night_outcome';
-            updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome
-            updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
+            
+            // Check for game end conditions after night actions
+            const updatedPlayers = updateData.players || players;
+            const winCondition = teamManager.checkWinConditions(updatedPlayers, lobbyData);
+            
+            if (winCondition.gameOver) {
+                // Game is over - update lobby status and end game
+                updateData = {
+                    ...updateData,
+                    status: 'ended',
+                    gameState: 'game_over',
+                    phase: 'ended',
+                    winCondition: winCondition,
+                    endedAt: admin.firestore.FieldValue.serverTimestamp()
+                };
+            } else {
+                // Game continues - proceed to night outcome phase
+                updateData.gameState = 'night_outcome';
+                updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome
+                updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
+            }
         } else if (currentGameState === 'night_outcome') {
             // Move to event sharing phase
             updateData = {
@@ -408,13 +426,30 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             gameState: 'night_phase',
             phaseTimeLimit: nightTime, // Use lobby setting for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-    } else if (currentGameState === 'night_phase') {
+        };    } else if (currentGameState === 'night_phase') {
         // Process night actions and move to night outcome phase
         updateData = await processNightActions(lobbyData, players);
-        updateData.gameState = 'night_outcome';
-        updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome (fixed duration)
-        updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
+        
+        // Check for game end conditions after night actions
+        const updatedPlayers = updateData.players || players;
+        const winCondition = teamManager.checkWinConditions(updatedPlayers, lobbyData);
+        
+        if (winCondition.gameOver) {
+            // Game is over - update lobby status and end game
+            updateData = {
+                ...updateData,
+                status: 'ended',
+                gameState: 'game_over',
+                phase: 'ended',
+                winCondition: winCondition,
+                endedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+        } else {
+            // Game continues - proceed to night outcome phase
+            updateData.gameState = 'night_outcome';
+            updateData.phaseTimeLimit = 10000; // 10 seconds for night outcome (fixed duration)
+            updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
+        }
     } else if (currentGameState === 'night_outcome') {
         // Move to event sharing phase
         updateData = {
@@ -434,9 +469,8 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
         // Move to voting phase
         updateData = {
             gameState: 'voting_phase',
-            phaseTimeLimit: votingTime, // Use lobby setting for voting
-            phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-        };
+            phaseTimeLimit: votingTime, // Use lobby setting for voting        phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
     } else if (currentGameState === 'voting_phase') {
         // Process votes and show results for 5 seconds
         const eliminatedPlayer = await processVotes(lobbyData, players);
@@ -448,7 +482,7 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             lastDayResult: eliminatedPlayer
         };
 
-        // If someone was eliminated, update players
+        // If someone was eliminated, update players and check win conditions
         if (eliminatedPlayer) {
             const updatedPlayers = players.map(p => {
                 if (p.id === eliminatedPlayer.id) {
@@ -457,6 +491,29 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
                 return p;
             });
             updateData.players = updatedPlayers;
+            
+            // Check for game end conditions after voting elimination
+            const winCondition = teamManager.checkWinConditions(updatedPlayers, lobbyData);
+            
+            if (winCondition.gameOver) {
+                // Game is over - check if Jester won by being voted out
+                if (eliminatedPlayer.role === 'Jester') {
+                    // Jester wins by being voted out
+                    winCondition.winner = 'Jester';
+                    winCondition.winType = 'jester_vote_out';
+                    winCondition.finalPlayers = [eliminatedPlayer];
+                }
+                
+                // Update lobby status and end game
+                updateData = {
+                    ...updateData,
+                    status: 'ended',
+                    gameState: 'game_over',
+                    phase: 'ended',
+                    winCondition: winCondition,
+                    endedAt: admin.firestore.FieldValue.serverTimestamp()
+                };
+            }
         }
     } else if (currentGameState === 'voting_outcome') {
         // Move from voting results to night
