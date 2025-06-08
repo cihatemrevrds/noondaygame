@@ -25,7 +25,7 @@ class UserSettingsService {
         final defaultSettings = UserSettings(
           nickname: user.displayName ?? 'Cowboy',
           email: user.email ?? '',
-          profilePicture: 'sheriff.jpg',
+          profilePicture: 'normal_man.png',
           soundEnabled: true,
           soundVolume: 0.8,
           musicEnabled: true,
