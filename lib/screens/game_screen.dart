@@ -168,9 +168,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       // Get votes status
       final votesData = data['votes'] as Map<String, dynamic>? ?? {};
-      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));
-
-      // Get phase info and timing
+      final votes = votesData.map((k, v) => MapEntry(k, v.toString()));      // Get phase info and timing
       final phase = data['phase'] as String? ?? 'night';
       final gameState = data['gameState'] as String? ?? 'role_reveal';
       final dayCount = data['dayCount'] as int? ?? 1;
@@ -180,7 +178,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final phaseTimeLimit =
           data['phaseTimeLimit'] as int? ?? 60000; // milliseconds
 
-      // Calculate remaining time
+      // Debug logging for voting phase timer issues
+      if (gameState == 'voting_phase') {
+        print('🗳️ Voting phase timer debug:');
+        print('  phaseStartedAt: $phaseStartedAt');
+        print('  phaseTimeLimit: $phaseTimeLimit ms');
+        print('  current time: ${DateTime.now()}');
+      }      // Calculate remaining time
       int remainingTime = 0;
       if (phaseStartedAt != null) {
         final startTime = phaseStartedAt.toDate();
@@ -190,7 +194,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 .round()
                 .clamp(0, double.infinity)
                 .toInt();
-      } // Get night action result and outcomes
+      } else {
+        // Fallback: Use full phase duration if phaseStartedAt is null
+        // This prevents timer showing 0:00 when Firebase data hasn't synced yet
+        remainingTime = (phaseTimeLimit / 1000).round();
+        print('⚠️ phaseStartedAt is null, using fallback timer: ${remainingTime}s');
+      }      // Debug logging for voting phase timer issues
+      if (gameState == 'voting_phase') {
+        print('  calculated remainingTime: ${remainingTime}s');
+        final minutes = remainingTime ~/ 60;
+        final seconds = remainingTime % 60;
+        print('  formatted time: $minutes:${seconds.toString().padLeft(2, '0')}');
+      }// Get night action result and outcomes
       final nightActionResult =
           data['nightActionResult']?[_currentUserId] as String?;
 
