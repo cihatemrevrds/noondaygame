@@ -449,10 +449,9 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                   style: const TextStyle(
                                                     fontFamily: 'Rye',
                                                   ),
-                                                ),
-                                                leading: SizedBox(
-                                                  width: 40,
-                                                  height: 40,
+                                                ),                                                leading: SizedBox(
+                                                  width: 32,
+                                                  height: 32,
                                                   child: PlayerAvatar(
                                                     name: player.name,
                                                     isLeader: player.isLeader,

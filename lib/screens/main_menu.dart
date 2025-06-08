@@ -4,6 +4,7 @@ import '../widgets/menu_button.dart';
 import '../services/lobby_service.dart';
 import 'lobby_setup_page.dart';
 import 'lobby_room_page.dart';
+import 'mobile_lobby_room_page.dart';
 import 'settings_page.dart';
 
 class MainMenu extends StatefulWidget {
@@ -16,9 +17,14 @@ class MainMenu extends StatefulWidget {
 }
 
 class _MainMenuState extends State<MainMenu> {
-  final TextEditingController _roomCodeController = TextEditingController();
-  final LobbyService _lobbyService = LobbyService();
+  final TextEditingController _roomCodeController = TextEditingController();  final LobbyService _lobbyService = LobbyService();
   bool _isLoading = false;
+
+  // Helper function to detect mobile devices
+  bool _isMobile(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth < 800; // Threshold for mobile/tablet detection
+  }
 
   @override
   void dispose() {
@@ -177,20 +183,31 @@ class _MainMenuState extends State<MainMenu> {
         );
 
         // Firestore senkronizasyonu için biraz bekle (host gibi)
-        await Future.delayed(const Duration(milliseconds: 1500));
-
-        if (mounted) {
+        await Future.delayed(const Duration(milliseconds: 1500));        if (mounted) {
           print('Navigating to LobbyRoomPage as player');
 
-          // HOST GİBİ PUSH KULLAN (pushReplacement değil)
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) =>
-                      LobbyRoomPage(roomName: 'Room $code', lobbyCode: code),
-            ),
-          );
+          // Check if mobile device and navigate accordingly
+          if (_isMobile(context)) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MobileLobbyRoomPage(
+                  roomName: 'Room $code', 
+                  lobbyCode: code
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LobbyRoomPage(
+                  roomName: 'Room $code', 
+                  lobbyCode: code
+                ),
+              ),
+            );
+          }
           print('Navigation to LobbyRoomPage completed');
         }
       } else {

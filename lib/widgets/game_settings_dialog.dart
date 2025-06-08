@@ -27,14 +27,20 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
       _settings[key] = value;
     });
   }
-
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isMobile = screenWidth < 600;
+    
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.8,
+        width: isMobile ? screenWidth * 0.95 : screenWidth * 0.8,
+        height: isMobile ? screenHeight * 0.85 : screenHeight * 0.8,
+        constraints: isMobile 
+          ? const BoxConstraints(maxWidth: 400, maxHeight: 600)
+          : null,
         decoration: BoxDecoration(
           color: const Color(0xFF8B4513), // Saddle brown
           borderRadius: BorderRadius.circular(15),
@@ -194,9 +200,7 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                   ],
                 ),
               ),
-            ),
-
-            // Action buttons
+            ),            // Action buttons - Mobile responsive layout
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -205,25 +209,60 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    'CANCEL',
-                    Colors.grey,
-                    () => Navigator.of(context).pop(),
-                  ),
-                  _buildActionButton(
-                    'SAVE SETTINGS',
-                    const Color(0xFF228B22), // Forest green
-                    () {
-                      widget.onSettingsUpdated(_settings);
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              ),
+              ),              child: MediaQuery.of(context).size.width < 400
+                  ? Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 60, // Increased height for mobile buttons
+                          child: _buildActionButton(
+                            'CANCEL',
+                            Colors.grey,
+                            () => Navigator.of(context).pop(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 60, // Increased height for mobile buttons
+                          child: _buildActionButton(
+                            'SAVE\nSETTINGS', // Two lines for better visibility
+                            const Color(0xFF228B22), // Forest green
+                            () {
+                              widget.onSettingsUpdated(_settings);
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ),
+                      ],
+                    )                  : Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 70, // Increased height for desktop buttons
+                            child: _buildActionButton(
+                              'CANCEL',
+                              Colors.grey,
+                              () => Navigator.of(context).pop(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SizedBox(
+                            height: 70, // Increased height for desktop buttons
+                            child: _buildActionButton(
+                              'SAVE\nSETTINGS', // Two lines for better visibility
+                              const Color(0xFF228B22), // Forest green
+                              () {
+                                widget.onSettingsUpdated(_settings);
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -291,13 +330,12 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Timer controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+          const SizedBox(height: 12),          // Timer controls - Mobile responsive layout
+          Column(
+            children: [              // Main timer controls - Responsive layout
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildTimerButton(
                     Icons.remove,
@@ -331,21 +369,18 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                     () => onChanged((currentValue + 5).clamp(10, 300)),
                   ),
                 ],
-              ), // Preset buttons
-              Row(
+              ),const SizedBox(height: 8),
+              // Preset buttons row - Use Wrap for mobile responsiveness
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 6.0,
+                runSpacing: 4.0,
                 children: [
-                  for (
-                    int i = 0;
-                    i < (presetValues ?? [15, 30, 60]).length;
-                    i++
-                  ) ...[
+                  for (int i = 0; i < (presetValues ?? [15, 30, 60]).length; i++)
                     _buildPresetButton(
                       '${(presetValues ?? [15, 30, 60])[i]}s',
                       () => onChanged((presetValues ?? [15, 30, 60])[i]),
                     ),
-                    if (i < (presetValues ?? [15, 30, 60]).length - 1)
-                      const SizedBox(width: 4),
-                  ],
                 ],
               ),
             ],
@@ -444,12 +479,12 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
       ),
     );
   }
-
   Widget _buildPresetButton(String text, VoidCallback onPressed) {
     return InkWell(
       onTap: onPressed,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: const BoxConstraints(minWidth: 40),
         decoration: BoxDecoration(
           color: const Color(0xFF654321),
           borderRadius: BorderRadius.circular(6),
@@ -459,20 +494,25 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
           text,
           style: const TextStyle(
             fontFamily: 'Rye',
-            fontSize: 10,
+            fontSize: 11,
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );
-  }
-
-  Widget _buildActionButton(String text, Color color, VoidCallback onPressed) {
+  }  Widget _buildActionButton(String text, Color color, VoidCallback onPressed) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return InkWell(
       onTap: onPressed,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        height: isMobile ? 60 : 70, // Increased height for better text visibility
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 16 : 24, 
+          vertical: isMobile ? 8 : 12,
+        ),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(8),
@@ -485,13 +525,19 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
             ),
           ],
         ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontFamily: 'Rye',
-            fontSize: 16,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+        child: Center( // Center the text both horizontally and vertically
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Rye',
+              fontSize: isMobile ? 12 : 14,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              height: 1.1, // Tighter line height for better spacing
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2, // Allow two lines for "SAVE\nSETTINGS"
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),

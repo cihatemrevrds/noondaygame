@@ -1,6 +1,6 @@
 class GameConfig {
   // Game rules
-  static const int minPlayers = 4;
+  static const int minPlayers = 1;
   static const int maxPlayers = 12;
   static const int defaultPlayerCount = 6;
   
