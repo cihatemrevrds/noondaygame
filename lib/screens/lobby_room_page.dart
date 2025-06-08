@@ -11,6 +11,7 @@ import '../widgets/player_avatar.dart';
 import '../models/player.dart';
 import '../models/role.dart';
 import '../utils/role_icons.dart';
+import '../utils/win_condition_checker.dart';
 import '../services/lobby_service.dart';
 import '../widgets/role_management_dialog.dart';
 import '../widgets/game_settings_dialog.dart';
@@ -204,9 +205,28 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
       );
     }
   }
-
   Future<void> _startGame() async {
     if (!_isHost || players.length < 1) return;
+
+    // Check role distribution before starting the game
+    final roleDistributionResult = WinConditionChecker.checkRoleDistribution(
+      _currentRoles,
+      players.length,
+    );
+
+    if (roleDistributionResult['isValid'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cannot start game: ${roleDistributionResult['error'] ?? 'Invalid role distribution'}',
+            style: const TextStyle(fontFamily: 'Rye'),
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 

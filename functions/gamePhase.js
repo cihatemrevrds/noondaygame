@@ -82,6 +82,16 @@ exports.startGame = async (req, res) => {
             killedBy: null
         }));
 
+        // Check if the initial role distribution creates an immediate win condition
+        const initialWinCondition = checkWinConditionsIfEnabled(initializedPlayers, lobbyData);
+        if (initialWinCondition.gameOver) {
+            return res.status(400).json({ 
+                error: 'Invalid role distribution - game would end immediately',
+                details: `${initialWinCondition.winner} would win with this role setup`,
+                winCondition: initialWinCondition
+            });
+        }
+
         // Initialize role-specific data structures
         const initialRoleData = {};
 
