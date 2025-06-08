@@ -41,7 +41,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
   Map<String, int> _currentRoles = {};
   Map<String, dynamic> _currentSettings = {};
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
-      _lobbySubscription;
+  _lobbySubscription;
 
   @override
   void initState() {
@@ -72,73 +72,83 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
         .doc(widget.lobbyCode.toUpperCase())
         .snapshots()
         .listen((snapshot) {
-      if (!snapshot.exists) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Lobby has been deleted'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainMenu(
-                username: FirebaseAuth.instance.currentUser?.displayName ??
-                    FirebaseAuth.instance.currentUser?.email
-                        ?.split('@')[0] ??
-                    'Player',
+          if (!snapshot.exists) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Lobby has been deleted'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => MainMenu(
+                        username:
+                            FirebaseAuth.instance.currentUser?.displayName ??
+                            FirebaseAuth.instance.currentUser?.email?.split(
+                              '@',
+                            )[0] ??
+                            'Player',
+                      ),
+                ),
+                (route) => false,
+              );
+            }
+            return;
+          }
+
+          final data = snapshot.data() as Map<String, dynamic>;
+          final playersList =
+              (data['players'] as List<dynamic>? ?? []).map((p) {
+                final map = p as Map<String, dynamic>;
+                final playerId = map['id'] ?? map['uid'] ?? '';
+                return Player(
+                  id: playerId,
+                  name: map['name'] ?? 'Player',
+                  isLeader: playerId == (data['hostUid'] ?? ''),
+                  role: map['role'],
+                  isAlive: map['isAlive'] ?? true,
+                  team: map['team'],
+                  profilePicture: map['profilePicture'] as String?,
+                );
+              }).toList();
+
+          if (data['status'] == 'started') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => GameScreen(
+                      lobbyCode: widget.lobbyCode,
+                      isHost: _isHost,
+                    ),
               ),
-            ),
-            (route) => false,
-          );
-        }
-        return;
-      }
-
-      final data = snapshot.data() as Map<String, dynamic>;
-      final playersList = (data['players'] as List<dynamic>? ?? [])
-          .map((p) {
-            final map = p as Map<String, dynamic>;
-            final playerId = map['id'] ?? map['uid'] ?? '';
-            return Player(
-              id: playerId,
-              name: map['name'] ?? 'Player',
-              isLeader: playerId == (data['hostUid'] ?? ''),
-              role: map['role'],
-              isAlive: map['isAlive'] ?? true,
-              team: map['team'],
-              profilePicture: map['profilePicture'] as String?,
             );
-          }).toList();
+            return;
+          }
+          setState(() {
+            players = playersList;
+            _isHost = _currentUserId == (data['hostUid'] ?? '');
+            _currentRoles = Map<String, int>.from(data['roles'] ?? {});
 
-      if (data['status'] == 'started') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                GameScreen(lobbyCode: widget.lobbyCode, isHost: _isHost),
-          ),
-        );
-        return;
-      }      setState(() {
-        players = playersList;
-        _isHost = _currentUserId == (data['hostUid'] ?? '');
-        _currentRoles = Map<String, int>.from(data['roles'] ?? {});
-        
-        // Always populate with default values if not set
-        final gameSettings = Map<String, dynamic>.from(data['gameSettings'] ?? {});
-        _currentSettings = {
-          'votingTime': gameSettings['votingTime'] ?? 45,
-          'discussionTime': gameSettings['discussionTime'] ?? 90,
-          'nightTime': gameSettings['nightTime'] ?? 60,
-          'allowFirstNightKill': gameSettings['allowFirstNightKill'] ?? false,
-          ...gameSettings, // Add any additional custom settings
-        };
-        
-        _isLoading = false;
-      });
-    });
+            // Always populate with default values if not set
+            final gameSettings = Map<String, dynamic>.from(
+              data['gameSettings'] ?? {},
+            );
+            _currentSettings = {
+              'votingTime': gameSettings['votingTime'] ?? 45,
+              'discussionTime': gameSettings['discussionTime'] ?? 90,
+              'nightTime': gameSettings['nightTime'] ?? 60,
+              'allowFirstNightKill':
+                  gameSettings['allowFirstNightKill'] ?? false,
+              ...gameSettings, // Add any additional custom settings
+            };
+
+            _isLoading = false;
+          });
+        });
   }
 
   Future<void> _leaveLobby() async {
@@ -155,14 +165,17 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => MainMenu(
-            username: user.displayName ?? user.email?.split('@')[0] ?? 'Player',
-          ),
+          builder:
+              (context) => MainMenu(
+                username:
+                    user.displayName ?? user.email?.split('@')[0] ?? 'Player',
+              ),
         ),
         (route) => false,
       );
     }
   }
+
   Future<void> _startGame() async {
     if (!_isHost || players.length < 1) return;
 
@@ -200,6 +213,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
       }
     }
   }
+
   Future<void> _updateRoleDistribution(Map<String, int> newRoles) async {
     try {
       await FirebaseFirestore.instance
@@ -257,95 +271,112 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.brown),
-            )
-          : Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage("assets/images/backgrounds/saloon_bg.png"),
-                  fit: BoxFit.cover,
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: Colors.brown),
+              )
+              : Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(
+                      "assets/images/backgrounds/saloon_bg.png",
+                    ),
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0),
-                  child: Column(
-                    children: [
-                      // Header
-                      _buildHeader(),
-                      SizedBox(height: MediaQuery.of(context).size.width < 600 ? 12 : 16),// Main content - Two columns
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {                            // More responsive layout based on screen dimensions
-                            final screenWidth = MediaQuery.of(context).size.width;
+                child: SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.all(
+                      MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0,
+                    ),
+                    child: Column(
+                      children: [
+                        // Header
+                        _buildHeader(),
+                        SizedBox(
+                          height:
+                              MediaQuery.of(context).size.width < 600 ? 12 : 16,
+                        ), // Main content - Two columns
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              // More responsive layout based on screen dimensions
+                              final screenWidth =
+                                  MediaQuery.of(context).size.width;
                               // Very small screens (phones in landscape or very small displays)
-                            if (constraints.maxHeight < 400 || screenWidth < 600) {
-                              return Column(
-                                children: [
-                                  // Players section - give more space for better visibility
-                                  SizedBox(
-                                    height: math.min(constraints.maxHeight * 0.55, 280),
-                                    child: _buildPlayersSection(),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  // Roles and Settings section - more compact
-                                  Expanded(
-                                    child: _buildRolesAndSettingsSection(),
-                                  ),
-                                ],
-                              );
-                            } 
-                            // Medium screens - still vertical but more balanced
-                            else if (constraints.maxHeight < 600) {
-                              return Column(
-                                children: [
-                                  SizedBox(
-                                    height: constraints.maxHeight * 0.6,
-                                    child: _buildPlayersSection(),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Expanded(
-                                    child: _buildRolesAndSettingsSection(),
-                                  ),
-                                ],
-                              );
-                            }
-                            // Larger screens - side by side layout
-                            else {
-                              return Row(
-                                children: [
-                                  // Left side - Players list
-                                  Expanded(
-                                    flex: 1,
-                                    child: _buildPlayersSection(),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Right side - Roles and Settings
-                                  Expanded(
-                                    flex: 1,
-                                    child: _buildRolesAndSettingsSection(),
-                                  ),
-                                ],
-                              );
-                            }
-                          },
+                              if (constraints.maxHeight < 400 ||
+                                  screenWidth < 600) {
+                                return Column(
+                                  children: [
+                                    // Players section - give more space for better visibility
+                                    SizedBox(
+                                      height: math.min(
+                                        constraints.maxHeight * 0.55,
+                                        280,
+                                      ),
+                                      child: _buildPlayersSection(),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    // Roles and Settings section - more compact
+                                    Expanded(
+                                      child: _buildRolesAndSettingsSection(),
+                                    ),
+                                  ],
+                                );
+                              }
+                              // Medium screens - still vertical but more balanced
+                              else if (constraints.maxHeight < 600) {
+                                return Column(
+                                  children: [
+                                    SizedBox(
+                                      height: constraints.maxHeight * 0.6,
+                                      child: _buildPlayersSection(),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Expanded(
+                                      child: _buildRolesAndSettingsSection(),
+                                    ),
+                                  ],
+                                );
+                              }
+                              // Larger screens - side by side layout
+                              else {
+                                return Row(
+                                  children: [
+                                    // Left side - Players list
+                                    Expanded(
+                                      flex: 1,
+                                      child: _buildPlayersSection(),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Right side - Roles and Settings
+                                    Expanded(
+                                      flex: 1,
+                                      child: _buildRolesAndSettingsSection(),
+                                    ),
+                                  ],
+                                );
+                              }
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Bottom buttons
-                      _buildBottomButtons(),
-                    ],
+                        const SizedBox(height: 16),
+                        // Bottom buttons
+                        _buildBottomButtons(),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
     );
-  }  Widget _buildHeader() {
+  }
+
+  Widget _buildHeader() {
     final isSmallScreen = MediaQuery.of(context).size.width < 600;
-    
+
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
       decoration: BoxDecoration(
@@ -390,7 +421,10 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF8B4513),
                     borderRadius: BorderRadius.circular(6),
@@ -461,13 +495,15 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
               child: ListView.builder(
                 itemCount: players.length,
                 itemBuilder: (context, index) {
-                  final player = players[index];                  return Container(
+                  final player = players[index];
+                  return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: player.isLeader
-                          ? Colors.orange.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.1),
+                      color:
+                          player.isLeader
+                              ? Colors.orange.withOpacity(0.2)
+                              : Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: player.isLeader ? Colors.orange : Colors.grey,
@@ -498,7 +534,10 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                                 style: TextStyle(
                                   fontFamily: 'Rye',
                                   fontSize: 16,
-                                  color: player.isLeader ? Colors.orange : Colors.white,
+                                  color:
+                                      player.isLeader
+                                          ? Colors.orange
+                                          : Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -521,22 +560,32 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.close, color: Colors.red, size: 20),
-                                onPressed: () => _lobbyService.kickPlayer(
-                                  widget.lobbyCode,
-                                  player.id,
-                                  _currentUserId,
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
                                 ),
+                                onPressed:
+                                    () => _lobbyService.kickPlayer(
+                                      widget.lobbyCode,
+                                      player.id,
+                                      _currentUserId,
+                                    ),
                                 padding: const EdgeInsets.all(4),
                                 constraints: const BoxConstraints(),
                               ),
                               const SizedBox(width: 4),
                               IconButton(
-                                icon: const Icon(Icons.star, color: Colors.orange, size: 20),
-                                onPressed: () => _lobbyService.transferHost(
-                                  widget.lobbyCode,
-                                  player.id,
+                                icon: const Icon(
+                                  Icons.star,
+                                  color: Colors.orange,
+                                  size: 20,
                                 ),
+                                onPressed:
+                                    () => _lobbyService.transferHost(
+                                      widget.lobbyCode,
+                                      player.id,
+                                    ),
                                 padding: const EdgeInsets.all(4),
                                 constraints: const BoxConstraints(),
                               ),
@@ -574,24 +623,28 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
               ),
             ),
             child: Row(
-              children: [                Expanded(
+              children: [
+                Expanded(
                   child: SizedBox(
                     height: 40,
                     child: ElevatedButton(
-                      onPressed: _isHost
-                          ? () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => RoleManagementDialog(
-                                  currentRoles: _currentRoles,
-                                  onRolesUpdated: _updateRoleDistribution,
-                                  playerCount: players.length,
-                                ),
-                              );
-                            }
-                          : null,
+                      onPressed:
+                          _isHost
+                              ? () {
+                                showDialog(
+                                  context: context,
+                                  builder:
+                                      (context) => RoleManagementDialog(
+                                        currentRoles: _currentRoles,
+                                        onRolesUpdated: _updateRoleDistribution,
+                                        playerCount: players.length,
+                                      ),
+                                );
+                              }
+                              : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isHost ? const Color(0xFF8B4513) : Colors.grey,
+                        backgroundColor:
+                            _isHost ? const Color(0xFF8B4513) : Colors.grey,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -608,23 +661,27 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),                Expanded(
+                const SizedBox(width: 8),
+                Expanded(
                   child: SizedBox(
                     height: 40,
                     child: ElevatedButton(
-                      onPressed: _isHost
-                          ? () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => GameSettingsDialog(
-                                  currentSettings: _currentSettings,
-                                  onSettingsUpdated: _updateGameSettings,
-                                ),
-                              );
-                            }
-                          : null,
+                      onPressed:
+                          _isHost
+                              ? () {
+                                showDialog(
+                                  context: context,
+                                  builder:
+                                      (context) => GameSettingsDialog(
+                                        currentSettings: _currentSettings,
+                                        onSettingsUpdated: _updateGameSettings,
+                                      ),
+                                );
+                              }
+                              : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isHost ? const Color(0xFF8B4513) : Colors.grey,
+                        backgroundColor:
+                            _isHost ? const Color(0xFF8B4513) : Colors.grey,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -666,9 +723,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Expanded(
-                          child: _buildRolesList(),
-                        ),
+                        Expanded(child: _buildRolesList()),
                       ],
                     ),
                   ),
@@ -689,9 +744,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Expanded(
-                          child: _buildSettingsList(),
-                        ),
+                        Expanded(child: _buildSettingsList()),
                       ],
                     ),
                   ),
@@ -723,7 +776,8 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
       itemBuilder: (context, index) {
         final entry = _currentRoles.entries.elementAt(index);
         final roleName = entry.key;
-        final roleCount = entry.value;        final role = Role(
+        final roleCount = entry.value;
+        final role = Role(
           name: roleName,
           imageName: '', // Add required imageName parameter
           count: roleCount,
@@ -751,10 +805,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                   color: Role.getTeamColor(role.team).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: RoleIcons.buildRoleIcon(
-                  roleName: roleName,
-                  size: 14,
-                ),
+                child: RoleIcons.buildRoleIcon(roleName: roleName, size: 14),
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -790,6 +841,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
       },
     );
   }
+
   Widget _buildSettingsList() {
     return ListView(
       children: [
@@ -809,21 +861,27 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
           '${_currentSettings['nightTime'] ?? 60}s',
           Icons.nightlight_round,
         ),
-        
         // Always show game rules
         _buildBooleanSettingItem(
           'First Night Kill',
           _currentSettings['allowFirstNightKill'] ?? false,
           Icons.nights_stay,
         ),
-        
+
+        _buildBooleanSettingItem(
+          'Disable Win Conditions',
+          _currentSettings['disableWinConditions'] ?? false,
+          Icons.bug_report,
+        ),
+
         // Optional settings (only if explicitly set)
         if (_currentSettings.containsKey('allowSpectators'))
           _buildBooleanSettingItem(
             'Spectators',
             _currentSettings['allowSpectators'] ?? false,
             Icons.visibility,
-          ),        if (_currentSettings.containsKey('enableChat'))
+          ),
+        if (_currentSettings.containsKey('enableChat'))
           _buildBooleanSettingItem(
             'Chat',
             _currentSettings['enableChat'] ?? true,
@@ -922,6 +980,7 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
       ),
     );
   }
+
   Widget _buildBottomButtons() {
     return Row(
       children: [
@@ -948,18 +1007,23 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
             ),
           ),
         ),
-        const SizedBox(width: 16),        if (_isHost)
+        const SizedBox(width: 16),
+        if (_isHost)
           Expanded(
             child: SizedBox(
               height: 50,
               child: ElevatedButton(
                 onPressed: players.length >= 1 ? _startGame : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: players.length >= 1 ? const Color(0xFF228B22) : Colors.grey,
+                  backgroundColor:
+                      players.length >= 1
+                          ? const Color(0xFF228B22)
+                          : Colors.grey,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                ),                child: const Text(
+                ),
+                child: const Text(
                   'START GAME',
                   style: TextStyle(
                     fontFamily: 'Rye',

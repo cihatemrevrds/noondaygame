@@ -449,7 +449,8 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                   style: const TextStyle(
                                                     fontFamily: 'Rye',
                                                   ),
-                                                ),                                                leading: SizedBox(
+                                                ),
+                                                leading: SizedBox(
                                                   width: 32,
                                                   height: 32,
                                                   child: PlayerAvatar(
@@ -966,6 +967,13 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                         _currentSettings['allowFirstNightKill'] ??
                                                             false,
                                                         Icons.nightlight_round,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Disable Win Conditions',
+                                                        _currentSettings['disableWinConditions'] ??
+                                                            false,
+                                                        Icons.bug_report,
                                                       ),
                                                     ],
                                                   ),

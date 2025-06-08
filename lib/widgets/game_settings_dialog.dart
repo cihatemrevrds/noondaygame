@@ -27,20 +27,22 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
       _settings[key] = value;
     });
   }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isMobile = screenWidth < 600;
-    
+
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         width: isMobile ? screenWidth * 0.95 : screenWidth * 0.8,
         height: isMobile ? screenHeight * 0.85 : screenHeight * 0.8,
-        constraints: isMobile 
-          ? const BoxConstraints(maxWidth: 400, maxHeight: 600)
-          : null,
+        constraints:
+            isMobile
+                ? const BoxConstraints(maxWidth: 400, maxHeight: 600)
+                : null,
         decoration: BoxDecoration(
           color: const Color(0xFF8B4513), // Saddle brown
           borderRadius: BorderRadius.circular(15),
@@ -185,9 +187,7 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                           ),
                         ],
                       ),
-                    ),
-
-                    // Allow killing at first night
+                    ), // Allow killing at first night
                     _buildToggleSetting(
                       'Allow Killing at First Night',
                       'Whether players can be eliminated on the first night',
@@ -196,11 +196,20 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                       (value) => _updateSetting('allowFirstNightKill', value),
                     ),
 
+                    // Disable win conditions for testing
+                    _buildToggleSetting(
+                      'Disable Win Conditions',
+                      'Disable win checking for testing purposes',
+                      Icons.bug_report,
+                      _settings['disableWinConditions'] ?? false,
+                      (value) => _updateSetting('disableWinConditions', value),
+                    ),
+
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
-            ),            // Action buttons - Mobile responsive layout
+            ), // Action buttons - Mobile responsive layout
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -209,48 +218,24 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
                 ),
-              ),              child: MediaQuery.of(context).size.width < 400
-                  ? Column(
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          height: 60, // Increased height for mobile buttons
-                          child: _buildActionButton(
-                            'CANCEL',
-                            Colors.grey,
-                            () => Navigator.of(context).pop(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 60, // Increased height for mobile buttons
-                          child: _buildActionButton(
-                            'SAVE\nSETTINGS', // Two lines for better visibility
-                            const Color(0xFF228B22), // Forest green
-                            () {
-                              widget.onSettingsUpdated(_settings);
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                        ),
-                      ],
-                    )                  : Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 70, // Increased height for desktop buttons
+              ),
+              child:
+                  MediaQuery.of(context).size.width < 400
+                      ? Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            height: 60, // Increased height for mobile buttons
                             child: _buildActionButton(
                               'CANCEL',
                               Colors.grey,
                               () => Navigator.of(context).pop(),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SizedBox(
-                            height: 70, // Increased height for desktop buttons
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 60, // Increased height for mobile buttons
                             child: _buildActionButton(
                               'SAVE\nSETTINGS', // Two lines for better visibility
                               const Color(0xFF228B22), // Forest green
@@ -260,9 +245,38 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                               },
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      )
+                      : Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height:
+                                  70, // Increased height for desktop buttons
+                              child: _buildActionButton(
+                                'CANCEL',
+                                Colors.grey,
+                                () => Navigator.of(context).pop(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height:
+                                  70, // Increased height for desktop buttons
+                              child: _buildActionButton(
+                                'SAVE\nSETTINGS', // Two lines for better visibility
+                                const Color(0xFF228B22), // Forest green
+                                () {
+                                  widget.onSettingsUpdated(_settings);
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
             ),
           ],
         ),
@@ -330,9 +344,12 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
               ),
             ],
           ),
-          const SizedBox(height: 12),          // Timer controls - Mobile responsive layout
+          const SizedBox(
+            height: 12,
+          ), // Timer controls - Mobile responsive layout
           Column(
-            children: [              // Main timer controls - Responsive layout
+            children: [
+              // Main timer controls - Responsive layout
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
@@ -369,14 +386,19 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                     () => onChanged((currentValue + 5).clamp(10, 300)),
                   ),
                 ],
-              ),const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 8),
               // Preset buttons row - Use Wrap for mobile responsiveness
               Wrap(
                 alignment: WrapAlignment.center,
                 spacing: 6.0,
                 runSpacing: 4.0,
                 children: [
-                  for (int i = 0; i < (presetValues ?? [15, 30, 60]).length; i++)
+                  for (
+                    int i = 0;
+                    i < (presetValues ?? [15, 30, 60]).length;
+                    i++
+                  )
                     _buildPresetButton(
                       '${(presetValues ?? [15, 30, 60])[i]}s',
                       () => onChanged((presetValues ?? [15, 30, 60])[i]),
@@ -479,6 +501,7 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
       ),
     );
   }
+
   Widget _buildPresetButton(String text, VoidCallback onPressed) {
     return InkWell(
       onTap: onPressed,
@@ -502,15 +525,18 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
         ),
       ),
     );
-  }  Widget _buildActionButton(String text, Color color, VoidCallback onPressed) {
+  }
+
+  Widget _buildActionButton(String text, Color color, VoidCallback onPressed) {
     final isMobile = MediaQuery.of(context).size.width < 600;
-    
+
     return InkWell(
       onTap: onPressed,
       child: Container(
-        height: isMobile ? 60 : 70, // Increased height for better text visibility
+        height:
+            isMobile ? 60 : 70, // Increased height for better text visibility
         padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 16 : 24, 
+          horizontal: isMobile ? 16 : 24,
           vertical: isMobile ? 8 : 12,
         ),
         decoration: BoxDecoration(
@@ -525,7 +551,8 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
             ),
           ],
         ),
-        child: Center( // Center the text both horizontally and vertically
+        child: Center(
+          // Center the text both horizontally and vertically
           child: Text(
             text,
             style: TextStyle(
