@@ -6,9 +6,6 @@ class VoteResultPopup extends StatefulWidget {
   final String playerName;
   final String? playerRole;
   final int voteCount;
-  final Map<String, int>? voteCounts; // Individual vote counts for all players
-  final List<Map<String, dynamic>>? players; // Player list to show names
-  final int? requiredVotes; // Votes needed for elimination
   final VoidCallback onComplete;
 
   const VoteResultPopup({
@@ -16,9 +13,6 @@ class VoteResultPopup extends StatefulWidget {
     required this.playerName,
     this.playerRole,
     required this.voteCount,
-    this.voteCounts,
-    this.players,
-    this.requiredVotes,
     required this.onComplete,
   });
 
@@ -184,7 +178,8 @@ class _VoteResultPopupState extends State<VoteResultPopup>
                             color: Colors.white.withOpacity(0.2),
                             width: 1,
                           ),
-                        ),                        child: Column(
+                        ),
+                        child: Column(
                           children: [
                             // Player name with role color
                             RichText(
@@ -196,130 +191,36 @@ class _VoteResultPopupState extends State<VoteResultPopup>
                                   color: Colors.white,
                                 ),
                                 children: [
-                                  TextSpan(
-                                    text: widget.playerName == 'No One' 
-                                        ? 'No one was eliminated - '
-                                        : 'The town has voted to hang ',
+                                  const TextSpan(
+                                    text: 'The town has voted to hang ',
                                   ),
-                                  if (widget.playerName != 'No One')
-                                    TextSpan(
-                                      text: widget.playerName,
-                                      style: TextStyle(
-                                        color: roleColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  TextSpan(
+                                    text: widget.playerName,
+                                    style: TextStyle(
+                                      color: roleColor,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                  TextSpan(
-                                    text: widget.playerName == 'No One' 
-                                        ? 'no majority vote reached!'
-                                        : '!',
                                   ),
+                                  const TextSpan(text: '!'),
                                 ],
                               ),
                             ),
                             const SizedBox(height: 12),
 
-                            // Required votes info
-                            if (widget.requiredVotes != null)
-                              Text(
-                                'Votes needed for elimination: ${widget.requiredVotes}',
-                                style: const TextStyle(
-                                  fontFamily: 'Rye',
-                                  fontSize: 12,
-                                  color: Colors.white60,
-                                ),
-                                textAlign: TextAlign.center,
+                            // Vote count
+                            Text(
+                              'Votes received: ${widget.voteCount}',
+                              style: const TextStyle(
+                                fontFamily: 'Rye',
+                                fontSize: 14,
+                                color: Colors.white70,
                               ),
-                            
-                            if (widget.requiredVotes != null)
-                              const SizedBox(height: 12),
-
-                            // Vote count for eliminated player (if any)
-                            if (widget.playerName != 'No One')
-                              Text(
-                                'Votes received: ${widget.voteCount}',
-                                style: const TextStyle(
-                                  fontFamily: 'Rye',
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-
-                            // Show individual vote counts for all players
-                            if (widget.voteCounts != null && widget.players != null) ...[
-                              const SizedBox(height: 16),
-                              const Divider(color: Colors.white30),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Vote Summary:',
-                                style: TextStyle(
-                                  fontFamily: 'Rye',
-                                  fontSize: 14,
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 8),
-                              ...widget.players!.map((player) {
-                                final playerId = player['id'] as String;
-                                final playerName = player['name'] as String;
-                                final playerRole = player['role'] as String?;
-                                final isAlive = player['isAlive'] as bool? ?? true;
-                                final votes = widget.voteCounts![playerId] ?? 0;
-                                final playerRoleColor = _getRoleColor(playerRole);
-                                
-                                // Only show alive players in vote summary
-                                if (!isAlive) return const SizedBox.shrink();
-                                
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          playerName,
-                                          style: TextStyle(
-                                            fontFamily: 'Rye',
-                                            fontSize: 12,
-                                            color: votes > 0 ? playerRoleColor : Colors.white60,
-                                            fontWeight: votes > 0 ? FontWeight.bold : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: votes > 0 ? Colors.red.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(
-                                            color: votes > 0 ? Colors.red : Colors.grey,
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '$votes vote${votes == 1 ? '' : 's'}',
-                                          style: TextStyle(
-                                            fontFamily: 'Rye',
-                                            fontSize: 10,
-                                            color: votes > 0 ? Colors.white : Colors.white60,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ],
+                              textAlign: TextAlign.center,
+                            ),
 
                             // Role reveal if available
-                            if (widget.playerRole != null && widget.playerName != 'No One') ...[
+                            if (widget.playerRole != null) ...[
                               const SizedBox(height: 12),
-                              const Divider(color: Colors.white30),
-                              const SizedBox(height: 8),
                               Text(
                                 '${widget.playerName} was a ${widget.playerRole}',
                                 style: TextStyle(

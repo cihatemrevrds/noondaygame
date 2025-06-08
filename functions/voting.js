@@ -76,48 +76,38 @@ exports.processVotes = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: "Lobby not found" });
-        }        const lobbyData = lobbyDoc.data();
+        } const lobbyData = lobbyDoc.data();
         const votes = lobbyData.votes || {};
         const players = lobbyData.players || [];
         const alivePlayers = players.filter(p => p.isAlive);
-        const totalAlivePlayers = alivePlayers.length;
-        
-        // Minimum votes needed to hang someone: ceil(alive_players / 2)
-        // Examples: 4 players -> 2 votes, 5 players -> 3 votes, 6 players -> 3 votes
-        const requiredVotes = Math.ceil(totalAlivePlayers / 2);
+        const totalVotes = alivePlayers.length;
+        const requiredVotes = Math.ceil(totalVotes / 2); // Majority needed
 
-        // Count votes for each player
+        // Count votes
         const voteCounts = {};
         Object.values(votes).forEach(targetId => {
             voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
         });
 
-        // Find the player(s) with the highest vote count
+        // Find the player with the most votes
         let maxVotes = 0;
-        let playersWithMaxVotes = [];
-        
-        for (const [targetId, count] of Object.entries(voteCounts)) {
-            if (count > maxVotes) {
-                maxVotes = count;
-                playersWithMaxVotes = [targetId];
-            } else if (count === maxVotes) {
-                playersWithMaxVotes.push(targetId);
-            }
-        }
-
-        // Check if someone can be eliminated:
-        // 1. Must have at least the required votes
-        // 2. Must not be tied with another player
         let eliminatedId = null;
-        if (maxVotes >= requiredVotes && playersWithMaxVotes.length === 1) {
-            eliminatedId = playersWithMaxVotes[0];
-        }// Update players
+        for (const [targetId, count] of Object.entries(voteCounts)) {
+            if (count > maxVotes && count >= requiredVotes) {
+                maxVotes = count;
+                eliminatedId = targetId;
+            } else if (count === maxVotes && count >= requiredVotes) {
+                eliminatedId = null; // Tie, no one is eliminated
+            }
+        }        // Update players
         const updatedPlayers = players.map(p => {
             if (p.id === eliminatedId) {
                 return { ...p, isAlive: false, eliminatedBy: 'vote' };
             }
             return p;
-        });        await lobbyRef.update({
+        });
+
+        await lobbyRef.update({
             players: updatedPlayers,
             votes: {} // Clear votes for the next day
         });
@@ -131,10 +121,7 @@ exports.processVotes = async (req, res) => {
                 name: eliminatedPlayer.name,
                 role: eliminatedPlayer.role,
                 voteCount: maxVotes
-            } : null,
-            voteCounts: voteCounts, // Include all vote counts for frontend display
-            requiredVotes: requiredVotes,
-            totalAlivePlayers: totalAlivePlayers
+            } : null
         };
 
         return res.status(200).json(result);
