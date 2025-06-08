@@ -5,7 +5,6 @@ import '../services/lobby_service.dart';
 import 'lobby_setup_page.dart';
 import 'lobby_room_page.dart';
 import 'settings_page.dart';
-import 'phase_testing_screen.dart';
 
 class MainMenu extends StatefulWidget {
   final String username;
@@ -273,26 +272,13 @@ class _MainMenuState extends State<MainMenu> {
                 : MenuButton(
                   text: 'JOIN ROOM',
                   onPressed: () => _showJoinDialog(context),
-                ),
-            const SizedBox(height: 20),
+                ),            const SizedBox(height: 20),
             MenuButton(
               text: 'SETTINGS',
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            MenuButton(
-              text: 'PHASE TESTING',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PhaseTestingScreen(),
-                  ),
                 );
               },
             ),
