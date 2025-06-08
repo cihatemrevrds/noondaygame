@@ -130,63 +130,76 @@ class MessageConfig {
     'town_victory': WinLoseContent(
       victoryTitle: 'VICTORY!',
       defeatTitle: 'DEFEAT',
-      victoryMessage: 'The Town has triumphed!\nAll bandits have been eliminated.',
-      defeatMessage: 'The Town has triumphed!\nAll bandits have been eliminated.',
+      victoryMessage:
+          'The Town has triumphed!\nAll bandits have been eliminated.',
+      defeatMessage:
+          'The Town has triumphed!\nAll bandits have been eliminated.',
       icon: '🏛️',
     ),
-    
-    // Bandit Victory Messages  
+
+    // Bandit Victory Messages
     'bandit_victory_majority': WinLoseContent(
       victoryTitle: 'VICTORY!',
       defeatTitle: 'DEFEAT',
-      victoryMessage: 'The Bandits have taken over!\nThe town has fallen to the outlaws.',
-      defeatMessage: 'The Bandits have taken over!\nThe town has fallen to the outlaws.',
+      victoryMessage:
+          'The Bandits have taken over!\nThe town has fallen to the outlaws.',
+      defeatMessage:
+          'The Bandits have taken over!\nThe town has fallen to the outlaws.',
       icon: '🔫',
     ),
-    
+
     'bandit_victory_no_gunslinger': WinLoseContent(
       victoryTitle: 'VICTORY!',
       defeatTitle: 'DEFEAT',
-      victoryMessage: 'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.',
-      defeatMessage: 'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.',
+      victoryMessage:
+          'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.',
+      defeatMessage:
+          'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.',
       icon: '🔫',
     ),
-    
+
     // Jester Victory Messages
     'jester_victory_vote_out': WinLoseContent(
       victoryTitle: 'VICTORY!',
       defeatTitle: 'DEFEAT',
-      victoryMessage: 'The Jester wins!\nChaos reigns as the fool gets the last laugh.',
-      defeatMessage: 'The Jester wins!\nChaos reigns as the fool gets the last laugh.',
+      victoryMessage:
+          'The Jester wins!\nChaos reigns as the fool gets the last laugh.',
+      defeatMessage:
+          'The Jester wins!\nChaos reigns as the fool gets the last laugh.',
       icon: '🃏',
     ),
-    
+
     'jester_victory_last_standing': WinLoseContent(
       victoryTitle: 'VICTORY!',
       defeatTitle: 'DEFEAT',
-      victoryMessage: 'The Jester has won!\nVictory through survival and cunning.',
-      defeatMessage: 'The Jester has won!\nVictory through survival and cunning.',
+      victoryMessage:
+          'The Jester has won!\nVictory through survival and cunning.',
+      defeatMessage:
+          'The Jester has won!\nVictory through survival and cunning.',
       icon: '🃏',
     ),
-    
+
     // Draw/Tie Messages
     'draw_all_eliminated': WinLoseContent(
       victoryTitle: 'DRAW',
       defeatTitle: 'DRAW',
-      victoryMessage: 'It\'s a Draw!\nAll players have been eliminated. No one wins.',
-      defeatMessage: 'It\'s a Draw!\nAll players have been eliminated. No one wins.',
+      victoryMessage:
+          'It\'s a Draw!\nAll players have been eliminated. No one wins.',
+      defeatMessage:
+          'It\'s a Draw!\nAll players have been eliminated. No one wins.',
       icon: '⚖️',
     ),
-    
+
     // Generic Neutral Victory (for any neutral role winning by last standing)
     'neutral_victory_last_standing': WinLoseContent(
       victoryTitle: 'VICTORY!',
       defeatTitle: 'DEFEAT',
-      victoryMessage: '{winner} has won!\nVictory through survival and cunning.',
+      victoryMessage:
+          '{winner} has won!\nVictory through survival and cunning.',
       defeatMessage: '{winner} has won!\nVictory through survival and cunning.',
       icon: '🏆',
     ),
-    
+
     // Fallback messages
     'game_ended_unexpectedly': WinLoseContent(
       victoryTitle: 'GAME OVER',
