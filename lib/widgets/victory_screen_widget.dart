@@ -3,17 +3,22 @@ import 'dart:async';
 import '../models/player.dart';
 import '../utils/role_icons.dart';
 import '../screens/main_menu.dart';
+import '../services/game_state_manager.dart';
 
 class VictoryScreenWidget extends StatefulWidget {
   final Map<String, dynamic> winCondition;
   final List<Player> finalPlayers;
   final String currentUserId;
+  final bool isHost;
+  final String lobbyCode;
 
   const VictoryScreenWidget({
     super.key,
     required this.winCondition,
     required this.finalPlayers,
     required this.currentUserId,
+    required this.isHost,
+    required this.lobbyCode,
   });
 
   @override
@@ -64,9 +69,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
       end: Offset.zero,
     ).animate(
       CurvedAnimation(parent: _slideController, curve: Curves.bounceOut),
-    );
-
-    // Start animations with slight delays
+    );    // Start animations with slight delays
     _fadeController.forward();
     Timer(const Duration(milliseconds: 200), () {
       _scaleController.forward();
@@ -75,8 +78,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
       _slideController.forward();
     });
 
-    // Auto-close after 15 seconds
-    _autoCloseTimer = Timer(const Duration(seconds: 15), _returnToMainMenu);
+    // Don't auto-close - let host manually end the game
   }
 
   @override
@@ -87,13 +89,46 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
     _slideController.dispose();
     super.dispose();
   }
-
   void _returnToMainMenu() {
     _autoCloseTimer?.cancel();
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => MainMenu(username: '')),
       (route) => false,
+    );
+  }
+  Future<void> _endGame() async {
+    final gameStateManager = GameStateManager();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('End Game?'),
+        content: const Text('This will end the game for all players.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await gameStateManager.endGame(
+                widget.lobbyCode,
+                widget.isHost,
+                (message) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(message)),
+                    );
+                  }
+                },
+              );
+            },
+            child: const Text('END GAME'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -368,41 +403,59 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                             ],
                           ),
                         ),
+                          const SizedBox(height: 24),
                         
-                        const SizedBox(height: 24),
-                        
-                        // Return to Main Menu Button
-                        ElevatedButton(
-                          onPressed: _returnToMainMenu,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: winnerColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        // Buttons Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Return to Main Menu Button
+                            ElevatedButton(
+                              onPressed: _returnToMainMenu,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: winnerColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 8,
+                              ),
+                              child: const Text(
+                                'RETURN TO MAIN MENU',
+                                style: TextStyle(
+                                  fontFamily: 'Rye',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            elevation: 8,
-                          ),
-                          child: const Text(
-                            'RETURN TO MAIN MENU',
-                            style: TextStyle(
-                              fontFamily: 'Rye',
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        // Auto-close timer indicator
-                        Text(
-                          'Automatically returning in 15 seconds...',
-                          style: TextStyle(
-                            fontFamily: 'Rye',
-                            fontSize: 12,
-                            color: Colors.orange.withOpacity(0.7),
-                          ),
+                            
+                            // End Game Button (Host Only)
+                            if (widget.isHost) ...[
+                              const SizedBox(width: 16),
+                              ElevatedButton(
+                                onPressed: _endGame,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade700,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 8,
+                                ),
+                                child: const Text(
+                                  'END GAME',
+                                  style: TextStyle(
+                                    fontFamily: 'Rye',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

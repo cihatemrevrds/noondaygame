@@ -49,11 +49,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   // Timing and phase management
   Timer? _phaseTimer;
   int _remainingTime = 0;
-
   // Event and popup state management
   bool _hasShownNightOutcome = false;
   bool _hasShownEventSharing = false;
   bool _hasShownVoteResult = false;
+  
+  // Game over state - prevents all other popups and auto-advances
+  bool _isGameOver = false;
   @override
   void initState() {
     super.initState();
@@ -653,9 +655,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         gameOver = true;
         winType = 'last_standing';
       }
-    }
-
-    if (gameOver && winningTeam != null) {
+    }    if (gameOver && winningTeam != null) {
+      // Set game over flag to stop all other game processes
+      _isGameOver = true;
+      
+      // Stop all timers and auto-advance processes
+      _phaseTimer?.cancel();
+      _phaseTimer = null;
+      
       return {
         'gameOver': true,
         'winner': winningTeam,
@@ -667,12 +674,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     return null;
   }
-
   // Handle phase-specific actions and popups
   void _handlePhaseSpecificActions(
     String gameState,
     Map<String, dynamic> data,
   ) {
+    // If game is over, don't show any more popups
+    if (_isGameOver) return;
+    
     switch (gameState) {
       case 'role_reveal':
         if (!_hasShownRoleReveal && _myRole != null && _myRole!.isNotEmpty) {
@@ -785,9 +794,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       });
     }
-  } // Automatically advance phase when timer expires
-
+  }  // Automatically advance phase when timer expires
   void _autoAdvancePhase() async {
+    // Don't advance if game is over
+    if (_isGameOver) return;
+    
     // Safety check - don't make HTTP requests if component is unmounted
     if (!mounted) {
       print('⏹️ Auto-advance cancelled: component unmounted');
@@ -1446,8 +1457,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ],
       ),
     );
-  }
-  // Show victory screen popup
+  }  // Show victory screen popup
   void _showVictoryScreen(Map<String, dynamic> data) {
     final winCondition = data['winCondition'] as Map<String, dynamic>?;
     
@@ -1463,6 +1473,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         winCondition: winCondition,
         finalPlayers: _players,
         currentUserId: _currentUserId,
+        isHost: widget.isHost,
+        lobbyCode: widget.lobbyCode,
       ),
     );
   }
