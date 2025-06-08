@@ -18,7 +18,6 @@ import '../widgets/event_share_popup.dart';
 import '../widgets/vote_result_popup.dart';
 import '../widgets/victory_screen_widget.dart';
 import '../config/message_config.dart';
-import '../utils/phase_background_helper.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -1502,32 +1501,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ],
       ),
     );
+  } // Get the appropriate background image based on current game state
+
+  String _getBackgroundImage() {
+    switch (_currentGameState) {
+      case 'night_phase':
+        return 'assets/images/backgrounds/western_town_night_bg.jpg';
+      default:
+        return 'assets/images/backgrounds/saloon_bg.png';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            image:
-                PhaseBackgroundHelper.shouldUseSkyBackground(_currentGameState)
-                    ? DecorationImage(
-                      image: AssetImage(
-                        PhaseBackgroundHelper.getSkyBackground(
-                          _currentGameState,
-                        ),
-                      ),
-                      fit: BoxFit.cover,
-                    )
-                    : null,
-            color:
-                PhaseBackgroundHelper.shouldUseSkyBackground(_currentGameState)
-                    ? null
-                    : const Color(0xFF4E2C0B),
-          ),
-        ),
+        elevation: 0,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1536,12 +1527,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               style: TextStyle(
                 fontFamily: 'Rye',
                 fontSize: 18,
-                color: PhaseBackgroundHelper.getTextColor(_currentGameState),
+                color: Colors.white,
                 shadows: [
                   Shadow(
-                    offset: const Offset(1, 1),
-                    blurRadius: 2,
-                    color: Colors.black.withOpacity(0.7),
+                    offset: const Offset(2, 2),
+                    blurRadius: 4,
+                    color: Colors.black.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1581,13 +1572,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           Container(
             width: double.infinity,
             height: double.infinity,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage("assets/images/backgrounds/saloon_bg.png"),
+                image: AssetImage(_getBackgroundImage()),
                 fit: BoxFit.cover,
               ),
             ),
-            child: _buildPhaseWidget(),
+            child: SafeArea(child: _buildPhaseWidget()),
           ),
 
           // Host controls for manual phase advancement
