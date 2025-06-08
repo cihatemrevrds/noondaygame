@@ -31,6 +31,7 @@ class _EventSharePopupState extends State<EventSharePopup>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   Timer? _autoCloseTimer;
+  int _currentEventIndex = 0; // Track the current event index
 
   @override
   void initState() {
@@ -60,7 +61,7 @@ class _EventSharePopupState extends State<EventSharePopup>
     _startAnimations();
 
     // Auto-close after 5 seconds
-    _autoCloseTimer = Timer(const Duration(seconds: 5), () {
+    _autoCloseTimer = Timer(const Duration(seconds: 10), () {
       _closePopup();
     });
   }
@@ -83,6 +84,24 @@ class _EventSharePopupState extends State<EventSharePopup>
     widget.onComplete();
   }
 
+  void _nextEvent() {
+    setState(() {
+      if (_currentEventIndex < widget.events.length - 1) {
+        _currentEventIndex++;
+      } else {
+        _closePopup(); // Close popup if it's the last event
+      }
+    });
+  }
+
+  void _previousEvent() {
+    setState(() {
+      if (_currentEventIndex > 0) {
+        _currentEventIndex--;
+      }
+    });
+  }
+
   Color _getEventColor() {
     if (widget.isDeath) {
       return const Color(0xFFF44336); // Red for death events
@@ -93,6 +112,7 @@ class _EventSharePopupState extends State<EventSharePopup>
   @override
   Widget build(BuildContext context) {
     final eventColor = _getEventColor();
+    final currentEvent = widget.events[_currentEventIndex];
 
     return PopScope(
       canPop: false, // Prevent back button dismissal
@@ -146,40 +166,16 @@ class _EventSharePopupState extends State<EventSharePopup>
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Event Title - determine from events or isDeath flag
-                        Builder(
-                          builder: (context) {
-                            // Determine event type
-                            String eventType;
-                            if (widget.events.isNotEmpty) {
-                              eventType = MessageConfig.getPublicEventType(
-                                widget.events,
-                              );
-                            } else {
-                              eventType =
-                                  widget.isDeath
-                                      ? 'player_killed'
-                                      : 'quiet_night';
-                            }
-
-                            // Get popup content
-                            final popupContent =
-                                MessageConfig.getPublicEventContent(eventType);
-                            final title =
-                                popupContent?.title ??
-                                (widget.isDeath ? 'Rest in Peace' : 'zZzZz');
-
-                            return Text(
-                              title,
-                              style: const TextStyle(
-                                fontFamily: 'Rye',
-                                fontSize: 20,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            );
-                          },
+                        // Event Title
+                        Text(
+                          currentEvent, // Display the current event
+                          style: const TextStyle(
+                            fontFamily: 'Rye',
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
 
@@ -207,28 +203,58 @@ class _EventSharePopupState extends State<EventSharePopup>
                         ),
                         const SizedBox(height: 20),
 
-                        // Manual close button
-                        ElevatedButton(
-                          onPressed: _closePopup,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B4513),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
+                        // Navigation Buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (_currentEventIndex > 0)
+                              ElevatedButton(
+                                onPressed: _previousEvent,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF8B4513),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Previous',
+                                  style: TextStyle(
+                                    fontFamily: 'Rye',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ElevatedButton(
+                              onPressed: _nextEvent,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF8B4513),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                _currentEventIndex < widget.events.length - 1
+                                    ? 'Next'
+                                    : 'Continue',
+                                style: const TextStyle(
+                                  fontFamily: 'Rye',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Continue',
-                            style: TextStyle(
-                              fontFamily: 'Rye',
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
