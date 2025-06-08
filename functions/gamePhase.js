@@ -153,15 +153,14 @@ exports.advancePhase = async (req, res) => {
             return res.status(403).json({ error: "Only host can advance the phase" });
         }
 
-        const currentPhase = lobbyData.phase || "night";
-        const currentGameState = lobbyData.gameState || "role_reveal";
+        const currentPhase = lobbyData.phase || "night";        const currentGameState = lobbyData.gameState || "role_reveal";
         const dayCount = lobbyData.dayCount || 1;
 
         // Get game settings for timer durations
         const gameSettings = lobbyData.gameSettings || {};
-        const discussionTime = (gameSettings.discussionTime || 60) * 1000; // Convert seconds to milliseconds
-        const votingTime = (gameSettings.votingTime || 30) * 1000; // Convert seconds to milliseconds
-        const nightTime = (gameSettings.nightTime || 45) * 1000; // Convert seconds to milliseconds
+        const discussionTime = (gameSettings.discussionTime || 90) * 1000; // Convert seconds to milliseconds
+        const votingTime = (gameSettings.votingTime || 45) * 1000; // Convert seconds to milliseconds
+        const nightTime = (gameSettings.nightTime || 60) * 1000; // Convert seconds to milliseconds
 
         let updateData = {};
 
@@ -387,17 +386,16 @@ exports.getRoleInfo = async (req, res) => {
 };
 
 // Helper function to advance to next phase (used by both manual and auto advance)
-async function advanceToNextPhase(lobbyData, lobbyRef) {
-    const players = lobbyData.players || [];
+async function advanceToNextPhase(lobbyData, lobbyRef) {    const players = lobbyData.players || [];
     const currentPhase = lobbyData.phase || "night";
     const currentGameState = lobbyData.gameState || "role_reveal";
     const dayCount = lobbyData.dayCount || 1;
 
     // Get game settings for timer durations
     const gameSettings = lobbyData.gameSettings || {};
-    const discussionTime = (gameSettings.discussionTime || 60) * 1000; // Convert seconds to milliseconds
-    const votingTime = (gameSettings.votingTime || 30) * 1000; // Convert seconds to milliseconds
-    const nightTime = (gameSettings.nightTime || 45) * 1000; // Convert seconds to milliseconds
+    const discussionTime = (gameSettings.discussionTime || 90) * 1000; // Convert seconds to milliseconds
+    const votingTime = (gameSettings.votingTime || 45) * 1000; // Convert seconds to milliseconds
+    const nightTime = (gameSettings.nightTime || 60) * 1000; // Convert seconds to milliseconds
 
     let updateData = {};
 

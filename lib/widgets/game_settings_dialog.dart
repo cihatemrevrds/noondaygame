@@ -119,15 +119,14 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                           ),
                         ],
                       ),
-                    ),
-
-                    // Voting Time
+                    ),                    // Voting Time
                     _buildTimerSetting(
                       'Voting Time',
                       'Duration for voting phase',
                       Icons.how_to_vote,
-                      _settings['votingTime'] ?? 30,
+                      _settings['votingTime'] ?? 45,
                       (value) => _updateSetting('votingTime', value),
+                      presetValues: [30, 45, 60],
                     ),
 
                     // Discussion Time
@@ -135,15 +134,17 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                       'Discussion Time',
                       'Duration for discussion phase',
                       Icons.chat,
-                      _settings['discussionTime'] ?? 60,
+                      _settings['discussionTime'] ?? 90,
                       (value) => _updateSetting('discussionTime', value),
+                      presetValues: [90, 120, 150],
                     ), // Night Time
                     _buildTimerSetting(
                       'Night Time',
                       'Duration for night phase',
                       Icons.nightlight_round,
-                      _settings['nightTime'] ?? 45,
+                      _settings['nightTime'] ?? 60,
                       (value) => _updateSetting('nightTime', value),
+                      presetValues: [45, 60, 75],
                     ),
 
                     const SizedBox(height: 20),
@@ -229,13 +230,13 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
       ),
     );
   }
-
   Widget _buildTimerSetting(
     String title,
     String description,
     IconData icon,
     int currentValue,
     Function(int) onChanged,
+    {List<int>? presetValues}
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -329,16 +330,13 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                     () => onChanged((currentValue + 5).clamp(10, 300)),
                   ),
                 ],
-              ),
-
-              // Preset buttons
+              ),              // Preset buttons
               Row(
                 children: [
-                  _buildPresetButton('15s', () => onChanged(15)),
-                  const SizedBox(width: 4),
-                  _buildPresetButton('30s', () => onChanged(30)),
-                  const SizedBox(width: 4),
-                  _buildPresetButton('60s', () => onChanged(60)),
+                  for (int i = 0; i < (presetValues ?? [15, 30, 60]).length; i++) ...[
+                    _buildPresetButton('${(presetValues ?? [15, 30, 60])[i]}s', () => onChanged((presetValues ?? [15, 30, 60])[i])),
+                    if (i < (presetValues ?? [15, 30, 60]).length - 1) const SizedBox(width: 4),
+                  ],
                 ],
               ),
             ],

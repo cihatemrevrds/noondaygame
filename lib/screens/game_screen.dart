@@ -1020,24 +1020,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
+    }  }
 
   // Helper methods to get phase durations from lobby data
   int _getDiscussionTime() {
-    if (_lobbyData == null) return 60; // Default fallback
+    if (_lobbyData == null) return 90; // Default fallback
 
     final gameSettings =
         _lobbyData!['gameSettings'] as Map<String, dynamic>? ?? {};
-    return gameSettings['discussionTime'] as int? ?? 60; // Default 60 seconds
+    return gameSettings['discussionTime'] as int? ?? 90; // Default 90 seconds
   }
 
   int _getVotingTime() {
-    if (_lobbyData == null) return 30; // Default fallback
+    if (_lobbyData == null) return 45; // Default fallback
 
     final gameSettings =
         _lobbyData!['gameSettings'] as Map<String, dynamic>? ?? {};
-    return gameSettings['votingTime'] as int? ?? 30; // Default 30 seconds
+    return gameSettings['votingTime'] as int? ?? 45; // Default 45 seconds
   }
 
   // Get text for manual advance button based on current game state

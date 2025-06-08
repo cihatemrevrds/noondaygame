@@ -135,13 +135,13 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             if (value is int && value > 0) {
               currentRoles[key] = value;
             }
-          }); // Load current game settings
+          });          // Load current game settings
           final settingsData =
               data['gameSettings'] as Map<String, dynamic>? ?? {};
           final currentSettings = <String, dynamic>{
-            'votingTime': settingsData['votingTime'] ?? 30,
-            'discussionTime': settingsData['discussionTime'] ?? 60,
-            'nightTime': settingsData['nightTime'] ?? 45,
+            'votingTime': settingsData['votingTime'] ?? 45,
+            'discussionTime': settingsData['discussionTime'] ?? 90,
+            'nightTime': settingsData['nightTime'] ?? 60,
             'allowFirstNightKill': settingsData['allowFirstNightKill'] ?? false,
           };
 
@@ -927,23 +927,22 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                     12,
                                                   ),
                                                   child: Column(
-                                                    children: [
-                                                      // Timer Settings
+                                                    children: [                                                      // Timer Settings
                                                       _buildSettingItem(
                                                         'Voting Time',
-                                                        '${_currentSettings['votingTime'] ?? 30}s',
+                                                        '${_currentSettings['votingTime'] ?? 45}s',
                                                         Icons.how_to_vote,
                                                       ),
                                                       const SizedBox(height: 8),
                                                       _buildSettingItem(
                                                         'Discussion Time',
-                                                        '${_currentSettings['discussionTime'] ?? 60}s',
+                                                        '${_currentSettings['discussionTime'] ?? 90}s',
                                                         Icons.chat,
                                                       ),
                                                       const SizedBox(height: 8),
                                                       _buildSettingItem(
                                                         'Night Time',
-                                                        '${_currentSettings['nightTime'] ?? 45}s',
+                                                        '${_currentSettings['nightTime'] ?? 60}s',
                                                         Icons.nightlight_round,
                                                       ),
 
