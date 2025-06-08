@@ -636,9 +636,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       winningTeam = 'Jester';
       gameOver = true;
       winType = 'jester_vote_out';
-    }
-
-    // Special case: If only neutral players remain alive
+    }    // Special case: If only neutral players remain alive
     if (!gameOver && 
         (aliveCount['Total'] ?? 0) > 0 && 
         (aliveCount['Town'] ?? 0) == 0 && 
@@ -653,7 +651,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         gameOver = true;
         winType = 'last_standing';
       }
-    }    if (gameOver && winningTeam != null) {
+    }
+
+    // Check for draw condition - if no players are alive
+    if (!gameOver && (aliveCount['Total'] ?? 0) == 0) {
+      winningTeam = 'Draw';
+      gameOver = true;
+      winType = 'all_eliminated';
+    }
+
+    if (gameOver && winningTeam != null) {
       // Set game over flag to stop all other game processes
       _isGameOver = true;
       

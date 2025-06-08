@@ -122,7 +122,6 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
       ),
     );
   }
-
   Color _getWinnerColor(String winner) {
     switch (winner) {
       case 'Town':
@@ -131,6 +130,8 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
         return const Color(0xFFC62828); // Red for Bandits
       case 'Jester':
         return const Color(0xFF616161); // Gray for Jester
+      case 'Draw':
+        return const Color(0xFF757575); // Medium gray for Draw
       default:
         return const Color(0xFF424242); // Default gray
     }
@@ -169,9 +170,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
 
     if (!gameOver) {
       return 'Game ended unexpectedly';
-    }
-
-    switch (winner) {
+    }    switch (winner) {
       case 'Town':
         return 'The Town has triumphed!\nAll bandits have been eliminated.';
       case 'Bandit':
@@ -181,6 +180,8 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
           return 'The Jester wins!\nChaos reigns as the fool gets the last laugh.';
         }
         return 'The Jester has won!';
+      case 'Draw':
+        return 'It\'s a Draw!\nAll players have been eliminated. No one wins.';
       default:
         if (winner.isNotEmpty) {
           return '$winner has won!\nVictory through survival and cunning.';
@@ -191,14 +192,15 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
 
   String _getWinIcon() {
     final winner = widget.winCondition['winner'] as String? ?? 'Unknown';
-    
-    switch (winner) {
+      switch (winner) {
       case 'Town':
         return '🏛️'; // Town hall/government building
       case 'Bandit':
         return '🔫'; // Gun for bandits
       case 'Jester':
         return '🃏'; // Playing card joker
+      case 'Draw':
+        return '⚖️'; // Scale/balance for draw
       default:
         return '🏆'; // Trophy for generic win
     }
@@ -211,7 +213,6 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
   List<Player> _getDeadPlayers() {
     return widget.finalPlayers.where((p) => !p.isAlive).toList();
   }
-
   bool _didCurrentPlayerWin() {
     final winner = widget.winCondition['winner'] as String? ?? '';
     final currentPlayer = widget.finalPlayers.firstWhere(
@@ -229,10 +230,28 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
         return ['Gunman', 'Chieftain'].contains(currentPlayer.role);
       case 'Jester':
         return currentPlayer.role == 'Jester';
+      case 'Draw':
+        return false; // No one wins in a draw
       default:
         // For role-specific wins (like neutral roles)
         return currentPlayer.role == winner;
     }
+  }
+
+  String _getGameResultTitle(String winner, bool didWin) {
+    if (winner == 'Draw') {
+      return 'DRAW';
+    }
+    
+    return didWin ? 'VICTORY!' : 'DEFEAT';
+  }
+
+  Color _getGameResultColor(String winner, bool didWin) {
+    if (winner == 'Draw') {
+      return const Color(0xFF757575); // Medium gray for draw
+    }
+    
+    return didWin ? Colors.green : Colors.red;
   }
 
   @override
@@ -300,15 +319,14 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              
-                              // Victory/Defeat Title
+                                // Victory/Defeat/Draw Title
                               Text(
-                                didWin ? 'VICTORY!' : 'DEFEAT',
+                                _getGameResultTitle(widget.winCondition['winner'] as String? ?? '', didWin),
                                 style: TextStyle(
                                   fontFamily: 'Rye',
                                   fontSize: 48,
                                   fontWeight: FontWeight.bold,
-                                  color: didWin ? Colors.orange : Colors.red.shade300,
+                                  color: _getGameResultColor(widget.winCondition['winner'] as String? ?? '', didWin),
                                   shadows: [
                                     Shadow(
                                       offset: const Offset(2, 2),
