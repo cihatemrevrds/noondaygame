@@ -389,6 +389,73 @@ class LobbyService {
     return lobbyRef.snapshots();
   }
 
+  Future<bool> resetLobby(String lobbyCode, String hostId) async {
+    print('Attempting to reset lobby: $lobbyCode by host: $hostId');
+    
+    try {
+      final lobbyRef = _firestore
+          .collection('lobbies')
+          .doc(lobbyCode.toUpperCase());
+
+      // First check if the lobby exists
+      final doc = await lobbyRef.get();
+
+      if (!doc.exists) {
+        print('Lobby not found: $lobbyCode');
+        return false;
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      
+      // Verify the requester is the host (for security)
+      if (data['hostUid'] != hostId) {
+        print('Only host can reset lobby: $lobbyCode');
+        return false;
+      }
+
+      // Reset lobby to waiting state while preserving players and settings
+      final resetData = {
+        'status': 'waiting',
+        'gameState': null,
+        'phase': null,
+        'winCondition': null,
+        'endedAt': null,
+        'votes': {},
+        'nightActions': {},
+        'nightEvents': [],
+        'privateEvents': {},
+        'phaseTimeLimit': null,
+        'phaseStartedAt': null,
+        'dayCount': null,
+        'lastDayResult': null,
+        // Keep players but reset their game-specific data
+        'players': (data['players'] as List<dynamic>? ?? []).map((player) {
+          final playerMap = player as Map<String, dynamic>;
+          return {
+            ...playerMap,
+            'role': null,
+            'isAlive': true,
+            'team': null,
+            'eliminatedBy': null,
+          };
+        }).toList(),
+        // Preserve lobby structure
+        'hostUid': data['hostUid'],
+        'roles': data['roles'] ?? {},
+        'gameSettings': data['gameSettings'] ?? {},
+        'createdAt': data['createdAt'],
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await lobbyRef.update(resetData);
+      print('Lobby reset successfully: $lobbyCode');
+      return true;
+    } catch (e) {
+      print('Reset lobby error: $e');
+      return false;
+    }
+  }
+
   Future<bool> deleteLobby(String lobbyCode, String hostId) async {
     print('Attempting to delete lobby: $lobbyCode by host: $hostId');
     bool success = false;

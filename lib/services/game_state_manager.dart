@@ -36,7 +36,6 @@ class GameStateManager {
       showMessage('Error: ${e.toString()}');
     }
   }
-
   Future<void> endGame(
     String lobbyCode,
     bool isHost,
@@ -48,7 +47,11 @@ class GameStateManager {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      await _lobbyService.deleteLobby(lobbyCode, user.uid);
+      // Reset lobby to waiting state instead of deleting it
+      final success = await _lobbyService.resetLobby(lobbyCode, user.uid);
+      if (!success) {
+        showMessage('Failed to reset lobby');
+      }
     } catch (e) {
       showMessage('Error ending game: $e');
     }

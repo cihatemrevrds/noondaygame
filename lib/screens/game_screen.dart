@@ -19,6 +19,8 @@ import '../widgets/vote_result_popup.dart';
 import '../widgets/victory_screen_widget.dart';
 import '../config/message_config.dart';
 import 'main_menu.dart';
+import 'lobby_room_page.dart';
+import 'mobile_lobby_room_page.dart';
 
 class GameScreen extends StatefulWidget {
   final String lobbyCode;
@@ -67,10 +69,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     WidgetsBinding.instance.addObserver(this);
-    _setupLobbyListener();
-    _fetchPhaseDurations().then((_) {
+    _setupLobbyListener();    _fetchPhaseDurations().then((_) {
       _startGameLoop();
     });
+  }
+
+  // Helper function to detect mobile devices
+  bool _isMobile(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth < 800; // Threshold for mobile/tablet detection
   }
 
   @override
@@ -148,11 +155,54 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
         }
         return;
-      }
-      final data = snapshot.data() as Map<String, dynamic>;
+      }      final data = snapshot.data() as Map<String, dynamic>;
 
       // Store lobby data for access in other methods
       _lobbyData = data;
+
+      // Check if lobby status has changed back to 'waiting' (end game flow)
+      final lobbyStatus = data['status'] as String? ?? '';
+      if (lobbyStatus == 'waiting') {
+        // Cancel all timers immediately
+        _phaseTimer?.cancel();
+        _phaseTimer = null;
+
+        // Navigate back to lobby room based on device type
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Returning to lobby',
+                style: TextStyle(fontFamily: 'Rye'),
+              ),
+            ),
+          );
+            if (_isMobile(context)) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MobileLobbyRoomPage(
+                  lobbyCode: widget.lobbyCode,
+                  roomName: data['roomName'] as String? ?? 'Game Room',
+                ),
+              ),
+              (route) => false,
+            );
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LobbyRoomPage(
+                  lobbyCode: widget.lobbyCode,
+                  roomName: data['roomName'] as String? ?? 'Game Room',
+                ),
+              ),
+              (route) => false,
+            );
+          }
+        }
+        return;
+      }
 
       // Update players
       final playersList =
