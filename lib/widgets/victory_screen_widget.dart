@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/player.dart';
 import '../utils/role_icons.dart';
 import '../services/game_state_manager.dart';
+import '../config/message_config.dart';
 
 class VictoryScreenWidget extends StatefulWidget {
   final Map<String, dynamic> winCondition;
@@ -68,7 +69,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
       end: Offset.zero,
     ).animate(
       CurvedAnimation(parent: _slideController, curve: Curves.bounceOut),
-    );    // Start animations with slight delays
+    ); // Start animations with slight delays
     _fadeController.forward();
     Timer(const Duration(milliseconds: 200), () {
       _scaleController.forward();
@@ -79,6 +80,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
 
     // Don't auto-close - let host manually end the game
   }
+
   @override
   void dispose() {
     _autoCloseTimer?.cancel();
@@ -93,35 +95,37 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('End Game?'),
-        content: const Text('This will end the game for all players.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await gameStateManager.endGame(
-                widget.lobbyCode,
-                widget.isHost,
-                (message) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(message)),
-                    );
-                  }
+      builder:
+          (context) => AlertDialog(
+            title: const Text('End Game?'),
+            content: const Text('This will end the game for all players.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await gameStateManager.endGame(
+                    widget.lobbyCode,
+                    widget.isHost,
+                    (message) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                      }
+                    },
+                  );
                 },
-              );
-            },
-            child: const Text('END GAME'),
+                child: const Text('END GAME'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
+
   Color _getWinnerColor(String winner) {
     switch (winner) {
       case 'Town':
@@ -169,35 +173,30 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
     final gameOver = widget.winCondition['gameOver'] as bool? ?? false;
 
     if (!gameOver) {
-      return 'Game ended unexpectedly';
-    }    switch (winner) {
-      case 'Town':
-        return 'The Town has triumphed!\nAll bandits have been eliminated.';
-      case 'Bandit':
-        if (winType == 'no_gunslinger_parity') {
-          return 'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.';
-        } else if (winType == 'majority') {
-          return 'The Bandits have taken over!\nThe town has fallen to the outlaws.';
-        }
-        return 'The Bandits have won!\nThe town has fallen to the outlaws.';
-      case 'Jester':
-        if (winType == 'jester_vote_out') {
-          return 'The Jester wins!\nChaos reigns as the fool gets the last laugh.';
-        }
-        return 'The Jester has won!';
-      case 'Draw':
-        return 'It\'s a Draw!\nAll players have been eliminated. No one wins.';
-      default:
-        if (winner.isNotEmpty) {
-          return '$winner has won!\nVictory through survival and cunning.';
-        }
-        return 'Game Over';
+      final winLoseContent = MessageConfig.getWinLoseContent('', '');
+      return winLoseContent?.victoryMessage ?? 'Game ended unexpectedly';
     }
+
+    // Get win/lose content from MessageConfig
+    final winLoseContent = MessageConfig.getWinLoseContent(winner, winType);
+
+    if (winLoseContent != null) {
+      // Check if this is a neutral role win that needs variable replacement
+      if (winType == 'last_standing' && winner != 'Jester') {
+        return MessageConfig.formatMessage(winLoseContent.victoryMessage, {
+          'winner': winner,
+        });
+      }
+      return winLoseContent.victoryMessage;
+    }
+
+    // Fallback for unknown cases
+    return 'Game Over';
   }
 
   String _getWinIcon() {
     final winner = widget.winCondition['winner'] as String? ?? 'Unknown';
-      switch (winner) {
+    switch (winner) {
       case 'Town':
         return '🏛️'; // Town hall/government building
       case 'Bandit':
@@ -218,6 +217,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
   List<Player> _getDeadPlayers() {
     return widget.finalPlayers.where((p) => !p.isAlive).toList();
   }
+
   bool _didCurrentPlayerWin() {
     final winner = widget.winCondition['winner'] as String? ?? '';
     final currentPlayer = widget.finalPlayers.firstWhere(
@@ -229,8 +229,13 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
 
     switch (winner) {
       case 'Town':
-        return ['Doctor', 'Sheriff', 'Escort', 'Peeper', 'Gunslinger']
-            .contains(currentPlayer.role);
+        return [
+          'Doctor',
+          'Sheriff',
+          'Escort',
+          'Peeper',
+          'Gunslinger',
+        ].contains(currentPlayer.role);
       case 'Bandit':
         return ['Gunman', 'Chieftain'].contains(currentPlayer.role);
       case 'Jester':
@@ -247,7 +252,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
     if (winner == 'Draw') {
       return 'DRAW';
     }
-    
+
     return didWin ? 'VICTORY!' : 'DEFEAT';
   }
 
@@ -255,13 +260,15 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
     if (winner == 'Draw') {
       return const Color(0xFF757575); // Medium gray for draw
     }
-    
+
     return didWin ? Colors.green : Colors.red;
   }
 
   @override
   Widget build(BuildContext context) {
-    final winnerColor = _getWinnerColor(widget.winCondition['winner'] as String? ?? '');
+    final winnerColor = _getWinnerColor(
+      widget.winCondition['winner'] as String? ?? '',
+    );
     final didWin = _didCurrentPlayerWin();
     final alivePlayers = _getAlivePlayers();
     final deadPlayers = _getDeadPlayers();
@@ -316,7 +323,10 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: winnerColor.withOpacity(0.2),
-                                  border: Border.all(color: winnerColor, width: 3),
+                                  border: Border.all(
+                                    color: winnerColor,
+                                    width: 3,
+                                  ),
                                 ),
                                 child: Text(
                                   _getWinIcon(),
@@ -324,14 +334,22 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                                // Victory/Defeat/Draw Title
+                              // Victory/Defeat/Draw Title
                               Text(
-                                _getGameResultTitle(widget.winCondition['winner'] as String? ?? '', didWin),
+                                _getGameResultTitle(
+                                  widget.winCondition['winner'] as String? ??
+                                      '',
+                                  didWin,
+                                ),
                                 style: TextStyle(
                                   fontFamily: 'Rye',
                                   fontSize: 48,
                                   fontWeight: FontWeight.bold,
-                                  color: _getGameResultColor(widget.winCondition['winner'] as String? ?? '', didWin),
+                                  color: _getGameResultColor(
+                                    widget.winCondition['winner'] as String? ??
+                                        '',
+                                    didWin,
+                                  ),
                                   shadows: [
                                     Shadow(
                                       offset: const Offset(2, 2),
@@ -342,7 +360,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              
+
                               // Win Message
                               Text(
                                 _getWinMessage(),
@@ -357,9 +375,9 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                             ],
                           ),
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
+
                         // Game Statistics
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -383,7 +401,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // Survivors Section
                               if (alivePlayers.isNotEmpty) ...[
                                 Text(
@@ -396,10 +414,12 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                ...alivePlayers.map((player) => _buildPlayerTile(player, true)),
+                                ...alivePlayers.map(
+                                  (player) => _buildPlayerTile(player, true),
+                                ),
                                 const SizedBox(height: 16),
                               ],
-                              
+
                               // Casualties Section
                               if (deadPlayers.isNotEmpty) ...[
                                 Text(
@@ -412,12 +432,15 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                ...deadPlayers.map((player) => _buildPlayerTile(player, false)),
+                                ...deadPlayers.map(
+                                  (player) => _buildPlayerTile(player, false),
+                                ),
                               ],
                             ],
                           ),
-                        ),                        const SizedBox(height: 24),
-                        
+                        ),
+                        const SizedBox(height: 24),
+
                         // End Game Button (Host Only)
                         if (widget.isHost)
                           Center(
@@ -426,7 +449,10 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red.shade700,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -462,14 +488,16 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isCurrentPlayer 
-            ? Colors.orange.withOpacity(0.2) 
-            : Colors.black.withOpacity(0.3),
+        color:
+            isCurrentPlayer
+                ? Colors.orange.withOpacity(0.2)
+                : Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isCurrentPlayer 
-              ? Colors.orange.withOpacity(0.6)
-              : roleColor.withOpacity(0.5),
+          color:
+              isCurrentPlayer
+                  ? Colors.orange.withOpacity(0.6)
+                  : roleColor.withOpacity(0.5),
           width: isCurrentPlayer ? 2 : 1,
         ),
       ),
@@ -492,7 +520,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Player Info
           Expanded(
             child: Column(
@@ -506,7 +534,10 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                         fontFamily: 'Rye',
                         fontSize: 14,
                         color: isCurrentPlayer ? Colors.orange : Colors.white,
-                        fontWeight: isCurrentPlayer ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isCurrentPlayer
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                       ),
                     ),
                     if (isCurrentPlayer) ...[
@@ -534,12 +565,15 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
               ],
             ),
           ),
-          
+
           // Status Indicator
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: isAlive ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+              color:
+                  isAlive
+                      ? Colors.green.withOpacity(0.2)
+                      : Colors.red.withOpacity(0.2),
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
                 color: isAlive ? Colors.green : Colors.red.shade300,

@@ -229,10 +229,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
             // Update vote selection
             _votedPlayerId = votes[_currentUserId];
-          });
-
-          // Handle phase-specific popups and actions
+          });          // Handle phase-specific popups and actions
           _handlePhaseSpecificActions(gameState, data);
+
+          // Check for win conditions on every lobby update - ensures all players see victory screen simultaneously
+          final winResult = _checkWinConditions();
+          if (winResult != null && !_isGameOver) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _showVictoryScreen({
+                  'winCondition': {
+                    'winner': winResult['winner'],
+                    'winType': winResult['winType'],
+                    'gameOver': winResult['gameOver'],
+                  },
+                });
+              }
+            });
+            return; // Don't start timers if game is over
+          }
 
           // Start or update timer for current phase
           _updatePhaseTimer();

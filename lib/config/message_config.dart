@@ -117,7 +117,6 @@ class MessageConfig {
       message: 'The night was quiet. No one was harmed.',
     ),
   };
-
   // 🎮 Other Popup Titles
   static const Map<String, String> popupTitles = {
     'role_reveal': '🎭 Your Role',
@@ -125,7 +124,91 @@ class MessageConfig {
     'game_over': '🏁 Game Over',
     'night_outcome': '🌙 Night Outcome',
   };
+  // 🏆 Win/Lose Condition Messages
+  static const Map<String, WinLoseContent> winLoseMessages = {
+    // Town Victory Messages
+    'town_victory': WinLoseContent(
+      victoryTitle: 'VICTORY!',
+      defeatTitle: 'DEFEAT',
+      victoryMessage:
+          'The Town has triumphed!\nAll bandits have been eliminated.',
+      defeatMessage:
+          'The Town has triumphed!\nAll bandits have been eliminated.',
+      icon: '🏛️',
+    ),
 
+    // Bandit Victory Messages
+    'bandit_victory_majority': WinLoseContent(
+      victoryTitle: 'VICTORY!',
+      defeatTitle: 'DEFEAT',
+      victoryMessage:
+          'The Bandits have taken over!\nThe town has fallen to the outlaws.',
+      defeatMessage:
+          'The Bandits have taken over!\nThe town has fallen to the outlaws.',
+      icon: '🔫',
+    ),
+
+    'bandit_victory_no_gunslinger': WinLoseContent(
+      victoryTitle: 'VICTORY!',
+      defeatTitle: 'DEFEAT',
+      victoryMessage:
+          'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.',
+      defeatMessage:
+          'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.',
+      icon: '🔫',
+    ),
+
+    // Jester Victory Messages
+    'jester_victory_vote_out': WinLoseContent(
+      victoryTitle: 'VICTORY!',
+      defeatTitle: 'DEFEAT',
+      victoryMessage:
+          'The Jester wins!\nChaos reigns as the fool gets the last laugh.',
+      defeatMessage:
+          'The Jester wins!\nChaos reigns as the fool gets the last laugh.',
+      icon: '🃏',
+    ),
+
+    'jester_victory_last_standing': WinLoseContent(
+      victoryTitle: 'VICTORY!',
+      defeatTitle: 'DEFEAT',
+      victoryMessage:
+          'The Jester has won!\nVictory through survival and cunning.',
+      defeatMessage:
+          'The Jester has won!\nVictory through survival and cunning.',
+      icon: '🃏',
+    ),
+
+    // Draw/Tie Messages
+    'draw_all_eliminated': WinLoseContent(
+      victoryTitle: 'DRAW',
+      defeatTitle: 'DRAW',
+      victoryMessage:
+          'It\'s a Draw!\nAll players have been eliminated. No one wins.',
+      defeatMessage:
+          'It\'s a Draw!\nAll players have been eliminated. No one wins.',
+      icon: '⚖️',
+    ),
+
+    // Generic Neutral Victory (for any neutral role winning by last standing)
+    'neutral_victory_last_standing': WinLoseContent(
+      victoryTitle: 'VICTORY!',
+      defeatTitle: 'DEFEAT',
+      victoryMessage:
+          '{winner} has won!\nVictory through survival and cunning.',
+      defeatMessage: '{winner} has won!\nVictory through survival and cunning.',
+      icon: '🏆',
+    ),
+
+    // Fallback messages
+    'game_ended_unexpectedly': WinLoseContent(
+      victoryTitle: 'GAME OVER',
+      defeatTitle: 'GAME OVER',
+      victoryMessage: 'Game ended unexpectedly.',
+      defeatMessage: 'Game ended unexpectedly.',
+      icon: '🏁',
+    ),
+  };
   // Helper method to get popup content for private events
   static PopupContent? getPrivateEventContent(String keyword) {
     return privateEventMessages[keyword];
@@ -139,6 +222,34 @@ class MessageConfig {
   // Helper method to get popup title
   static String getPopupTitle(String keyword) {
     return popupTitles[keyword] ?? 'Game Event';
+  }
+
+  // Helper method to get win/lose content
+  static WinLoseContent? getWinLoseContent(String winner, String winType) {
+    switch (winner) {
+      case 'Town':
+        return winLoseMessages['town_victory'];
+      case 'Bandit':
+        if (winType == 'no_gunslinger_parity') {
+          return winLoseMessages['bandit_victory_no_gunslinger'];
+        } else {
+          return winLoseMessages['bandit_victory_majority'];
+        }
+      case 'Jester':
+        if (winType == 'jester_vote_out') {
+          return winLoseMessages['jester_victory_vote_out'];
+        } else {
+          return winLoseMessages['jester_victory_last_standing'];
+        }
+      case 'Draw':
+        return winLoseMessages['draw_all_eliminated'];
+      default:
+        // For neutral role wins by last standing
+        if (winType == 'last_standing') {
+          return winLoseMessages['neutral_victory_last_standing'];
+        }
+        return winLoseMessages['game_ended_unexpectedly'];
+    }
   }
 
   // Helper method to format message with variables
@@ -173,4 +284,21 @@ class PopupContent {
   final String message;
 
   const PopupContent({required this.title, required this.message});
+}
+
+// Data class for win/lose content
+class WinLoseContent {
+  final String victoryTitle;
+  final String defeatTitle;
+  final String victoryMessage;
+  final String defeatMessage;
+  final String icon;
+
+  const WinLoseContent({
+    required this.victoryTitle,
+    required this.defeatTitle,
+    required this.victoryMessage,
+    required this.defeatMessage,
+    required this.icon,
+  });
 }
