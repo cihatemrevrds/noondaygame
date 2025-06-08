@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../utils/recommended_roles.dart';
 import '../utils/role_icons.dart';
+import '../utils/win_condition_checker.dart';
 
 class RoleManagementDialog extends StatefulWidget {
   final Map<String, int> currentRoles;
@@ -74,9 +75,30 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
       );
     }
   }
-
   int get _totalRolesCount {
     return _rolesCounts.values.fold(0, (sum, count) => sum + count);
+  }
+  // Check if current role distribution is valid
+  String? _getRoleDistributionError() {
+    final result = WinConditionChecker.checkRoleDistribution(
+      _rolesCounts,
+      widget.playerCount,
+    );
+    
+    if (result['isValid'] != true) {
+      return result['error'] as String?;
+    }
+    
+    return null;
+  }
+
+  // Get validation color for save button
+  Color _getSaveButtonColor() {
+    final error = _getRoleDistributionError();
+    if (error != null) {
+      return Colors.red;
+    }
+    return const Color(0xFF228B22); // Forest green
   }
 
   @override
@@ -132,26 +154,55 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
                   ),
                 ],
               ),
-            ),
-
-            // Total roles counter
+            ),            // Total roles counter
             Container(
               padding: const EdgeInsets.all(12),
               color: const Color(0xFF654321),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  const Icon(Icons.group, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Total Roles: $_totalRolesCount',
-                    style: const TextStyle(
-                      fontFamily: 'Rye',
-                      fontSize: 18,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.group, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Total Roles: $_totalRolesCount / ${widget.playerCount}',
+                        style: const TextStyle(
+                          fontFamily: 'Rye',
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
+                  // Error message for invalid role distribution
+                  if (_getRoleDistributionError() != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _getRoleDistributionError()!,
+                              style: const TextStyle(
+                                fontFamily: 'Rye',
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -244,9 +295,7 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
                           _applyRecommendedSettings,
                         ),
                       ),
-                    ),
-
-                  // Cancel and Save buttons
+                    ),                  // Cancel and Save buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -257,8 +306,23 @@ class _RoleManagementDialogState extends State<RoleManagementDialog> {
                       ),
                       _buildActionButton(
                         'SAVE ROLES',
-                        const Color(0xFF228B22), // Forest green
+                        _getSaveButtonColor(),
                         () {
+                          final error = _getRoleDistributionError();
+                          if (error != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Cannot save: $error',
+                                  style: const TextStyle(fontFamily: 'Rye'),
+                                ),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                            return;
+                          }
+                          
                           widget.onRolesUpdated(_rolesCounts);
                           Navigator.of(context).pop();
                         },
