@@ -271,7 +271,13 @@ exports.autoAdvancePhase = async (req, res) => {
         const lobbyDoc = await lobbyRef.get();
 
         if (!lobbyDoc.exists) {
-            return res.status(404).json({ error: "Lobby not found" });
+            // Lobby was deleted - this is a normal cleanup scenario
+            // Return success to prevent client-side errors and stop further requests
+            console.log(`Auto-advance request for deleted lobby ${lobbyCode} - lobby was cleaned up`);
+            return res.status(200).json({
+                message: "Lobby not found - game has ended",
+                lobbyDeleted: true
+            });
         }
 
         const lobbyData = lobbyDoc.data();

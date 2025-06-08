@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/player.dart';
 import '../services/lobby_service.dart';
 import '../services/game_service.dart';
@@ -42,12 +43,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _nightActionResult; // Night action result
   Map<String, dynamic> _nightOutcomes = {}; // Individual night outcomes
   bool _hasShownRoleReveal = false; // Role reveal popup state
-  int _dayCount = 1; // Day/Night counter  // Phase configuration
+  int _dayCount = 1; // Day/Night counter
+  // Phase configuration
   bool _manualPhaseControl = false; // Default value
   Map<String, dynamic>? _lobbyData; // Store current lobby data
   // Timing and phase management
   Timer? _phaseTimer;
   int _remainingTime = 0;
+  // StreamSubscription for proper cleanup
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _lobbySubscription;
 
   // Event and popup state management
   bool _hasShownNightOutcome = false;
@@ -69,6 +74,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _phaseTimer?.cancel();
     _phaseTimer = null;
+    _lobbySubscription?.cancel();
+    _lobbySubscription = null;
     super.dispose();
   }
 
@@ -112,7 +119,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _setupLobbyListener() {
     print('📡 Connecting to lobby: ${widget.lobbyCode}');
 
-    _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((snapshot) {
+    _lobbySubscription = _lobbyService.listenToLobbyUpdates(widget.lobbyCode).listen((
+      snapshot,
+    ) {
       if (!snapshot.exists) {
         // Lobby deleted, cancel all timers immediately to prevent further HTTP requests
         _phaseTimer?.cancel();
@@ -525,7 +534,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 );
               } // Try to manually advance phase if auto-advance is enabled and timer is done
               if (!_manualPhaseControl && _remainingTime <= 0) {
-                _autoAdvancePhase();
+                _safeAutoAdvancePhase();
               }
             },
           ),
@@ -543,7 +552,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         'No events to share in _showEventSharingPhase, auto-advancing phase',
       );
       if (!_manualPhaseControl) {
-        _autoAdvancePhase();
+        _safeAutoAdvancePhase();
       }
     }
   }
@@ -602,7 +611,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               // Events boşsa direkt phase'i ilerlet
               print('No events to share, auto-advancing phase');
               if (!_manualPhaseControl) {
-                _autoAdvancePhase();
+                _safeAutoAdvancePhase();
               }
             }
           });
@@ -649,10 +658,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
           if (_remainingTime <= 0) {
             timer.cancel();
-            _phaseTimer = null;
-            // Automatically advance phase when timer expires (only if not in manual mode)
+            _phaseTimer =
+                null; // Automatically advance phase when timer expires (only if not in manual mode)
             if (!_manualPhaseControl) {
-              _autoAdvancePhase();
+              _safeAutoAdvancePhase();
             } else {
               // In manual mode, ensure we show a message that the host needs to advance the phase
               ScaffoldMessenger.of(context).showSnackBar(
@@ -673,6 +682,35 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       });
     }
   } // Automatically advance phase when timer expires
+
+  // Safe wrapper that checks all conditions before auto-advancing
+  void _safeAutoAdvancePhase() {
+    // Check if we should auto-advance at all
+    if (_manualPhaseControl) return;
+
+    // Check component state
+    if (!mounted) {
+      print('⏹️ Safe auto-advance cancelled: component unmounted');
+      return;
+    }
+
+    // Check lobby existence
+    if (_lobbyData == null) {
+      print(
+        '⏹️ Safe auto-advance cancelled: lobby data is null (lobby likely deleted)',
+      );
+      return;
+    }
+
+    // Check if we're still on the current screen
+    if (ModalRoute.of(context)?.isCurrent != true) {
+      print('⏹️ Safe auto-advance cancelled: navigation occurred');
+      return;
+    }
+
+    // All checks passed, proceed with auto-advance
+    _autoAdvancePhase();
+  }
 
   void _autoAdvancePhase() async {
     // Safety check - don't make HTTP requests if component is unmounted
@@ -720,9 +758,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               _currentGameState, // Send current state for verification
         }),
       );
-
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
+
+        // Check if lobby was deleted
+        if (responseData['lobbyDeleted'] == true) {
+          print('🏁 Auto-advance detected lobby deletion - game has ended');
+          // Don't show error or try to reschedule timer
+          return;
+        }
+
         print('✅ Phase auto-advanced: ${responseData['message']}');
       } else if (response.statusCode == 400 &&
           response.body.contains("Phase time not expired yet")) {
@@ -751,16 +796,28 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       print('❌ Auto-advance error: $e');
 
       // Only retry on specific network errors, and only if component is still mounted
+      // Also check that we haven't been navigated away from this screen
       if (mounted &&
           _lobbyData != null &&
-          e.toString().contains('XMLHttpRequest error')) {
+          e.toString().contains('XMLHttpRequest error') &&
+          ModalRoute.of(context)?.isCurrent == true) {
         print('🔄 Network error, retrying auto-advance in 500ms');
         Future.delayed(const Duration(milliseconds: 500), () {
-          // Double check before retry
-          if (mounted && _lobbyData != null) {
+          // Triple check before retry - lobby could have been deleted during delay
+          if (mounted &&
+              _lobbyData != null &&
+              ModalRoute.of(context)?.isCurrent == true) {
             _autoAdvancePhase();
+          } else {
+            print(
+              '⏹️ Retry cancelled: lobby deleted or navigation occurred during delay',
+            );
           }
         });
+      } else if (e.toString().contains('XMLHttpRequest error')) {
+        print(
+          '⏹️ XMLHttpRequest error ignored: lobby deleted or navigation occurred',
+        );
       }
     }
   }
@@ -770,7 +827,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (events.isEmpty) {
       // Events boşsa phase'i ilerlet
       if (!_manualPhaseControl) {
-        _autoAdvancePhase();
+        _safeAutoAdvancePhase();
       }
       return;
     }
@@ -789,11 +846,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               // Popup kapandıktan sonra phase'i ilerlet
               setState(() {
                 _hasShownEventSharing = true;
-              });
-
-              // Manual mode değilse otomatik ilerlet
+              }); // Manual mode değilse otomatik ilerlet
               if (!_manualPhaseControl) {
-                _autoAdvancePhase();
+                _safeAutoAdvancePhase();
               } else if (widget.isHost) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -894,7 +949,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (!isPrivate &&
           _currentGameState == 'event_sharing' &&
           !_manualPhaseControl) {
-        _autoAdvancePhase();
+        _safeAutoAdvancePhase();
       }
       return;
     }
@@ -927,7 +982,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       _currentGameState == 'event_sharing' &&
                       !_manualPhaseControl) {
                     // Son popup gösterildi, eğer event sharing phase'indeysek ilerlet
-                    _autoAdvancePhase();
+                    _safeAutoAdvancePhase();
                   }
                 },
                 child: const Text(
