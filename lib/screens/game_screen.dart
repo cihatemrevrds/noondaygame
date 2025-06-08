@@ -1020,7 +1020,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }  }
+    }
+  }
 
   // Helper methods to get phase durations from lobby data
   int _getDiscussionTime() {

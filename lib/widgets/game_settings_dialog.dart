@@ -119,7 +119,7 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                           ),
                         ],
                       ),
-                    ),                    // Voting Time
+                    ), // Voting Time
                     _buildTimerSetting(
                       'Voting Time',
                       'Duration for voting phase',
@@ -230,14 +230,15 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
       ),
     );
   }
+
   Widget _buildTimerSetting(
     String title,
     String description,
     IconData icon,
     int currentValue,
-    Function(int) onChanged,
-    {List<int>? presetValues}
-  ) {
+    Function(int) onChanged, {
+    List<int>? presetValues,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -330,12 +331,20 @@ class _GameSettingsDialogState extends State<GameSettingsDialog> {
                     () => onChanged((currentValue + 5).clamp(10, 300)),
                   ),
                 ],
-              ),              // Preset buttons
+              ), // Preset buttons
               Row(
                 children: [
-                  for (int i = 0; i < (presetValues ?? [15, 30, 60]).length; i++) ...[
-                    _buildPresetButton('${(presetValues ?? [15, 30, 60])[i]}s', () => onChanged((presetValues ?? [15, 30, 60])[i])),
-                    if (i < (presetValues ?? [15, 30, 60]).length - 1) const SizedBox(width: 4),
+                  for (
+                    int i = 0;
+                    i < (presetValues ?? [15, 30, 60]).length;
+                    i++
+                  ) ...[
+                    _buildPresetButton(
+                      '${(presetValues ?? [15, 30, 60])[i]}s',
+                      () => onChanged((presetValues ?? [15, 30, 60])[i]),
+                    ),
+                    if (i < (presetValues ?? [15, 30, 60]).length - 1)
+                      const SizedBox(width: 4),
                   ],
                 ],
               ),

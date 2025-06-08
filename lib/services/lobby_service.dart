@@ -797,7 +797,8 @@ class LobbyService {
           await _firestore.collection('lobbies').doc(lobbyCode).get();
       if (!lobbyDoc.exists) {
         throw Exception('Lobby not found');
-      }      final data = lobbyDoc.data() as Map<String, dynamic>;
+      }
+      final data = lobbyDoc.data() as Map<String, dynamic>;
       final gameSettings = data['gameSettings'] as Map<String, dynamic>? ?? {};
       return {
         'nightPhaseDuration': gameSettings['nightTime'] ?? 60,

@@ -135,7 +135,7 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
             if (value is int && value > 0) {
               currentRoles[key] = value;
             }
-          });          // Load current game settings
+          }); // Load current game settings
           final settingsData =
               data['gameSettings'] as Map<String, dynamic>? ?? {};
           final currentSettings = <String, dynamic>{
@@ -927,7 +927,8 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                     12,
                                                   ),
                                                   child: Column(
-                                                    children: [                                                      // Timer Settings
+                                                    children: [
+                                                      // Timer Settings
                                                       _buildSettingItem(
                                                         'Voting Time',
                                                         '${_currentSettings['votingTime'] ?? 45}s',
