@@ -667,9 +667,7 @@ async function processNightActions(lobbyData, players) {
 
                 if (!isPeeperBlocked && peeperPlayer) {
                     const targetId = peeperData.targetId;
-                    const targetPlayer = players.find(p => p.id === targetId);
-
-                    if (targetPlayer) {
+                    const targetPlayer = players.find(p => p.id === targetId);                    if (targetPlayer) {
                         // Determine who visited the target
                         let visitors = [];
 
@@ -695,7 +693,68 @@ async function processNightActions(lobbyData, players) {
                                     }
                                 }
                             }
-                        }                        // Private event - only the Peeper sees this
+                        }
+
+                        // Check if any Sheriff investigated
+                        if (roleDataUpdate.sheriff) {
+                            for (const [sheriffUid, sheriffData] of Object.entries(roleDataUpdate.sheriff)) {
+                                if (sheriffData && sheriffData.targetId === targetId && !blockedPlayerIds.includes(sheriffUid)) {
+                                    const sheriffPlayer = players.find(p => p.id === sheriffUid && p.role === 'Sheriff');
+                                    if (sheriffPlayer) {
+                                        visitors.push(sheriffPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any Escort visited (blocks count as visits)
+                        if (roleDataUpdate.escort) {
+                            for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
+                                if (escortData && escortData.blockedId === targetId && !blockedPlayerIds.includes(escortUid)) {
+                                    const escortPlayer = players.find(p => p.id === escortUid && p.role === 'Escort');
+                                    if (escortPlayer) {
+                                        visitors.push(escortPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any other Peeper spied on same target
+                        if (roleDataUpdate.peeper) {
+                            for (const [otherPeeperUid, otherPeeperData] of Object.entries(roleDataUpdate.peeper)) {
+                                if (otherPeeperData && otherPeeperData.targetId === targetId && 
+                                    otherPeeperUid !== peeperUid && !blockedPlayerIds.includes(otherPeeperUid)) {
+                                    const otherPeeperPlayer = players.find(p => p.id === otherPeeperUid && p.role === 'Peeper');
+                                    if (otherPeeperPlayer) {
+                                        visitors.push(otherPeeperPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any Chieftain ordered kill on target
+                        if (roleDataUpdate.chieftain) {
+                            for (const [chieftainUid, chieftainData] of Object.entries(roleDataUpdate.chieftain)) {
+                                if (chieftainData && chieftainData.targetId === targetId && !blockedPlayerIds.includes(chieftainUid)) {
+                                    const chieftainPlayer = players.find(p => p.id === chieftainUid && p.role === 'Chieftain');
+                                    if (chieftainPlayer) {
+                                        visitors.push(chieftainPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any Gunslinger shot the target
+                        if (roleDataUpdate.gunslinger) {
+                            for (const [gunslingerUid, gunslingerData] of Object.entries(roleDataUpdate.gunslinger)) {
+                                if (gunslingerData && gunslingerData.targetId === targetId && !blockedPlayerIds.includes(gunslingerUid)) {
+                                    const gunslingerPlayer = players.find(p => p.id === gunslingerUid && p.role === 'Gunslinger');
+                                    if (gunslingerPlayer) {
+                                        visitors.push(gunslingerPlayer.name);
+                                    }
+                                }
+                            }
+                        }// Private event - only the Peeper sees this
                         privateEvents[peeperPlayer.id] = {
                             type: MESSAGES.EVENT_TYPES.PEEP_RESULT,
                             targetName: targetPlayer.name,
@@ -1172,9 +1231,7 @@ async function processNonKillActions(lobbyData, players, roleDataUpdate, updated
 
                 if (!isPeeperBlocked && peeperPlayer) {
                     const targetId = peeperData.targetId;
-                    const targetPlayer = players.find(p => p.id === targetId);
-
-                    if (targetPlayer) {
+                    const targetPlayer = players.find(p => p.id === targetId);                    if (targetPlayer) {
                         // Determine who visited the target (only non-kill actions on first night)
                         let visitors = [];
 
@@ -1185,6 +1242,43 @@ async function processNonKillActions(lobbyData, players, roleDataUpdate, updated
                                     const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
                                     if (doctorPlayer) {
                                         visitors.push(doctorPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any Sheriff investigated (non-kill action)
+                        if (roleDataUpdate.sheriff) {
+                            for (const [sheriffUid, sheriffData] of Object.entries(roleDataUpdate.sheriff)) {
+                                if (sheriffData && sheriffData.targetId === targetId && !blockedPlayerIds.includes(sheriffUid)) {
+                                    const sheriffPlayer = players.find(p => p.id === sheriffUid && p.role === 'Sheriff');
+                                    if (sheriffPlayer) {
+                                        visitors.push(sheriffPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any Escort visited (blocks count as visits, non-kill action)
+                        if (roleDataUpdate.escort) {
+                            for (const [escortUid, escortData] of Object.entries(roleDataUpdate.escort)) {
+                                if (escortData && escortData.blockedId === targetId && !blockedPlayerIds.includes(escortUid)) {
+                                    const escortPlayer = players.find(p => p.id === escortUid && p.role === 'Escort');
+                                    if (escortPlayer) {
+                                        visitors.push(escortPlayer.name);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if any other Peeper spied on same target (non-kill action)
+                        if (roleDataUpdate.peeper) {
+                            for (const [otherPeeperUid, otherPeeperData] of Object.entries(roleDataUpdate.peeper)) {
+                                if (otherPeeperData && otherPeeperData.targetId === targetId && 
+                                    otherPeeperUid !== peeperUid && !blockedPlayerIds.includes(otherPeeperUid)) {
+                                    const otherPeeperPlayer = players.find(p => p.id === otherPeeperUid && p.role === 'Peeper');
+                                    if (otherPeeperPlayer) {
+                                        visitors.push(otherPeeperPlayer.name);
                                     }
                                 }
                             }
