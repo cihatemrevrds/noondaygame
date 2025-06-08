@@ -23,6 +23,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -30,8 +31,26 @@ flutter:
     - assets/images/backgrounds/
     - assets/images/roles/
     - assets/images/profilePictures/
-
   fonts:
     - family: Rye
       fonts:
         - asset: assets/fonts/Rye-Regular.ttf
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  web: 
+    generate: true
+    image_path: "assets/images/backgrounds/app_icon.jpg"
+    background_color: "#2C1810"
+    theme_color: "#8B4513"
+  windows:
+    generate: true
+    image_path: "assets/images/backgrounds/app_icon.jpg"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/images/backgrounds/app_icon.jpg"
+  image_path: "assets/images/backgrounds/app_icon.jpg"
+  adaptive_icon_background: "#2C1810"
+  adaptive_icon_foreground: "assets/images/backgrounds/app_icon.jpg"
