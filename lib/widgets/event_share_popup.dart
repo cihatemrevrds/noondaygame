@@ -191,7 +191,7 @@ class _EventSharePopupState extends State<EventSharePopup>
                             ),
                           ),
                           child: Text(
-                            widget.eventDescription,
+                            widget.events[_currentEventIndex], // Dynamically fetch the event description
                             style: const TextStyle(
                               fontFamily: 'Rye',
                               fontSize: 16,
