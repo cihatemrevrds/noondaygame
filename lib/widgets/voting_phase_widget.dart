@@ -48,110 +48,103 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
       widget.onVoteChanged!(_selectedPlayerId);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
+      child: Column(
         children: [
-          // Left side - Timer and Voting text
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+          // Top - Timer and Voting text (centered)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Bullet Timer
+                BulletTimerWidget(
+                  remainingTime: widget.remainingTime,
+                  totalTime: widget.totalTime, // Use actual voting time
+                  size: 100, // Slightly smaller for mobile
+                  activeBulletColor: Colors.orange,
+                  inactiveBulletColor: Colors.grey.withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                // Voting text
+                const Text(
+                  'VOTING',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black,
+                        blurRadius: 4,
+                        offset: Offset(1, 1),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Bullet Timer
-                  BulletTimerWidget(
-                    remainingTime: widget.remainingTime,
-                    totalTime: widget.totalTime, // Use actual voting time
-                    size: 120,
-                    activeBulletColor: Colors.orange,
-                    inactiveBulletColor: Colors.grey.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 32),
-                  // Voting text
-                  const Text(
-                    'VOTING',
-                    style: TextStyle(
-                      fontFamily: 'Rye',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 2,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black,
-                          blurRadius: 4,
-                          offset: Offset(1, 1),
-                        ),
-                      ],
+                ),
+                const SizedBox(height: 12),
+                // Current vote status
+                if (_selectedPlayerId != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange, width: 1),
+                    ),
+                    child: Text(
+                      'Voting for:\n${widget.players.firstWhere((p) => p.id == _selectedPlayerId).name}',
+                      style: const TextStyle(
+                        fontFamily: 'Rye',
+                        fontSize: 12,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey, width: 1),
+                    ),
+                    child: const Text(
+                      'No vote cast',
+                      style: TextStyle(
+                        fontFamily: 'Rye',
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Current vote status
-                  if (_selectedPlayerId != null)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange, width: 1),
-                      ),
-                      child: Text(
-                        'Voting for:\n${widget.players.firstWhere((p) => p.id == _selectedPlayerId).name}',
-                        style: const TextStyle(
-                          fontFamily: 'Rye',
-                          fontSize: 12,
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey, width: 1),
-                      ),
-                      child: const Text(
-                        'No vote cast',
-                        style: TextStyle(
-                          fontFamily: 'Rye',
-                          fontSize: 12,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
 
-          const SizedBox(width: 24),
-
-          // Right side - Players Grid with voting buttons
+          // Bottom - Players Grid with voting buttons
           Expanded(
-            flex: 3,
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -166,20 +159,27 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
       ),
     );
   }
-
   Widget _buildPlayersGrid() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            childAspectRatio: 0.9, // Slightly adjusted for smaller buttons
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: widget.players.length,          itemBuilder: (context, index) {
+    // Use responsive grid layout based on actual player count and screen size
+    int crossAxisCount = 3; // Default to 3 columns for mobile
+    
+    // Adjust columns based on player count for better layout
+    if (widget.players.length <= 4) {
+      crossAxisCount = 2;
+    } else if (widget.players.length <= 9) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 4;
+    }
+
+    return GridView.builder(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: 0.85, // Slightly adjusted for voting buttons
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: widget.players.length,itemBuilder: (context, index) {
             final player = widget.players[index];
 
             // Can't vote for yourself or dead players
@@ -264,8 +264,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                             ),
                           ),
                         ),
-                      ),
-                    )                  else
+                      ),                    )
+                  else
                     // Placeholder for dead players or current user
                     const SizedBox(height: 20),
                 ],
@@ -273,7 +273,5 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
             );
           },
         );
-      },
-    );
   }
 }

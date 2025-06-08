@@ -28,68 +28,63 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
   void initState() {
     super.initState();
   }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
+      child: Column(
         children: [
-          // Left side - Timer and Discussion text
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+          // Top - Timer and Discussion text (centered)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Bullet Timer
+                BulletTimerWidget(
+                  remainingTime: widget.remainingTime,
+                  totalTime: widget.totalTime, // Use actual discussion time
+                  size: 100, // Slightly smaller for mobile
+                  activeBulletColor: Colors.white,
+                  inactiveBulletColor: Colors.grey.withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                // Discussion text
+                const Text(
+                  'DISCUSSION',
+                  style: TextStyle(
+                    fontFamily: 'Rye',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black,
+                        blurRadius: 4,
+                        offset: Offset(1, 1),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Bullet Timer
-                  BulletTimerWidget(
-                    remainingTime: widget.remainingTime,
-                    totalTime: widget.totalTime, // Use actual discussion time
-                    size: 120,
-                    activeBulletColor: Colors.white,
-                    inactiveBulletColor: Colors.grey.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 32),
-                  // Discussion text
-                  const Text(
-                    'DISCUSSION',
-                    style: TextStyle(
-                      fontFamily: 'Rye',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 2,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black,
-                          blurRadius: 4,
-                          offset: Offset(1, 1),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(width: 24), // Right side - Players Grid
+          // Bottom - Players Grid
           Expanded(
-            flex: 3,
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
