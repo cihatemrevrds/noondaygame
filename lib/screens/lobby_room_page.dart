@@ -451,8 +451,8 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                   ),
                                                 ),
                                                 leading: SizedBox(
-                                                  width: 40,
-                                                  height: 40,
+                                                  width: 32,
+                                                  height: 32,
                                                   child: PlayerAvatar(
                                                     name: player.name,
                                                     isLeader: player.isLeader,
@@ -967,6 +967,13 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                         _currentSettings['allowFirstNightKill'] ??
                                                             false,
                                                         Icons.nightlight_round,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      _buildBooleanSettingItem(
+                                                        'Disable Win Conditions',
+                                                        _currentSettings['disableWinConditions'] ??
+                                                            false,
+                                                        Icons.bug_report,
                                                       ),
                                                     ],
                                                   ),

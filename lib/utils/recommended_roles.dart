@@ -1,9 +1,11 @@
 // Configuration file for recommended role settings based on player count
 // Developers can easily modify these settings to balance the game
 
-class RecommendedRoles {
-  // Recommended role configurations for different player counts
+class RecommendedRoles {  // Recommended role configurations for different player counts
   static const Map<int, Map<String, int>> _recommendations = {
+    // 1 player (Test/Demo mode)
+    1: {'Sheriff': 1},
+    
     // 4 players (Minimum game size)
     4: {'Sheriff': 1, 'Doctor': 1, 'Gunman': 1, 'Chieftain': 1},
 

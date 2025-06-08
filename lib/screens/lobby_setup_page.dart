@@ -4,6 +4,7 @@ import '../widgets/menu_button.dart';
 import '../widgets/input_field.dart';
 import '../services/lobby_service.dart';
 import 'lobby_room_page.dart';
+import 'mobile_lobby_room_page.dart';
 
 class LobbySetupPage extends StatefulWidget {
   const LobbySetupPage({super.key});
@@ -13,9 +14,14 @@ class LobbySetupPage extends StatefulWidget {
 }
 
 class _LobbySetupPageState extends State<LobbySetupPage> {
-  final TextEditingController _roomNameController = TextEditingController();
-  final LobbyService _lobbyService = LobbyService();
+  final TextEditingController _roomNameController = TextEditingController();  final LobbyService _lobbyService = LobbyService();
   bool _isLoading = false;
+  
+  // Helper function to detect mobile devices
+  bool _isMobile(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth < 800; // Threshold for mobile/tablet detection
+  }
   
   @override
   void dispose() {
@@ -56,18 +62,31 @@ class _LobbySetupPageState extends State<LobbySetupPage> {
         
         // Firestore senkronizasyonu için biraz bekle
         await Future.delayed(const Duration(milliseconds: 1500));
-        
-        if (mounted) {
+          if (mounted) {
           print('Navigating to LobbyRoomPage as host');
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LobbyRoomPage(
-                roomName: _roomNameController.text,
-                lobbyCode: lobbyCode,
+          
+          // Check if mobile device and navigate accordingly
+          if (_isMobile(context)) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MobileLobbyRoomPage(
+                  roomName: _roomNameController.text,
+                  lobbyCode: lobbyCode,
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LobbyRoomPage(
+                  roomName: _roomNameController.text,
+                  lobbyCode: lobbyCode,
+                ),
+              ),
+            );
+          }
         }
       } else {
         throw Exception("Failed to create lobby");

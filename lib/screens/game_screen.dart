@@ -229,7 +229,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
             // Update vote selection
             _votedPlayerId = votes[_currentUserId];
-          });          // Handle phase-specific popups and actions
+          }); // Handle phase-specific popups and actions
           _handlePhaseSpecificActions(gameState, data);
 
           // Check for win conditions on every lobby update - ensures all players see victory screen simultaneously
@@ -603,11 +603,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     // Always return true if we have any data - we'll display a default message anyway
     return true;
-  }
+  } // Check win conditions locally and show victory screen if needed
 
-  // Check win conditions locally and show victory screen if needed
   Map<String, dynamic>? _checkWinConditions() {
     if (_players.isEmpty) return null;
+
+    // Check if win conditions are disabled for testing
+    if (_lobbyData != null) {
+      final gameSettings =
+          _lobbyData!['gameSettings'] as Map<String, dynamic>? ?? {};
+      if (gameSettings['disableWinConditions'] == true) {
+        return null;
+      }
+    }
 
     // Count alive players by team
     final aliveCount = {'Town': 0, 'Bandit': 0, 'Neutral': 0, 'Total': 0};
