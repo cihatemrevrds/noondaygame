@@ -12,7 +12,7 @@ function checkWinConditionsIfEnabled(updatedPlayers, lobbyData) {
         return { gameOver: false };
     }
 
-    return teamManager.checkWinConditions(updatedPlayers, lobbyData);
+    return teamManager.checkWinConditionsSync(updatedPlayers, lobbyData);
 }
 
 // Helper function to calculate day information phase time based on events
@@ -512,20 +512,10 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
                 }
                 return p;
             });
-            updateData.players = updatedPlayers;
-
-            // Check for game end conditions after voting elimination
+            updateData.players = updatedPlayers;            // Check for game end conditions after voting elimination
             const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
 
             if (winCondition.gameOver) {
-                // Game is over - check if Jester won by being voted out
-                if (eliminatedPlayer.role === 'Jester') {
-                    // Jester wins by being voted out
-                    winCondition.winner = 'Jester';
-                    winCondition.winType = 'jester_vote_out';
-                    winCondition.finalPlayers = [eliminatedPlayer];
-                }
-
                 // Update lobby status and end game
                 updateData = {
                     ...updateData,
