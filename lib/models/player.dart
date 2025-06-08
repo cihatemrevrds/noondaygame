@@ -1,12 +1,11 @@
-class Player {
-  final String id;
+class Player {  final String id;
   final String name;
   final bool isLeader;
   final String? role;
   final bool isAlive;
   final String? team;
   final String? profilePicture;
-
+  final String? eliminatedBy;
   Player({
     required this.name, 
     this.isLeader = false,
@@ -15,8 +14,8 @@ class Player {
     this.isAlive = true,
     this.team,
     this.profilePicture,
-  });
-  // Create Player from Firestore map
+    this.eliminatedBy,
+  });  // Create Player from Firestore map
   factory Player.fromMap(Map<String, dynamic> map) {
     return Player(
       id: map['id'] as String? ?? '',
@@ -26,9 +25,9 @@ class Player {
       isAlive: map['isAlive'] as bool? ?? true,
       team: map['team'] as String?,
       profilePicture: map['profilePicture'] as String?,
+      eliminatedBy: map['eliminatedBy'] as String?,
     );
-  }
-  // Convert Player to Firestore map
+  }  // Convert Player to Firestore map
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -38,9 +37,9 @@ class Player {
       'isAlive': isAlive,
       'team': team,
       'profilePicture': profilePicture,
+      'eliminatedBy': eliminatedBy,
     };
-  }
-  // Create a copy with modified fields
+  }  // Create a copy with modified fields
   Player copyWith({
     String? id,
     String? name,
@@ -49,6 +48,7 @@ class Player {
     bool? isAlive,
     String? team,
     String? profilePicture,
+    String? eliminatedBy,
   }) {
     return Player(
       id: id ?? this.id,
@@ -58,6 +58,7 @@ class Player {
       isAlive: isAlive ?? this.isAlive,
       team: team ?? this.team,
       profilePicture: profilePicture ?? this.profilePicture,
+      eliminatedBy: eliminatedBy ?? this.eliminatedBy,
     );
   }
 }

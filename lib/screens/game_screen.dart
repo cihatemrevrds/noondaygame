@@ -505,12 +505,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (context) => NightOutcomePopup(
             title: title,
             message: mainMessage,
-            onComplete: () {
-              Navigator.of(context).pop();
+            onComplete: () {              Navigator.of(context).pop();
               // Make sure we set flag so phase can advance properly
               setState(() {
                 _hasShownNightOutcome = true;
               });
+
+              // Check for win conditions after night outcome processing
+              final winResult = _checkWinConditions();
+              if (winResult != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showVictoryScreen({
+                    'winCondition': {
+                      'winner': winResult['winner'],
+                      'winType': winResult['winType'],
+                    }
+                  });
+                });
+                return; // Don't advance phase if game is over
+              }
 
               // If we're in manual phase control mode, show a snackbar to remind the host
               if (_manualPhaseControl && widget.isHost) {
@@ -561,6 +574,98 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     // Always return true if we have any data - we'll display a default message anyway
     return true;
+  }
+
+  // Check win conditions locally and show victory screen if needed
+  Map<String, dynamic>? _checkWinConditions() {
+    if (_players.isEmpty) return null;
+
+    // Count alive players by team
+    final aliveCount = {
+      'Town': 0,
+      'Bandit': 0,
+      'Neutral': 0,
+      'Total': 0,
+    };
+
+    final townRoles = ['Doctor', 'Sheriff', 'Escort', 'Peeper', 'Gunslinger'];
+    final banditRoles = ['Gunman', 'Chieftain'];
+    final neutralRoles = ['Jester'];
+
+    for (final player in _players) {
+      if (player.isAlive) {
+        aliveCount['Total'] = (aliveCount['Total'] ?? 0) + 1;
+        
+        if (townRoles.contains(player.role)) {
+          aliveCount['Town'] = (aliveCount['Town'] ?? 0) + 1;
+        } else if (banditRoles.contains(player.role)) {
+          aliveCount['Bandit'] = (aliveCount['Bandit'] ?? 0) + 1;
+        } else if (neutralRoles.contains(player.role)) {
+          aliveCount['Neutral'] = (aliveCount['Neutral'] ?? 0) + 1;
+        }
+      }
+    }
+
+    String? winningTeam;
+    bool gameOver = false;
+    String? winType;
+
+    // Town wins if all bandits are eliminated and there are still town members alive
+    if ((aliveCount['Bandit'] ?? 0) == 0 && (aliveCount['Town'] ?? 0) > 0) {
+      winningTeam = 'Town';
+      gameOver = true;
+      winType = 'elimination';
+    }
+    // Bandits win if they equal or outnumber the town
+    else if ((aliveCount['Bandit'] ?? 0) > 0 && 
+             (aliveCount['Bandit'] ?? 0) >= (aliveCount['Town'] ?? 0)) {
+      winningTeam = 'Bandit';
+      gameOver = true;
+      winType = 'majority';
+    }
+
+    // Check for Jester win condition - if Jester was voted out
+    final jesterWinner = _players.firstWhere(
+      (p) => p.role == 'Jester' && 
+             !p.isAlive && 
+             p.eliminatedBy == 'vote',
+      orElse: () => Player(name: ''),
+    );
+
+    if (jesterWinner.name.isNotEmpty) {
+      winningTeam = 'Jester';
+      gameOver = true;
+      winType = 'jester_vote_out';
+    }
+
+    // Special case: If only neutral players remain alive
+    if (!gameOver && 
+        (aliveCount['Total'] ?? 0) > 0 && 
+        (aliveCount['Town'] ?? 0) == 0 && 
+        (aliveCount['Bandit'] ?? 0) == 0) {
+      final lastNeutral = _players.firstWhere(
+        (p) => p.isAlive && neutralRoles.contains(p.role),
+        orElse: () => Player(name: ''),
+      );
+      
+      if (lastNeutral.name.isNotEmpty && (aliveCount['Total'] ?? 0) == 1) {
+        winningTeam = lastNeutral.role;
+        gameOver = true;
+        winType = 'last_standing';
+      }
+    }
+
+    if (gameOver && winningTeam != null) {
+      return {
+        'gameOver': true,
+        'winner': winningTeam,
+        'winType': winType,
+        'aliveCount': aliveCount,
+        'finalPlayers': _players,
+      };
+    }
+
+    return null;
   }
 
   // Handle phase-specific actions and popups
@@ -828,9 +933,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           lastDayResult['name'] as String? ?? 'Unknown';
       final eliminatedPlayerRole =
           lastDayResult['role'] as String? ?? 'Unknown';
-      final voteCount = lastDayResult['voteCount'] as int? ?? 0;
-
-      showDialog(
+      final voteCount = lastDayResult['voteCount'] as int? ?? 0;      showDialog(
         context: context,
         barrierDismissible: false,
         builder:
@@ -840,11 +943,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               voteCount: voteCount,
               onComplete: () {
                 Navigator.of(context).pop();
+                
+                // Check for win conditions after vote result processing
+                final winResult = _checkWinConditions();
+                if (winResult != null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showVictoryScreen({
+                      'winCondition': {
+                        'winner': winResult['winner'],
+                        'winType': winResult['winType'],
+                      }
+                    });
+                  });
+                  return; // Don't advance phase if game is over
+                }
               },
             ),
       );
-    } else {
-      // No majority vote - show no elimination message
+    } else {      // No majority vote - show no elimination message
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -855,6 +971,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               voteCount: 0,
               onComplete: () {
                 Navigator.of(context).pop();
+                
+                // Check for win conditions after vote result processing (even with no elimination)
+                final winResult = _checkWinConditions();
+                if (winResult != null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showVictoryScreen({
+                      'winCondition': {
+                        'winner': winResult['winner'],
+                        'winType': winResult['winType'],
+                      }
+                    });
+                  });
+                  return; // Don't advance phase if game is over
+                }
               },
             ),
       );
