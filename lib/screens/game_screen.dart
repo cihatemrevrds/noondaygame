@@ -886,6 +886,35 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _autoAdvancePhase() async {
+    // Check if lobby is existing in firebase
+    try {
+      final lobbyRef = FirebaseFirestore.instance
+          .collection('lobbies')
+          .doc(widget.lobbyCode.toUpperCase());
+      final lobbyDoc = await lobbyRef.get();
+      if (!lobbyDoc.exists) {
+        print('lobby cannot found');
+        // Terminate game_screen when lobby is not found
+        if (mounted) {
+          // Cancel all timers and cleanup
+          _phaseTimer?.cancel();
+          _phaseTimer = null;
+          _lobbySubscription?.cancel();
+          _lobbySubscription = null;
+
+          // Set game over flag to prevent further operations
+          _isGameOver = true;
+
+          // Navigate back to home screen
+          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        }
+        return;
+      }
+    } catch (e) {
+      print('lobby cannot found');
+      return;
+    }
+
     // Don't advance if game is over
     if (_isGameOver) return;
 
