@@ -610,17 +610,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     String? winningTeam;
     bool gameOver = false;
-    String? winType;
-
-    // Town wins if all bandits are eliminated and there are still town members alive
+    String? winType;    // Town wins if all bandits are eliminated and there are still town members alive
     if ((aliveCount['Bandit'] ?? 0) == 0 && (aliveCount['Town'] ?? 0) > 0) {
       winningTeam = 'Town';
       gameOver = true;
       winType = 'elimination';
     }
-    // Bandits win if they equal or outnumber the town
+    // Bandits win if they outnumber the town (not equal)
     else if ((aliveCount['Bandit'] ?? 0) > 0 && 
-             (aliveCount['Bandit'] ?? 0) >= (aliveCount['Town'] ?? 0)) {
+             (aliveCount['Bandit'] ?? 0) > (aliveCount['Town'] ?? 0)) {
       winningTeam = 'Bandit';
       gameOver = true;
       winType = 'majority';

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/player.dart';
 import '../utils/role_icons.dart';
-import '../screens/main_menu.dart';
 import '../services/game_state_manager.dart';
 
 class VictoryScreenWidget extends StatefulWidget {
@@ -80,7 +79,6 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
 
     // Don't auto-close - let host manually end the game
   }
-
   @override
   void dispose() {
     _autoCloseTimer?.cancel();
@@ -89,14 +87,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
     _slideController.dispose();
     super.dispose();
   }
-  void _returnToMainMenu() {
-    _autoCloseTimer?.cancel();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => MainMenu(username: '')),
-      (route) => false,
-    );
-  }
+
   Future<void> _endGame() async {
     final gameStateManager = GameStateManager();
 
@@ -402,18 +393,15 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                               ],
                             ],
                           ),
-                        ),
-                          const SizedBox(height: 24),
+                        ),                        const SizedBox(height: 24),
                         
-                        // Buttons Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Return to Main Menu Button
-                            ElevatedButton(
-                              onPressed: _returnToMainMenu,
+                        // End Game Button (Host Only)
+                        if (widget.isHost)
+                          Center(
+                            child: ElevatedButton(
+                              onPressed: _endGame,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: winnerColor,
+                                backgroundColor: Colors.red.shade700,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                                 shape: RoundedRectangleBorder(
@@ -422,7 +410,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 elevation: 8,
                               ),
                               child: const Text(
-                                'RETURN TO MAIN MENU',
+                                'END GAME',
                                 style: TextStyle(
                                   fontFamily: 'Rye',
                                   fontSize: 16,
@@ -430,33 +418,7 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
                                 ),
                               ),
                             ),
-                            
-                            // End Game Button (Host Only)
-                            if (widget.isHost) ...[
-                              const SizedBox(width: 16),
-                              ElevatedButton(
-                                onPressed: _endGame,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red.shade700,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 8,
-                                ),
-                                child: const Text(
-                                  'END GAME',
-                                  style: TextStyle(
-                                    fontFamily: 'Rye',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                          ),
                       ],
                     ),
                   ),

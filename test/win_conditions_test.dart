@@ -72,10 +72,9 @@ void main() {
         winningTeam = 'Town';
         gameOver = true;
         winType = 'elimination';
-      }
-      // Bandits win if they equal or outnumber the town
+      }      // Bandits win if they outnumber the town (not equal)
       else if ((aliveCount['Bandit'] ?? 0) > 0 && 
-               (aliveCount['Bandit'] ?? 0) >= (aliveCount['Town'] ?? 0)) {
+               (aliveCount['Bandit'] ?? 0) > (aliveCount['Town'] ?? 0)) {
         winningTeam = 'Bandit';
         gameOver = true;
         winType = 'majority';
@@ -162,8 +161,7 @@ void main() {
       });
     });
 
-    group('Bandit Victory Scenarios', () {
-      test('Bandits win when they equal Town numbers', () {
+    group('Bandit Victory Scenarios', () {      test('Bandits do NOT win when they equal Town numbers', () {
         testPlayers = [
           createPlayer(id: '1', name: 'Gunman Pete', role: 'Gunman', isAlive: true),
           createPlayer(id: '2', name: 'Sheriff Jack', role: 'Sheriff', isAlive: true),
@@ -172,11 +170,10 @@ void main() {
 
         final result = checkWinConditions(testPlayers);
         
-        expect(result, isNotNull);
-        expect(result!['winner'], equals('Bandit'));
-        expect(result['winType'], equals('majority'));
+        // Should be null because no win condition met (game continues)
+        expect(result, isNull);
         
-        print('✅ PASS: Bandits win with equal numbers');
+        print('✅ PASS: Game continues when Bandits equal Town numbers');
       });
 
       test('Bandits win when they outnumber Town', () {
