@@ -18,6 +18,7 @@ import '../widgets/event_share_popup.dart';
 import '../widgets/vote_result_popup.dart';
 import '../widgets/victory_screen_widget.dart';
 import '../config/message_config.dart';
+import '../utils/phase_background_helper.dart';
 import 'main_menu.dart';
 
 class GameScreen extends StatefulWidget {
@@ -1455,16 +1456,42 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4E2C0B),
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            image:
+                PhaseBackgroundHelper.shouldUseSkyBackground(_currentGameState)
+                    ? DecorationImage(
+                      image: AssetImage(
+                        PhaseBackgroundHelper.getSkyBackground(
+                          _currentGameState,
+                        ),
+                      ),
+                      fit: BoxFit.cover,
+                    )
+                    : null,
+            color:
+                PhaseBackgroundHelper.shouldUseSkyBackground(_currentGameState)
+                    ? null
+                    : const Color(0xFF4E2C0B),
+          ),
+        ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '${_getDisplayPhase().toUpperCase()} (DAY: $_dayCount)',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Rye',
                 fontSize: 18,
-                color: Colors.white,
+                color: PhaseBackgroundHelper.getTextColor(_currentGameState),
+                shadows: [
+                  Shadow(
+                    offset: const Offset(1, 1),
+                    blurRadius: 2,
+                    color: Colors.black.withOpacity(0.7),
+                  ),
+                ],
               ),
             ),
             if (_myRole != null) ...[
@@ -1472,7 +1499,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.brown[900],
+                  color: Colors.brown[900]?.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
