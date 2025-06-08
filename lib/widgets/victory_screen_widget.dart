@@ -174,7 +174,12 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
       case 'Town':
         return 'The Town has triumphed!\nAll bandits have been eliminated.';
       case 'Bandit':
-        return 'The Bandits have taken over!\nThe town has fallen to the outlaws.';
+        if (winType == 'no_gunslinger_parity') {
+          return 'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.';
+        } else if (winType == 'majority') {
+          return 'The Bandits have taken over!\nThe town has fallen to the outlaws.';
+        }
+        return 'The Bandits have won!\nThe town has fallen to the outlaws.';
       case 'Jester':
         if (winType == 'jester_vote_out') {
           return 'The Jester wins!\nChaos reigns as the fool gets the last laugh.';

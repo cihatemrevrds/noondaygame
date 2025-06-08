@@ -615,13 +615,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       winningTeam = 'Town';
       gameOver = true;
       winType = 'elimination';
-    }
-    // Bandits win if they outnumber the town (not equal)
+    }    // Bandits win if they outnumber the town (not equal)
     else if ((aliveCount['Bandit'] ?? 0) > 0 && 
              (aliveCount['Bandit'] ?? 0) > (aliveCount['Town'] ?? 0)) {
       winningTeam = 'Bandit';
       gameOver = true;
       winType = 'majority';
+    }
+    // Special Bandit win condition: If Bandits equal Town AND no Gunslinger alive
+    else if ((aliveCount['Bandit'] ?? 0) > 0 && 
+             (aliveCount['Bandit'] ?? 0) == (aliveCount['Town'] ?? 0)) {
+      // Check if there's a living Gunslinger in Town
+      final hasLivingGunslinger = _players.any(
+        (p) => p.isAlive && p.role == 'Gunslinger'
+      );
+      
+      if (!hasLivingGunslinger) {
+        winningTeam = 'Bandit';
+        gameOver = true;
+        winType = 'no_gunslinger_parity';
+      }
     }
 
     // Check for Jester win condition - if Jester was voted out
@@ -633,10 +646,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
 
     if (jesterWinner.name.isNotEmpty) {
-      winningTeam = 'Jester';
-      gameOver = true;
-      winType = 'jester_vote_out';
-    }    // Special case: If only neutral players remain alive
+      // Jester only wins if there were members from all 3 teams when voted out
+      // Count how many different teams had alive players when Jester was voted
+      int aliveTeamsWhenJesterVoted = 0;
+      if ((aliveCount['Town'] ?? 0) > 0) aliveTeamsWhenJesterVoted++;
+      if ((aliveCount['Bandit'] ?? 0) > 0) aliveTeamsWhenJesterVoted++;
+      if ((aliveCount['Neutral'] ?? 0) > 1) aliveTeamsWhenJesterVoted++; // >1 because Jester is now dead
+      
+      // Only award Jester win if all 3 teams were represented
+      if (aliveTeamsWhenJesterVoted >= 3) {
+        winningTeam = 'Jester';
+        gameOver = true;
+        winType = 'jester_vote_out';
+      }
+    }// Special case: If only neutral players remain alive
     if (!gameOver && 
         (aliveCount['Total'] ?? 0) > 0 && 
         (aliveCount['Town'] ?? 0) == 0 && 

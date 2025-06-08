@@ -79,6 +79,20 @@ void main() {
         gameOver = true;
         winType = 'majority';
       }
+      // Special Bandit win condition: If Bandits equal Town AND no Gunslinger alive
+      else if ((aliveCount['Bandit'] ?? 0) > 0 && 
+               (aliveCount['Bandit'] ?? 0) == (aliveCount['Town'] ?? 0)) {
+        // Check if there's a living Gunslinger in Town
+        final hasLivingGunslinger = players.any(
+          (p) => p.isAlive && p.role == 'Gunslinger'
+        );
+        
+        if (!hasLivingGunslinger) {
+          winningTeam = 'Bandit';
+          gameOver = true;
+          winType = 'no_gunslinger_parity';
+        }
+      }
 
       // Check for Jester win condition - if Jester was voted out
       final jesterWinner = players.firstWhere(
@@ -89,9 +103,19 @@ void main() {
       );
 
       if (jesterWinner.name.isNotEmpty) {
-        winningTeam = 'Jester';
-        gameOver = true;
-        winType = 'jester_vote_out';
+        // Jester only wins if there were members from all 3 teams when voted out
+        // Count how many different teams had alive players when Jester was voted
+        int aliveTeamsWhenJesterVoted = 0;
+        if ((aliveCount['Town'] ?? 0) > 0) aliveTeamsWhenJesterVoted++;
+        if ((aliveCount['Bandit'] ?? 0) > 0) aliveTeamsWhenJesterVoted++;
+        if ((aliveCount['Neutral'] ?? 0) > 1) aliveTeamsWhenJesterVoted++; // >1 because Jester is now dead
+        
+        // Only award Jester win if all 3 teams were represented
+        if (aliveTeamsWhenJesterVoted >= 3) {
+          winningTeam = 'Jester';
+          gameOver = true;
+          winType = 'jester_vote_out';
+        }
       }
 
       // Special case: If only neutral players remain alive
@@ -189,17 +213,46 @@ void main() {
         expect(result, isNotNull);
         expect(result!['winner'], equals('Bandit'));
         expect(result['winType'], equals('majority'));
+          print('✅ PASS: Bandits win when outnumbering Town');
+      });
+
+      test('Bandits win when equal to Town but no Gunslinger alive', () {
+        testPlayers = [
+          createPlayer(id: '1', name: 'Gunman Pete', role: 'Gunman', isAlive: true),
+          createPlayer(id: '2', name: 'Sheriff Jack', role: 'Sheriff', isAlive: true),
+          createPlayer(id: '3', name: 'Gunslinger Kate', role: 'Gunslinger', isAlive: false, eliminatedBy: 'night'), // Gunslinger dead
+        ];
+
+        final result = checkWinConditions(testPlayers);
         
-        print('✅ PASS: Bandits win when outnumbering Town');
+        expect(result, isNotNull);
+        expect(result!['winner'], equals('Bandit'));
+        expect(result['winType'], equals('no_gunslinger_parity'));
+        
+        print('✅ PASS: Bandits win when equal to Town but no Gunslinger');
+      });
+
+      test('Game continues when Bandits equal Town but Gunslinger alive', () {
+        testPlayers = [
+          createPlayer(id: '1', name: 'Gunman Pete', role: 'Gunman', isAlive: true),
+          createPlayer(id: '2', name: 'Gunslinger Kate', role: 'Gunslinger', isAlive: true), // Gunslinger alive
+          createPlayer(id: '3', name: 'Sheriff Jack', role: 'Sheriff', isAlive: false, eliminatedBy: 'night'),
+        ];
+
+        final result = checkWinConditions(testPlayers);
+        
+        expect(result, isNull); // Game should continue
+        
+        print('✅ PASS: Game continues when Bandits equal Town but Gunslinger alive');
       });
     });
 
-    group('Jester Victory Scenarios', () {
-      test('Jester wins when voted out during the day', () {
+    group('Jester Victory Scenarios', () {      test('Jester wins when voted out with all 3 teams present', () {
         testPlayers = [
-          createPlayer(id: '1', name: 'Sheriff Jack', role: 'Sheriff', isAlive: true),
-          createPlayer(id: '2', name: 'Gunman Pete', role: 'Gunman', isAlive: true),
-          createPlayer(id: '3', name: 'Jester Bob', role: 'Jester', isAlive: false, eliminatedBy: 'vote'), // Voted out!
+          createPlayer(id: '1', name: 'Sheriff Jack', role: 'Sheriff', isAlive: true), // Town
+          createPlayer(id: '2', name: 'Gunman Pete', role: 'Gunman', isAlive: true), // Bandit
+          createPlayer(id: '3', name: 'Jester Bob', role: 'Jester', isAlive: false, eliminatedBy: 'vote'), // Neutral (voted out)
+          createPlayer(id: '4', name: 'Jester Ann', role: 'Jester', isAlive: true), // Another neutral alive
         ];
 
         final result = checkWinConditions(testPlayers);
@@ -208,7 +261,21 @@ void main() {
         expect(result!['winner'], equals('Jester'));
         expect(result['winType'], equals('jester_vote_out'));
         
-        print('✅ PASS: Jester wins when voted out');
+        print('✅ PASS: Jester wins when voted out with all 3 teams present');
+      });
+
+      test('Jester does NOT win when voted out with only 2 teams present', () {
+        testPlayers = [
+          createPlayer(id: '1', name: 'Sheriff Jack', role: 'Sheriff', isAlive: true), // Town
+          createPlayer(id: '2', name: 'Gunman Pete', role: 'Gunman', isAlive: false, eliminatedBy: 'night'), // Bandit dead
+          createPlayer(id: '3', name: 'Jester Bob', role: 'Jester', isAlive: false, eliminatedBy: 'vote'), // Neutral voted out
+        ];
+
+        final result = checkWinConditions(testPlayers);
+        
+        expect(result, isNull); // Game should continue, Jester doesn't win
+        
+        print('✅ PASS: Jester does not win when voted out with only 2 teams');
       });
 
       test('Jester does NOT win when killed at night', () {
@@ -357,16 +424,15 @@ void runTests() {
   // The test framework will automatically run the test groups above
   // This is just for display purposes
   
-  print('\n' + '='*60);
-  print('📋 TEST SUMMARY');
+  print('\n' + '='*60);  print('📋 TEST SUMMARY');
   print('='*60);
   print('✅ Town Victory Scenarios: 2 tests');
-  print('✅ Bandit Victory Scenarios: 2 tests');  
-  print('✅ Jester Victory Scenarios: 2 tests');
+  print('✅ Bandit Victory Scenarios: 4 tests');  
+  print('✅ Jester Victory Scenarios: 3 tests');
   print('✅ Neutral Victory Scenarios: 1 test');
   print('✅ Edge Cases: 3 tests');
   print('✅ Integration Scenarios: 3 tests');
-  print('\n📊 TOTAL: 13 comprehensive win condition tests');
+  print('\n📊 TOTAL: 16 comprehensive win condition tests');
   print('\n🎯 TESTING SCOPE:');
   print('   • Immediate win detection after night actions');
   print('   • Immediate win detection after voting phase');
