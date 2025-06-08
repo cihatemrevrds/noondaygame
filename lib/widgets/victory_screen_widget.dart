@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/player.dart';
 import '../utils/role_icons.dart';
 import '../services/game_state_manager.dart';
+import '../config/message_config.dart';
 
 class VictoryScreenWidget extends StatefulWidget {
   final Map<String, dynamic> winCondition;
@@ -162,37 +163,32 @@ class _VictoryScreenWidgetState extends State<VictoryScreenWidget>
         return const Color(0xFF424242);
     }
   }
-
   String _getWinMessage() {
     final winner = widget.winCondition['winner'] as String? ?? 'Unknown';
     final winType = widget.winCondition['winType'] as String? ?? '';
     final gameOver = widget.winCondition['gameOver'] as bool? ?? false;
 
     if (!gameOver) {
-      return 'Game ended unexpectedly';
-    }    switch (winner) {
-      case 'Town':
-        return 'The Town has triumphed!\nAll bandits have been eliminated.';
-      case 'Bandit':
-        if (winType == 'no_gunslinger_parity') {
-          return 'The Bandits have taken over!\nWith no Gunslinger to challenge them, the outlaws seize control.';
-        } else if (winType == 'majority') {
-          return 'The Bandits have taken over!\nThe town has fallen to the outlaws.';
-        }
-        return 'The Bandits have won!\nThe town has fallen to the outlaws.';
-      case 'Jester':
-        if (winType == 'jester_vote_out') {
-          return 'The Jester wins!\nChaos reigns as the fool gets the last laugh.';
-        }
-        return 'The Jester has won!';
-      case 'Draw':
-        return 'It\'s a Draw!\nAll players have been eliminated. No one wins.';
-      default:
-        if (winner.isNotEmpty) {
-          return '$winner has won!\nVictory through survival and cunning.';
-        }
-        return 'Game Over';
+      final winLoseContent = MessageConfig.getWinLoseContent('', '');
+      return winLoseContent?.victoryMessage ?? 'Game ended unexpectedly';
     }
+
+    // Get win/lose content from MessageConfig
+    final winLoseContent = MessageConfig.getWinLoseContent(winner, winType);
+    
+    if (winLoseContent != null) {
+      // Check if this is a neutral role win that needs variable replacement
+      if (winType == 'last_standing' && winner != 'Jester') {
+        return MessageConfig.formatMessage(
+          winLoseContent.victoryMessage,
+          {'winner': winner},
+        );
+      }
+      return winLoseContent.victoryMessage;
+    }
+
+    // Fallback for unknown cases
+    return 'Game Over';
   }
 
   String _getWinIcon() {
