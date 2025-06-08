@@ -239,9 +239,7 @@ exports.advancePhase = async (req, res) => {
                 phaseTimeLimit: 5000, // 5 seconds to show voting results
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp(),
                 lastDayResult: eliminatedPlayer
-            };
-
-            // If someone was eliminated, update players
+            };            // If someone was eliminated, update players and check win conditions
             if (eliminatedPlayer) {
                 const updatedPlayers = players.map(p => {
                     if (p.id === eliminatedPlayer.id) {
@@ -250,6 +248,21 @@ exports.advancePhase = async (req, res) => {
                     return p;
                 });
                 updateData.players = updatedPlayers;
+
+                // Check for game end conditions after voting elimination
+                const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
+
+                if (winCondition.gameOver) {
+                    // Update lobby status and end game immediately
+                    updateData = {
+                        ...updateData,
+                        status: 'ended',
+                        gameState: 'game_over',
+                        phase: 'ended',
+                        winCondition: winCondition,
+                        endedAt: admin.firestore.FieldValue.serverTimestamp()
+                    };
+                }
             }
         } else if (currentGameState === 'voting_outcome') {
             // Move from voting results to night
