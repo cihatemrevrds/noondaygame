@@ -78,9 +78,7 @@ exports.checkWinConditionsSync = (players, lobbyData) => {
             gameOver = true;
             winType = 'no_gunslinger_parity';
         }
-    }
-
-    // Check for Jester win condition - if Jester was voted out
+    }    // Check for Jester win condition - if Jester was voted out
     const jesterWinner = players.find(p => 
         p.role === 'Jester' && 
         !p.isAlive && 
@@ -88,19 +86,10 @@ exports.checkWinConditionsSync = (players, lobbyData) => {
     );
 
     if (jesterWinner) {
-        // Jester only wins if there were members from all 3 teams when voted out
-        // Count how many different teams had alive players when Jester was voted
-        let aliveTeamsWhenJesterVoted = 0;
-        if (aliveCount.Town > 0) aliveTeamsWhenJesterVoted++;
-        if (aliveCount.Bandit > 0) aliveTeamsWhenJesterVoted++;
-        if (aliveCount.Neutral > 1) aliveTeamsWhenJesterVoted++; // >1 because Jester is now dead
-        
-        // Only award Jester win if all 3 teams were represented
-        if (aliveTeamsWhenJesterVoted >= 3) {
-            winningTeam = 'Jester';
-            gameOver = true;
-            winType = 'jester_vote_out';
-        }
+        // Jester wins immediately when voted out - no other conditions needed
+        winningTeam = 'Jester';
+        gameOver = true;
+        winType = 'jester_vote_out';
     }
 
     // Special case: If only neutral players remain alive (last man standing)
