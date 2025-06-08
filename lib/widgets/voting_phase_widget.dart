@@ -48,6 +48,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
       widget.onVoteChanged!(_selectedPlayerId);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -58,17 +59,6 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -80,8 +70,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                   activeBulletColor: Colors.orange,
                   inactiveBulletColor: Colors.grey.withOpacity(0.3),
                 ),
-                const SizedBox(height: 16),
-                // Voting text
+                const SizedBox(height: 16), // Voting text
                 const Text(
                   'VOTING',
                   style: TextStyle(
@@ -92,9 +81,9 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                     letterSpacing: 2,
                     shadows: [
                       Shadow(
-                        color: Colors.black,
+                        offset: Offset(2, 2),
                         blurRadius: 4,
-                        offset: Offset(1, 1),
+                        color: Colors.black,
                       ),
                     ],
                   ),
@@ -159,27 +148,58 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
       ),
     );
   }
-  Widget _buildPlayersGrid() {
-    // Use responsive grid layout based on actual player count and screen size
-    int crossAxisCount = 3; // Default to 3 columns for mobile
-    
-    // Adjust columns based on player count for better layout
-    if (widget.players.length <= 4) {
-      crossAxisCount = 2;
-    } else if (widget.players.length <= 9) {
-      crossAxisCount = 3;
-    } else {
-      crossAxisCount = 4;
-    }
 
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: 0.85, // Slightly adjusted for voting buttons
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: widget.players.length,itemBuilder: (context, index) {
+  Widget _buildPlayersGrid() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isMobile = screenWidth < 800;
+
+        // Use responsive grid layout based on platform and player count
+        int crossAxisCount;
+        double childAspectRatio;
+        double spacing;
+
+        if (isMobile) {
+          // Mobile layout - keep existing behavior
+          crossAxisCount = 3; // Default to 3 columns for mobile
+
+          // Adjust columns based on player count for better layout
+          if (widget.players.length <= 4) {
+            crossAxisCount = 2;
+          } else if (widget.players.length <= 9) {
+            crossAxisCount = 3;
+          } else {
+            crossAxisCount = 4;
+          }
+
+          childAspectRatio = 0.85; // Slightly adjusted for voting buttons
+          spacing = 8;
+        } else {
+          // Web layout - more columns with smaller avatars
+          if (widget.players.length <= 4) {
+            crossAxisCount = 4;
+          } else if (widget.players.length <= 9) {
+            crossAxisCount = 6;
+          } else if (widget.players.length <= 16) {
+            crossAxisCount = 8;
+          } else {
+            crossAxisCount = 10;
+          }
+
+          childAspectRatio = 0.85; // Keep same ratio for vote buttons
+          spacing = 12;
+        }
+
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+          ),
+          itemCount: widget.players.length,
+          itemBuilder: (context, index) {
             final player = widget.players[index];
 
             // Can't vote for yourself or dead players
@@ -188,16 +208,17 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
             final isCurrentUser = player.id == widget.currentUserId;
 
             return Container(
-              decoration: isCurrentUser
-                  ? BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue, width: 3),
-                    )
-                  : isSelected
+              decoration:
+                  isCurrentUser
                       ? BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange, width: 3),
-                        )
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue, width: 3),
+                      )
+                      : isSelected
+                      ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange, width: 3),
+                      )
                       : null,
               child: Column(
                 children: [
@@ -220,7 +241,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                         fontSize: 8,
                         color: player.isAlive ? Colors.white : Colors.grey,
                         fontWeight: FontWeight.bold,
-                        decoration: player.isAlive ? null : TextDecoration.lineThrough,
+                        decoration:
+                            player.isAlive ? null : TextDecoration.lineThrough,
                       ),
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
@@ -242,9 +264,10 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                         child: ElevatedButton(
                           onPressed: () => _toggleVote(player.id),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected
-                                ? Colors.orange
-                                : const Color(0xFF8B4513),
+                            backgroundColor:
+                                isSelected
+                                    ? Colors.orange
+                                    : const Color(0xFF8B4513),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               vertical: 1,
@@ -264,7 +287,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                             ),
                           ),
                         ),
-                      ),                    )
+                      ),
+                    )
                   else
                     // Placeholder for dead players or current user
                     const SizedBox(height: 20),
@@ -273,5 +297,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
             );
           },
         );
+      },
+    );
   }
 }

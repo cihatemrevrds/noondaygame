@@ -28,6 +28,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
   void initState() {
     super.initState();
   }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -38,17 +39,6 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -60,8 +50,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                   activeBulletColor: Colors.white,
                   inactiveBulletColor: Colors.grey.withOpacity(0.3),
                 ),
-                const SizedBox(height: 16),
-                // Discussion text
+                const SizedBox(height: 16), // Discussion text
                 const Text(
                   'DISCUSSION',
                   style: TextStyle(
@@ -72,9 +61,9 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                     letterSpacing: 2,
                     shadows: [
                       Shadow(
-                        color: Colors.black,
+                        offset: Offset(2, 2),
                         blurRadius: 4,
-                        offset: Offset(1, 1),
+                        color: Colors.black,
                       ),
                     ],
                   ),
@@ -101,67 +90,98 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
   }
 
   Widget _buildPlayersGrid() {
-    // Use responsive grid layout based on actual player count
-    int crossAxisCount = 4; // Default to 4 columns
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isMobile = screenWidth < 800;
 
-    // Adjust columns based on player count for better layout
-    if (widget.players.length <= 6) {
-      crossAxisCount = 3;
-    } else if (widget.players.length <= 12) {
-      crossAxisCount = 4;
-    } else {
-      crossAxisCount = 5;
-    }
+        // Use responsive grid layout based on platform and player count
+        int crossAxisCount;
+        double childAspectRatio;
+        double spacing;
 
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: 1.0,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: widget.players.length, // Only show actual players
-      itemBuilder: (context, index) {
-        final player = widget.players[index];
-        final isCurrentUser = player.id == widget.currentUserId;
+        if (isMobile) {
+          // Mobile layout - keep existing behavior
+          crossAxisCount = 4; // Default to 4 columns
 
-        return Container(
-          decoration:
-              isCurrentUser
-                  ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue, width: 3),
-                  )
-                  : null,
-          child: Column(
-            children: [
-              Expanded(
-                child: PlayerAvatar(
-                  name: player.name,
-                  isLeader: player.isLeader,
-                  isDead: !player.isAlive,
-                  profilePicture: player.profilePicture,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: Text(
-                  player.name,
-                  style: TextStyle(
-                    fontFamily: 'Rye',
-                    fontSize: 10,
-                    color: player.isAlive ? Colors.white : Colors.grey,
-                    fontWeight: FontWeight.bold,
-                    decoration:
-                        player.isAlive ? null : TextDecoration.lineThrough,
-                  ),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-            ],
+          // Adjust columns based on player count for better layout
+          if (widget.players.length <= 6) {
+            crossAxisCount = 3;
+          } else if (widget.players.length <= 12) {
+            crossAxisCount = 4;
+          } else {
+            crossAxisCount = 5;
+          }
+
+          childAspectRatio = 1.0;
+          spacing = 8;
+        } else {
+          // Web layout - more columns with smaller avatars
+          if (widget.players.length <= 6) {
+            crossAxisCount = 6;
+          } else if (widget.players.length <= 12) {
+            crossAxisCount = 8;
+          } else if (widget.players.length <= 20) {
+            crossAxisCount = 10;
+          } else {
+            crossAxisCount = 12;
+          }
+
+          childAspectRatio = 1.0;
+          spacing = 12;
+        }
+
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
           ),
+          itemCount: widget.players.length, // Only show actual players
+          itemBuilder: (context, index) {
+            final player = widget.players[index];
+            final isCurrentUser = player.id == widget.currentUserId;
+
+            return Container(
+              decoration:
+                  isCurrentUser
+                      ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue, width: 3),
+                      )
+                      : null,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: PlayerAvatar(
+                      name: player.name,
+                      isLeader: player.isLeader,
+                      isDead: !player.isAlive,
+                      profilePicture: player.profilePicture,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Text(
+                      player.name,
+                      style: TextStyle(
+                        fontFamily: 'Rye',
+                        fontSize: 10,
+                        color: player.isAlive ? Colors.white : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        decoration:
+                            player.isAlive ? null : TextDecoration.lineThrough,
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
