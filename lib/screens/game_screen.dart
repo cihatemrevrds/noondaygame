@@ -795,7 +795,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             }
           });
           setState(() {
-            _remainingTime = 10; // Timer'ı 10 saniyeye çıkar
+            _remainingTime = 20; // Timer'ı 10 saniyeye çıkar
           });
         }
         break;
