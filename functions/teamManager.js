@@ -37,6 +37,16 @@ exports.checkWinConditions = async (req, res) => {
         const lobbyData = lobbyDoc.data();
         const players = lobbyData.players || [];
 
+        // Check if win conditions are disabled for testing
+        const gameSettings = lobbyData.gameSettings || {};
+        if (gameSettings.disableWinConditions === true) {
+            return res.status(200).json({
+                message: 'Win conditions disabled for testing',
+                gameOver: false,
+                aliveCount: {}
+            });
+        }
+
         // Count alive players by team
         const aliveCount = {
             Town: 0,

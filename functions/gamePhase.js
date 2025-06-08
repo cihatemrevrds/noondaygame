@@ -4,6 +4,17 @@ const MESSAGES = require('./messageConfig');
 const teamManager = require('./teamManager');
 const db = admin.firestore();
 
+// Helper function to check win conditions with disable setting support
+function checkWinConditionsIfEnabled(updatedPlayers, lobbyData) {
+    // Check if win conditions are disabled for testing
+    const gameSettings = lobbyData.gameSettings || {};
+    if (gameSettings.disableWinConditions === true) {
+        return { gameOver: false };
+    }
+    
+    return teamManager.checkWinConditions(updatedPlayers, lobbyData);
+}
+
 // Helper function to calculate day information phase time based on events
 function calculateDayInfoTime(nightEvents) {
     const baseTime = 5000; // 5 seconds base time
@@ -178,7 +189,7 @@ exports.advancePhase = async (req, res) => {
             
             // Check for game end conditions after night actions
             const updatedPlayers = updateData.players || players;
-            const winCondition = teamManager.checkWinConditions(updatedPlayers, lobbyData);
+            const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
             
             if (winCondition.gameOver) {
                 // Game is over - update lobby status and end game
@@ -437,7 +448,7 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
         
         // Check for game end conditions after night actions
         const updatedPlayers = updateData.players || players;
-        const winCondition = teamManager.checkWinConditions(updatedPlayers, lobbyData);
+        const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
         
         if (winCondition.gameOver) {
             // Game is over - update lobby status and end game
@@ -498,7 +509,7 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             updateData.players = updatedPlayers;
             
             // Check for game end conditions after voting elimination
-            const winCondition = teamManager.checkWinConditions(updatedPlayers, lobbyData);
+            const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
             
             if (winCondition.gameOver) {
                 // Game is over - check if Jester won by being voted out
