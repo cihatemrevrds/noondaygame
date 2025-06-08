@@ -11,7 +11,7 @@ function checkWinConditionsIfEnabled(updatedPlayers, lobbyData) {
     if (gameSettings.disableWinConditions === true) {
         return { gameOver: false };
     }
-    
+
     return teamManager.checkWinConditions(updatedPlayers, lobbyData);
 }
 
@@ -183,14 +183,15 @@ exports.advancePhase = async (req, res) => {
                 gameState: 'night_phase',
                 phaseTimeLimit: nightTime, // Use lobby setting for night actions
                 phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-            };        } else if (currentGameState === 'night_phase') {
+            };
+        } else if (currentGameState === 'night_phase') {
             // Process night actions and move to night outcome phase
             updateData = await processNightActions(lobbyData, players);
-            
+
             // Check for game end conditions after night actions
             const updatedPlayers = updateData.players || players;
             const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
-            
+
             if (winCondition.gameOver) {
                 // Game is over - update lobby status and end game
                 updateData = {
@@ -307,17 +308,18 @@ exports.autoAdvancePhase = async (req, res) => {
                 message: "Lobby not found - game has ended",
                 lobbyDeleted: true
             });
-        }
-
-        const lobbyData = lobbyDoc.data();
-        const phaseStartedAt = lobbyData.phaseStartedAt?.toDate();
+        } const lobbyData = lobbyDoc.data();
         const phaseTimeLimit = lobbyData.phaseTimeLimit || 60000;
         const now = new Date();
 
         // Check if phase time has expired
-        if (phaseStartedAt && (now - phaseStartedAt) >= phaseTimeLimit) {
-            // Auto advance to next phase
-            return await advanceToNextPhase(lobbyData, lobbyRef);
+        if (lobbyData.phaseStartedAt) {
+            const phaseStartedAt = lobbyData.phaseStartedAt.toDate();
+            if ((now - phaseStartedAt) >= phaseTimeLimit) {
+                // Auto advance to next phase
+                const result = await advanceToNextPhase(lobbyData, lobbyRef);
+                return res.status(200).json(result);
+            }
         }
 
         return res.status(200).json({ message: "Phase time not expired yet" });
@@ -351,13 +353,15 @@ exports.getGameState = async (req, res) => {
 
         if (!lobbyDoc.exists) {
             return res.status(404).json({ error: "Lobby not found" });
-        }
-
-        const lobbyData = lobbyDoc.data();
-        const phaseStartedAt = lobbyData.phaseStartedAt?.toDate();
+        } const lobbyData = lobbyDoc.data();
         const phaseTimeLimit = lobbyData.phaseTimeLimit || 60000;
         const now = new Date();
-        const timeRemaining = Math.max(0, phaseTimeLimit - (now - phaseStartedAt));
+
+        let timeRemaining = 0;
+        if (lobbyData.phaseStartedAt) {
+            const phaseStartedAt = lobbyData.phaseStartedAt.toDate();
+            timeRemaining = Math.max(0, phaseTimeLimit - (now - phaseStartedAt));
+        }
 
         return res.status(200).json({
             phase: lobbyData.phase,
@@ -442,14 +446,15 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             gameState: 'night_phase',
             phaseTimeLimit: nightTime, // Use lobby setting for night actions
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-        };    } else if (currentGameState === 'night_phase') {
+        };
+    } else if (currentGameState === 'night_phase') {
         // Process night actions and move to night outcome phase
         updateData = await processNightActions(lobbyData, players);
-        
+
         // Check for game end conditions after night actions
         const updatedPlayers = updateData.players || players;
         const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
-        
+
         if (winCondition.gameOver) {
             // Game is over - update lobby status and end game
             updateData = {
@@ -480,7 +485,8 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
             gameState: 'discussion_phase',
             phaseTimeLimit: discussionTime, // Use lobby setting for discussion
             phaseStartedAt: admin.firestore.FieldValue.serverTimestamp()
-        };    } else if (currentGameState === 'discussion_phase') {
+        };
+    } else if (currentGameState === 'discussion_phase') {
         // Move to voting phase
         updateData = {
             gameState: 'voting_phase',
@@ -507,10 +513,10 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
                 return p;
             });
             updateData.players = updatedPlayers;
-            
+
             // Check for game end conditions after voting elimination
             const winCondition = checkWinConditionsIfEnabled(updatedPlayers, lobbyData);
-            
+
             if (winCondition.gameOver) {
                 // Game is over - check if Jester won by being voted out
                 if (eliminatedPlayer.role === 'Jester') {
@@ -519,7 +525,7 @@ async function advanceToNextPhase(lobbyData, lobbyRef) {
                     winCondition.winType = 'jester_vote_out';
                     winCondition.finalPlayers = [eliminatedPlayer];
                 }
-                
+
                 // Update lobby status and end game
                 updateData = {
                     ...updateData,
