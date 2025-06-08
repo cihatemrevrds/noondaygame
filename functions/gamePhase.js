@@ -1478,35 +1478,52 @@ async function processNonKillActions(lobbyData, players, roleDataUpdate, updated
 async function processVotes(lobbyData, players) {
     const votes = lobbyData.votes || {};
     const alivePlayers = players.filter(p => p.isAlive);
-    const totalVotes = alivePlayers.length;
-    const requiredVotes = Math.ceil(totalVotes / 2); // Majority needed
+    const totalAlivePlayers = alivePlayers.length;
+    
+    // Minimum votes needed to hang someone: ceil(alive_players / 2)
+    // Examples: 4 players -> 2 votes, 5 players -> 3 votes, 6 players -> 3 votes
+    const requiredVotes = Math.ceil(totalAlivePlayers / 2);
 
-    // Count votes
+    // Count votes for each player
     const voteCounts = {};
     Object.values(votes).forEach(targetId => {
         voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
     });
 
-    // Find the player with the most votes
+    // Find the player(s) with the highest vote count
     let maxVotes = 0;
-    let eliminatedId = null;
-
+    let playersWithMaxVotes = [];
+    
     for (const [targetId, count] of Object.entries(voteCounts)) {
-        if (count > maxVotes && count >= requiredVotes) {
+        if (count > maxVotes) {
             maxVotes = count;
-            eliminatedId = targetId;
-        } else if (count === maxVotes && count >= requiredVotes) {
-            eliminatedId = null; // Tie, no one is eliminated
+            playersWithMaxVotes = [targetId];
+        } else if (count === maxVotes) {
+            playersWithMaxVotes.push(targetId);
         }
+    }
+
+    // Check if someone can be eliminated:
+    // 1. Must have at least the required votes
+    // 2. Must not be tied with another player
+    let eliminatedId = null;
+    if (maxVotes >= requiredVotes && playersWithMaxVotes.length === 1) {
+        eliminatedId = playersWithMaxVotes[0];
     }
 
     if (eliminatedId) {
         const eliminatedPlayer = players.find(p => p.id === eliminatedId);
         return {
             ...eliminatedPlayer,
-            voteCount: maxVotes
+            voteCount: maxVotes,
+            voteCounts: voteCounts, // Include all vote counts for frontend display
+            requiredVotes: requiredVotes
         };
     }
 
-    return null;
+    return {
+        voteCount: maxVotes,
+        voteCounts: voteCounts, // Include all vote counts even when no elimination
+        requiredVotes: requiredVotes
+    };
 }

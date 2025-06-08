@@ -311,9 +311,7 @@ class _PhaseTestingScreenState extends State<PhaseTestingScreen> {
         playerName = 'Unknown Player';
         playerRole = null;
         voteCount = 1;
-    }
-
-    if (_selectedVoteResult == 'no_majority') {
+    }    if (_selectedVoteResult == 'no_majority') {
       // For no majority, show a different message
       showDialog(
         context: context,

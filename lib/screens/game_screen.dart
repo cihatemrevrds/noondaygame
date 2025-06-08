@@ -1084,7 +1084,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
     );
   }
-
   // Show vote result popup
   void _showVoteResultPopup(Map<String, dynamic> data) {
     final lastDayResult = data['lastDayResult'] as Map<String, dynamic>?;
@@ -1095,6 +1094,28 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final eliminatedPlayerRole =
           lastDayResult['role'] as String? ?? 'Unknown';
       final voteCount = lastDayResult['voteCount'] as int? ?? 0;
+      final voteCounts = lastDayResult['voteCounts'] as Map<String, dynamic>?;
+      final requiredVotes = lastDayResult['requiredVotes'] as int?;
+      
+      // Convert voteCounts to proper format
+      Map<String, int>? properVoteCounts;
+      if (voteCounts != null) {
+        properVoteCounts = {};
+        voteCounts.forEach((key, value) {
+          if (value is int) {
+            properVoteCounts![key] = value;
+          }
+        });
+      }
+      
+      // Convert players to simple map format
+      final playersList = _players.map((player) => {
+        'id': player.id,
+        'name': player.name,
+        'role': player.role,
+        'isAlive': player.isAlive,
+      }).toList();
+      
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -1103,6 +1124,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               playerName: eliminatedPlayerName,
               playerRole: eliminatedPlayerRole,
               voteCount: voteCount,
+              voteCounts: properVoteCounts,
+              players: playersList,
+              requiredVotes: requiredVotes,
               onComplete: () {
                 Navigator.of(context).pop();
 
@@ -1124,6 +1148,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       );
     } else {
       // No majority vote - show no elimination message
+      // Try to get vote counts from lobby data if available
+      final voteCounts = data['voteCounts'] as Map<String, dynamic>?;
+      final requiredVotes = data['requiredVotes'] as int?;
+      
+      Map<String, int>? properVoteCounts;
+      if (voteCounts != null) {
+        properVoteCounts = {};
+        voteCounts.forEach((key, value) {
+          if (value is int) {
+            properVoteCounts![key] = value;
+          }
+        });
+      }
+      
+      final playersList = _players.map((player) => {
+        'id': player.id,
+        'name': player.name,
+        'role': player.role,
+        'isAlive': player.isAlive,
+      }).toList();
+      
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -1132,6 +1177,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               playerName: 'No One', // Use "No One" instead of null
               playerRole: null,
               voteCount: 0,
+              voteCounts: properVoteCounts,
+              players: playersList,
+              requiredVotes: requiredVotes,
               onComplete: () {
                 Navigator.of(context).pop();
 
