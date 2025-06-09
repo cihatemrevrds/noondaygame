@@ -99,7 +99,6 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
         int crossAxisCount;
         double childAspectRatio;
         double spacing;
-
         if (isMobile) {
           // Mobile layout - keep existing behavior
           crossAxisCount = 4; // Default to 4 columns
@@ -113,7 +112,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
             crossAxisCount = 5;
           }
 
-          childAspectRatio = 1.0;
+          childAspectRatio = 0.9; // Match voting phase for consistency
           spacing = 8;
         } else {
           // Web layout - more columns with smaller avatars
@@ -126,8 +125,7 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
           } else {
             crossAxisCount = 12;
           }
-
-          childAspectRatio = 1.0;
+          childAspectRatio = 0.9; // Match voting phase for consistency
           spacing = 12;
         }
 
@@ -152,7 +150,8 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                       )
                       : null,
               child: Column(
-                children: [                  Expanded(
+                children: [
+                  Expanded(
                     child: PlayerAvatar(
                       name: player.name,
                       isLeader: player.isLeader,
@@ -163,12 +162,15 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(4.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4.0,
+                      vertical: 2.0,
+                    ),
                     child: Text(
                       player.name,
                       style: TextStyle(
                         fontFamily: 'Rye',
-                        fontSize: 10,
+                        fontSize: 16, // Increased from 14 for better visibility
                         color: player.isAlive ? Colors.white : Colors.grey,
                         fontWeight: FontWeight.bold,
                         decoration:
