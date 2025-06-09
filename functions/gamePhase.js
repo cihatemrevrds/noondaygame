@@ -919,75 +919,106 @@ async function processNightActions(lobbyData, players) {
         }
     } else {
         // No chieftain orders OR chieftain is dead/blocked - gunmen act independently
+        // BUT only ONE Bandit kill per night (randomly selected gunman)
         console.log(`🔫 Gunmen acting independently (no chieftain orders or chieftain blocked)`);
 
         if (roleDataUpdate.gunman) {
+            // Collect all gunmen who have targets and are not blocked
+            const availableGunmenWithTargets = [];
             for (const [gunmanUid, gunmanData] of Object.entries(roleDataUpdate.gunman)) {
                 const gunmanPlayer = players.find(p => p.id === gunmanUid && p.role === 'Gunman' && p.isAlive);
                 const isGunmanBlocked = blockedPlayerIds.includes(gunmanUid);
 
                 if (gunmanPlayer && !isGunmanBlocked && gunmanData && gunmanData.targetId) {
-                    const targetId = gunmanData.targetId;
-                    const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
-
-                    if (targetIndex !== -1) {
-                        const targetPlayer = updatedPlayers[targetIndex];
-
-                        // Check if target is protected by any doctor (if doctors are not blocked)
-                        let isProtected = false;
-                        if (roleDataUpdate.doctor) {
-                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
-                                    isProtected = true;
-                                    break;
-                                }
-                            }
-                        } if (!isProtected) {
-                            updatedPlayers[targetIndex] = {
-                                ...targetPlayer,
-                                isAlive: false,
-                                killedBy: 'Gunman',
-                                eliminatedBy: gunmanPlayer.name
-                            };
-
-                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
-
-                            privateEvents[gunmanPlayer.id] = {
-                                type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
-                                targetName: targetPlayer.name
-                            };
-
-                            // Death notification for the victim
-                            privateEvents[targetPlayer.id] = {
-                                type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
-                                killerTeam: 'Bandits',
-                                victimRole: targetPlayer.role
-                            };
-                        } else {
-                            // Find the doctor(s) who protected this target
-                            if (roleDataUpdate.doctor) {
-                                for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-                                    if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
-                                        const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
-                                        if (doctorPlayer) {
-                                            privateEvents[doctorPlayer.id] = {
-                                                type: MESSAGES.EVENT_TYPES.PROTECTION_SUCCESSFUL,
-                                                targetName: targetPlayer.name
-                                            };
-                                        }
-                                    }
-                                }
-                            } privateEvents[gunmanPlayer.id] = {
-                                type: MESSAGES.EVENT_TYPES.KILL_FAILED,
-                                targetName: targetPlayer.name
-                            };
-                        }
-                    }
+                    availableGunmenWithTargets.push({
+                        player: gunmanPlayer,
+                        targetId: gunmanData.targetId
+                    });
                 } else if (gunmanPlayer && isGunmanBlocked) {
                     privateEvents[gunmanPlayer.id] = {
                         type: MESSAGES.EVENT_TYPES.KILL_BLOCKED
                     };
                 }
+            }
+
+            console.log(`🎯 Found ${availableGunmenWithTargets.length} gunmen with targets and not blocked`);
+
+            if (availableGunmenWithTargets.length > 0) {
+                // Randomly select ONE gunman to execute their kill
+                const randomIndex = Math.floor(Math.random() * availableGunmenWithTargets.length);
+                const selectedGunmanData = availableGunmenWithTargets[randomIndex];
+                const selectedGunman = selectedGunmanData.player;
+                const targetId = selectedGunmanData.targetId;
+
+                console.log(`🎲 Randomly selected ${selectedGunman.name} to execute independent kill`);
+
+                const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
+                if (targetIndex !== -1) {
+                    const targetPlayer = updatedPlayers[targetIndex];
+
+                    // Check if target is protected by any doctor (if doctors are not blocked)
+                    let isProtected = false;
+                    if (roleDataUpdate.doctor) {
+                        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                            if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                isProtected = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isProtected) {
+                        updatedPlayers[targetIndex] = {
+                            ...targetPlayer,
+                            isAlive: false,
+                            killedBy: 'Gunman',
+                            eliminatedBy: selectedGunman.name
+                        };
+
+                        nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+
+                        privateEvents[selectedGunman.id] = {
+                            type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
+                            targetName: targetPlayer.name
+                        };
+
+                        // Death notification for the victim
+                        privateEvents[targetPlayer.id] = {
+                            type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                            killerTeam: 'Bandits',
+                            victimRole: targetPlayer.role
+                        };
+                    } else {
+                        // Find the doctor(s) who protected this target
+                        if (roleDataUpdate.doctor) {
+                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                    const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
+                                    if (doctorPlayer) {
+                                        privateEvents[doctorPlayer.id] = {
+                                            type: MESSAGES.EVENT_TYPES.PROTECTION_SUCCESSFUL,
+                                            targetName: targetPlayer.name
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
+                        privateEvents[selectedGunman.id] = {
+                            type: MESSAGES.EVENT_TYPES.KILL_FAILED,
+                            targetName: targetPlayer.name
+                        };
+                    }
+                }
+
+                // Notify other gunmen that they were not selected
+                availableGunmenWithTargets.forEach(gunmanData => {
+                    if (gunmanData.player.id !== selectedGunman.id) {
+                        privateEvents[gunmanData.player.id] = {
+                            type: MESSAGES.EVENT_TYPES.NOT_SELECTED
+                        };
+                    }
+                });
             }
         }
     }    // Reset role data for next night, preserving persistent data and multi-role structure
