@@ -159,36 +159,33 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
         int crossAxisCount;
         double childAspectRatio;
         double spacing;
-
         if (isMobile) {
           // Mobile layout - keep existing behavior
-          crossAxisCount = 3; // Default to 3 columns for mobile
+          crossAxisCount = 4; // Default to 4 columns
 
           // Adjust columns based on player count for better layout
-          if (widget.players.length <= 4) {
-            crossAxisCount = 2;
-          } else if (widget.players.length <= 9) {
+          if (widget.players.length <= 6) {
             crossAxisCount = 3;
-          } else {
+          } else if (widget.players.length <= 12) {
             crossAxisCount = 4;
+          } else {
+            crossAxisCount = 5;
           }
-          childAspectRatio =
-              0.75; // Reduced to make room for larger text and buttons
+
+          childAspectRatio = 1.1; // Slightly taller to accommodate vote button
           spacing = 8;
         } else {
           // Web layout - more columns with smaller avatars
-          if (widget.players.length <= 4) {
+          if (widget.players.length <= 6) {
             crossAxisCount = 6;
-          } else if (widget.players.length <= 9) {
-            crossAxisCount = 6;
-          } else if (widget.players.length <= 16) {
+          } else if (widget.players.length <= 12) {
             crossAxisCount = 8;
-          } else {
+          } else if (widget.players.length <= 20) {
             crossAxisCount = 10;
+          } else {
+            crossAxisCount = 12;
           }
-
-          childAspectRatio =
-              0.75; // Reduced to make room for larger text and buttons
+          childAspectRatio = 1.1; // Slightly taller to accommodate vote button
           spacing = 12;
         }
 
@@ -223,9 +220,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       : null,
               child: Column(
                 children: [
-                  // Player Avatar - Fixed size instead of Expanded
-                  SizedBox(
-                    height: 60, // Fixed height for avatar
+                  // Player Avatar - Use Expanded like discussion phase
+                  Expanded(
                     child: PlayerAvatar(
                       name: player.name,
                       isLeader: player.isLeader,
@@ -235,15 +231,17 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       currentUserRole: widget.myRole,
                     ),
                   ),
-                  const SizedBox(height: 4), // Space between avatar and name
-                  // Player name - Larger font
+                  // Player name - Same styling as discussion phase
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4.0,
+                      vertical: 2.0,
+                    ),
                     child: Text(
                       player.name,
                       style: TextStyle(
                         fontFamily: 'Rye',
-                        fontSize: 12, // Increased from 8 to 12
+                        fontSize: 16, // Same as discussion phase
                         color: player.isAlive ? Colors.white : Colors.grey,
                         fontWeight: FontWeight.bold,
                         decoration:
@@ -254,14 +252,15 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       maxLines: 1,
                     ),
                   ),
-                  const SizedBox(
-                    height: 4,
-                  ), // Space between name and button                  // Vote Button - Compact size
+                  // Vote Button - Added to discussion phase layout
                   if (canVote)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4.0,
+                        vertical: 2.0,
+                      ),
                       child: SizedBox(
-                        width: 50, // Fixed width instead of full width
+                        width: double.infinity,
                         height: 28,
                         child: ElevatedButton(
                           onPressed: () => _toggleVote(player.id),
@@ -293,7 +292,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                     )
                   else
                     // Placeholder for dead players or current user
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 32),
                 ],
               ),
             );
