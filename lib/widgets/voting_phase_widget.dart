@@ -189,6 +189,13 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
           spacing = 12;
         }
 
+        final isCurrentPlayerAlive =
+            widget.players.any((p) => p.id == widget.currentUserId)
+                ? widget.players
+                    .firstWhere((p) => p.id == widget.currentUserId)
+                    .isAlive
+                : false;
+
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
