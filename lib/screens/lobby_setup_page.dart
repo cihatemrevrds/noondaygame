@@ -51,10 +51,11 @@ class _LobbySetupPageState extends State<LobbySetupPage> {
       
       if (user == null) {
         throw Exception("You must be logged in to create a lobby");
-      }      final lobbyCode = await _lobbyService.createLobby(
+      }
+        final lobbyCode = await _lobbyService.createLobby(
         user.uid,
         user.displayName ?? (user.email?.split('@')[0] ?? 'Host'),
-        20, // Default max players
+        6, // Default max players
       );
         if (lobbyCode != null) {
         print('Lobby created successfully, waiting for sync before navigation...');
