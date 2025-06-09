@@ -152,13 +152,14 @@ class _DiscussionPhaseWidgetState extends State<DiscussionPhaseWidget> {
                       )
                       : null,
               child: Column(
-                children: [
-                  Expanded(
+                children: [                  Expanded(
                     child: PlayerAvatar(
                       name: player.name,
                       isLeader: player.isLeader,
                       isDead: !player.isAlive,
                       profilePicture: player.profilePicture,
+                      playerRole: player.role,
+                      currentUserRole: widget.myRole,
                     ),
                   ),
                   Padding(

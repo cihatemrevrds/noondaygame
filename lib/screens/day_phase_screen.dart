@@ -216,12 +216,13 @@ class DayPhaseScreen extends StatelessWidget {
                                 color: isSelected ? Colors.red : Colors.transparent,
                                 width: 2,
                               ),
-                            ),
-                            child: PlayerAvatar(
+                            ),                            child: PlayerAvatar(
                               name: player.name,
                               isLeader: player.isLeader,
                               isDead: !player.isAlive,
                               profilePicture: player.profilePicture,
+                              playerRole: player.role,
+                              currentUserRole: myRole,
                             ),
                           ),
                           const SizedBox(height: 8),

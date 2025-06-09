@@ -9,6 +9,7 @@ class PlayerGridWidget extends StatelessWidget {
   final Map<String, String> votes;
   final bool isVotingPhase;
   final String currentUserId;
+  final String? myRole;
   final Function(String) onPlayerTap;
 
   const PlayerGridWidget({
@@ -19,6 +20,7 @@ class PlayerGridWidget extends StatelessWidget {
     required this.isVotingPhase,
     required this.currentUserId,
     required this.onPlayerTap,
+    this.myRole,
   });
 
   @override
@@ -85,12 +87,13 @@ class PlayerGridWidget extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Stack(
-                        children: [
-                          PlayerAvatar(
+                        children: [                          PlayerAvatar(
                             name: player.name,
                             isLeader: player.isLeader,
                             isDead: !player.isAlive,
                             profilePicture: player.profilePicture,
+                            playerRole: player.role,
+                            currentUserRole: myRole,
                           ),
                           if (voteCount > 0 && isVotingPhase)
                             Positioned(

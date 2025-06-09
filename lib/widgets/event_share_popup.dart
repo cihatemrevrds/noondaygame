@@ -201,12 +201,35 @@ class _EventSharePopupState extends State<EventSharePopup>
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        const SizedBox(height: 20),
-
-                        // Navigation Buttons
+                        const SizedBox(height: 20),                        // Navigation Buttons
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: _currentEventIndex > 0 
+                              ? MainAxisAlignment.spaceBetween 
+                              : MainAxisAlignment.center,
                           children: [
+                            if (_currentEventIndex > 0)
+                              ElevatedButton(
+                                onPressed: _previousEvent,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF8B4513),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Previous',
+                                  style: TextStyle(
+                                    fontFamily: 'Rye',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                             ElevatedButton(
                               onPressed: _nextEvent,
                               style: ElevatedButton.styleFrom(
@@ -231,29 +254,6 @@ class _EventSharePopupState extends State<EventSharePopup>
                                 ),
                               ),
                             ),
-                            if (_currentEventIndex > 0)
-                              ElevatedButton(
-                                onPressed: _previousEvent,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF8B4513),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Previous',
-                                  style: TextStyle(
-                                    fontFamily: 'Rye',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ],

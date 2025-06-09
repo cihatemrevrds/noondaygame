@@ -6,13 +6,18 @@ class PlayerAvatar extends StatelessWidget {
   final bool isLeader;
   final bool isDead;
   final String? profilePicture;
+  final String? playerRole;
+  final String? currentUserRole;
+  
   const PlayerAvatar({
     super.key,
     required this.name,
     this.isLeader = false,
     this.isDead = false,
     this.profilePicture,
-  });  @override
+    this.playerRole,
+    this.currentUserRole,
+  });@override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -46,8 +51,7 @@ class PlayerAvatar extends StatelessWidget {
                     )
                   : _buildFallbackAvatar(size, fontSize),
               ),
-            ),
-            if (isLeader)
+            ),            if (isLeader)
               Positioned(
                 top: 0,
                 right: 0,
@@ -63,6 +67,26 @@ class PlayerAvatar extends StatelessWidget {
                     Icons.star,
                     color: Colors.white,
                     size: size * 0.2,
+                  ),
+                ),
+              ),
+            // Gun icon for Gunman players (only visible to other Gunman players)
+            if (currentUserRole == 'Gunman' && playerRole == 'Gunman')
+              Positioned(
+                top: 0,
+                left: 0,
+                child: Container(
+                  width: size * 0.3,
+                  height: size * 0.3,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red[700],
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  child: Icon(
+                    Icons.whatshot,
+                    color: Colors.white,
+                    size: size * 0.18,
                   ),
                 ),
               ),
