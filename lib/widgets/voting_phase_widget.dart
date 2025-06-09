@@ -159,37 +159,42 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
         int crossAxisCount;
         double childAspectRatio;
         double spacing;
-
         if (isMobile) {
           // Mobile layout - keep existing behavior
-          crossAxisCount = 3; // Default to 3 columns for mobile
+          crossAxisCount = 4; // Default to 4 columns
 
           // Adjust columns based on player count for better layout
-          if (widget.players.length <= 4) {
-            crossAxisCount = 2;
-          } else if (widget.players.length <= 9) {
+          if (widget.players.length <= 6) {
             crossAxisCount = 3;
-          } else {
+          } else if (widget.players.length <= 12) {
             crossAxisCount = 4;
+          } else {
+            crossAxisCount = 5;
           }
 
-          childAspectRatio = 0.85; // Slightly adjusted for voting buttons
+          childAspectRatio = 1.1; // Slightly taller to accommodate vote button
           spacing = 8;
         } else {
           // Web layout - more columns with smaller avatars
-          if (widget.players.length <= 4) {
-            crossAxisCount = 4;
-          } else if (widget.players.length <= 9) {
+          if (widget.players.length <= 6) {
             crossAxisCount = 6;
-          } else if (widget.players.length <= 16) {
+          } else if (widget.players.length <= 12) {
             crossAxisCount = 8;
-          } else {
+          } else if (widget.players.length <= 20) {
             crossAxisCount = 10;
+          } else {
+            crossAxisCount = 12;
           }
-
-          childAspectRatio = 0.85; // Keep same ratio for vote buttons
+          childAspectRatio = 1.1; // Slightly taller to accommodate vote button
           spacing = 12;
         }
+
+        final isCurrentPlayerAlive =
+            widget.players.any((p) => p.id == widget.currentUserId)
+                ? widget.players
+                    .firstWhere((p) => p.id == widget.currentUserId)
+                    .isAlive
+                : false;
 
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -220,8 +225,9 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                         border: Border.all(color: Colors.orange, width: 3),
                       )
                       : null,
-              child: Column(                children: [
-                  // Player Avatar
+              child: Column(
+                children: [
+                  // Player Avatar - Use Expanded like discussion phase
                   Expanded(
                     child: PlayerAvatar(
                       name: player.name,
@@ -232,14 +238,17 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       currentUserRole: widget.myRole,
                     ),
                   ),
-                  // Player name
+                  // Player name - Same styling as discussion phase
                   Padding(
-                    padding: const EdgeInsets.all(2.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4.0,
+                      vertical: 2.0,
+                    ),
                     child: Text(
                       player.name,
                       style: TextStyle(
                         fontFamily: 'Rye',
-                        fontSize: 8,
+                        fontSize: 16, // Same as discussion phase
                         color: player.isAlive ? Colors.white : Colors.grey,
                         fontWeight: FontWeight.bold,
                         decoration:
@@ -250,18 +259,16 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       maxLines: 1,
                     ),
                   ),
-                  // Vote Button
+                  // Vote Button - Added to discussion phase layout
                   if (canVote)
                     Padding(
-                      padding: const EdgeInsets.only(
-                        top: 2.0,
-                        left: 4.0,
-                        right: 4.0,
-                        bottom: 2.0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4.0,
+                        vertical: 2.0,
                       ),
                       child: SizedBox(
                         width: double.infinity,
-                        height: 20,
+                        height: 28,
                         child: ElevatedButton(
                           onPressed: () => _toggleVote(player.id),
                           style: ElevatedButton.styleFrom(
@@ -271,19 +278,19 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                                     : const Color(0xFF8B4513),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 1,
+                              vertical: 2,
                               horizontal: 4,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            minimumSize: const Size(0, 20),
+                            minimumSize: const Size(0, 28),
                           ),
                           child: Text(
                             isSelected ? 'REMOVE' : 'VOTE',
                             style: const TextStyle(
                               fontFamily: 'Rye',
-                              fontSize: 7,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -292,7 +299,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                     )
                   else
                     // Placeholder for dead players or current user
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 32),
                 ],
               ),
             );
