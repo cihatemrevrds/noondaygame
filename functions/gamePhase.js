@@ -85,7 +85,7 @@ exports.startGame = async (req, res) => {
         // Check if the initial role distribution creates an immediate win condition
         const initialWinCondition = checkWinConditionsIfEnabled(initializedPlayers, lobbyData);
         if (initialWinCondition.gameOver) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid role distribution - game would end immediately',
                 details: `${initialWinCondition.winner} would win with this role setup`,
                 winCondition: initialWinCondition
@@ -680,7 +680,7 @@ async function processNightActions(lobbyData, players) {
 
                 if (!isPeeperBlocked && peeperPlayer) {
                     const targetId = peeperData.targetId;
-                    const targetPlayer = players.find(p => p.id === targetId);                    if (targetPlayer) {
+                    const targetPlayer = players.find(p => p.id === targetId); if (targetPlayer) {
                         // Determine who visited the target
                         let visitors = [];
 
@@ -735,7 +735,7 @@ async function processNightActions(lobbyData, players) {
                         // Check if any other Peeper spied on same target
                         if (roleDataUpdate.peeper) {
                             for (const [otherPeeperUid, otherPeeperData] of Object.entries(roleDataUpdate.peeper)) {
-                                if (otherPeeperData && otherPeeperData.targetId === targetId && 
+                                if (otherPeeperData && otherPeeperData.targetId === targetId &&
                                     otherPeeperUid !== peeperUid && !blockedPlayerIds.includes(otherPeeperUid)) {
                                     const otherPeeperPlayer = players.find(p => p.id === otherPeeperUid && p.role === 'Peeper');
                                     if (otherPeeperPlayer) {
@@ -743,19 +743,8 @@ async function processNightActions(lobbyData, players) {
                                     }
                                 }
                             }
-                        }
-
-                        // Check if any Chieftain ordered kill on target
-                        if (roleDataUpdate.chieftain) {
-                            for (const [chieftainUid, chieftainData] of Object.entries(roleDataUpdate.chieftain)) {
-                                if (chieftainData && chieftainData.targetId === targetId && !blockedPlayerIds.includes(chieftainUid)) {
-                                    const chieftainPlayer = players.find(p => p.id === chieftainUid && p.role === 'Chieftain');
-                                    if (chieftainPlayer) {
-                                        visitors.push(chieftainPlayer.name);
-                                    }
-                                }
-                            }
-                        }
+                        }                        // Note: Chieftain doesn't visit targets - they only give orders to Gunmen
+                        // Only the executing Gunman should appear as a visitor
 
                         // Check if any Gunslinger shot the target
                         if (roleDataUpdate.gunslinger) {
@@ -1244,7 +1233,7 @@ async function processNonKillActions(lobbyData, players, roleDataUpdate, updated
 
                 if (!isPeeperBlocked && peeperPlayer) {
                     const targetId = peeperData.targetId;
-                    const targetPlayer = players.find(p => p.id === targetId);                    if (targetPlayer) {
+                    const targetPlayer = players.find(p => p.id === targetId); if (targetPlayer) {
                         // Determine who visited the target (only non-kill actions on first night)
                         let visitors = [];
 
@@ -1287,7 +1276,7 @@ async function processNonKillActions(lobbyData, players, roleDataUpdate, updated
                         // Check if any other Peeper spied on same target (non-kill action)
                         if (roleDataUpdate.peeper) {
                             for (const [otherPeeperUid, otherPeeperData] of Object.entries(roleDataUpdate.peeper)) {
-                                if (otherPeeperData && otherPeeperData.targetId === targetId && 
+                                if (otherPeeperData && otherPeeperData.targetId === targetId &&
                                     otherPeeperUid !== peeperUid && !blockedPlayerIds.includes(otherPeeperUid)) {
                                     const otherPeeperPlayer = players.find(p => p.id === otherPeeperUid && p.role === 'Peeper');
                                     if (otherPeeperPlayer) {
