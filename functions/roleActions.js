@@ -175,12 +175,17 @@ exports.gunmanKill = async (req, res) => {
         if (!target || !target.isAlive) {
             console.log('❌ Target not alive or not found');
             return res.status(400).json({ error: 'Target is not alive' });
-        }
-
-        // Prevent self-targeting
+        }        // Prevent self-targeting
         if (targetId === userId) {
             console.log('❌ Self-targeting attempt');
             return res.status(400).json({ error: 'You cannot kill yourself' });
+        }
+
+        // Prevent targeting other bandits
+        const targetTeam = require('./teamManager').getTeamByRole(target.role);
+        if (targetTeam === 'Bandit') {
+            console.log('❌ Cannot target fellow bandit');
+            return res.status(400).json({ error: 'You cannot target fellow bandits' });
         }
 
         console.log('💾 Storing gunman kill choice in roleData');

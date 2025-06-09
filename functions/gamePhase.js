@@ -835,80 +835,96 @@ async function processNightActions(lobbyData, players) {
                 const randomIndex = Math.floor(Math.random() * availableGunmen.length);
                 const selectedGunman = availableGunmen[randomIndex];
 
-                console.log(`👑 Chieftain ordered kill, randomly selected ${selectedGunman.name} to execute`);
-
-                // Execute the chieftain's order with the selected gunman
+                console.log(`👑 Chieftain ordered kill, randomly selected ${selectedGunman.name} to execute`);            // Execute the chieftain's order with the selected gunman
                 const targetIndex = updatedPlayers.findIndex(p => p.id === chieftainTarget);
                 if (targetIndex !== -1) {
                     const targetPlayer = updatedPlayers[targetIndex];
 
-                    // Check if target is protected by any doctor (if doctors are not blocked)
-                    let isProtected = false;
-                    if (roleDataUpdate.doctor) {
-                        for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-                            if (doctorData && doctorData.protectedId === chieftainTarget && !blockedPlayerIds.includes(doctorUid)) {
-                                console.log(`🛡️ Target protected by doctor ${doctorUid}`);
-                                isProtected = true;
-                                break;
-                            }
-                        }
-                    } if (!isProtected) {
-                        console.log(`💀 Killing target: ${targetPlayer.name}`);
-                        updatedPlayers[targetIndex] = {
-                            ...targetPlayer,
-                            isAlive: false,
-                            killedBy: 'Gunman',
-                            eliminatedBy: selectedGunman.name
-                        };
+                    // Check if target is a Bandit (Gunman or Chieftain) - Bandits cannot kill other Bandits
+                    if (targetPlayer.role === 'Gunman' || targetPlayer.role === 'Chieftain') {
+                        console.log(`🚫 Bandit attempted to kill another Bandit - blocking kill`);
 
-                        // Public event - everyone sees this
-                        nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
-
-                        // Private event - only the selected Gunman sees this
-                        privateEvents[selectedGunman.id] = {
-                            type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
-                            targetName: targetPlayer.name
-                        };
-
-                        // Chieftain gets success notification
+                        // Notify Chieftain that the target cannot be killed (they are a fellow Bandit)
                         privateEvents[chieftainPlayer.id] = {
-                            type: MESSAGES.EVENT_TYPES.ORDER_SUCCESS,
-                            targetName: targetPlayer.name
+                            type: MESSAGES.EVENT_TYPES.ORDER_FAILED,
+                            targetName: targetPlayer.name,
+                            message: `Your target ${targetPlayer.name} cannot be harmed by fellow Bandits.`
                         };
 
-                        // Death notification for the victim
-                        privateEvents[targetPlayer.id] = {
-                            type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
-                            killerTeam: 'Bandits',
-                            victimRole: targetPlayer.role
+                        // Notify selected Gunman 
+                        privateEvents[selectedGunman.id] = {
+                            type: MESSAGES.EVENT_TYPES.KILL_FAILED,
+                            targetName: targetPlayer.name,
+                            message: `You cannot harm a fellow Bandit.`
                         };
                     } else {
-                        // Target was protected                    // Find the doctor(s) who protected this target
+                        // Normal kill processing for non-Bandit targets
+                        // Check if target is protected by any doctor (if doctors are not blocked)
+                        let isProtected = false;
                         if (roleDataUpdate.doctor) {
                             for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
                                 if (doctorData && doctorData.protectedId === chieftainTarget && !blockedPlayerIds.includes(doctorUid)) {
-                                    const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
-                                    if (doctorPlayer) {
-                                        privateEvents[doctorPlayer.id] = {
-                                            type: MESSAGES.EVENT_TYPES.PROTECTION_SUCCESSFUL,
-                                            targetName: targetPlayer.name
-                                        };
-                                    }
+                                    console.log(`🛡️ Target protected by doctor ${doctorUid}`);
+                                    isProtected = true;
+                                    break;
                                 }
                             }
-                        }                    // Selected Gunman gets failure notification
-                        privateEvents[selectedGunman.id] = {
-                            type: MESSAGES.EVENT_TYPES.KILL_FAILED,
-                            targetName: targetPlayer.name
-                        };
+                        } if (!isProtected) {
+                            console.log(`💀 Killing target: ${targetPlayer.name}`);
+                            updatedPlayers[targetIndex] = {
+                                ...targetPlayer,
+                                isAlive: false,
+                                killedBy: 'Gunman',
+                                eliminatedBy: selectedGunman.name
+                            };
 
-                        // Chieftain gets failure notification
-                        privateEvents[chieftainPlayer.id] = {
-                            type: MESSAGES.EVENT_TYPES.ORDER_FAILED,
-                            targetName: targetPlayer.name
-                        };
-                    }
-                }
+                            // Public event - everyone sees this
+                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+
+                            // Private event - only the selected Gunman sees this
+                            privateEvents[selectedGunman.id] = {
+                                type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
+                                targetName: targetPlayer.name
+                            };
+
+                            // Chieftain gets success notification
+                            privateEvents[chieftainPlayer.id] = {
+                                type: MESSAGES.EVENT_TYPES.ORDER_SUCCESS,
+                                targetName: targetPlayer.name
+                            };
+
+                            // Death notification for the victim
+                            privateEvents[targetPlayer.id] = {
+                                type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                                killerTeam: 'Bandits',
+                                victimRole: targetPlayer.role
+                            };
+                        } else {
+                            // Target was protected                    // Find the doctor(s) who protected this target
+                            if (roleDataUpdate.doctor) {
+                                for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                    if (doctorData && doctorData.protectedId === chieftainTarget && !blockedPlayerIds.includes(doctorUid)) {
+                                        const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
+                                        if (doctorPlayer) {
+                                            privateEvents[doctorPlayer.id] = {
+                                                type: MESSAGES.EVENT_TYPES.PROTECTION_SUCCESSFUL,
+                                                targetName: targetPlayer.name
+                                            };
+                                        }
+                                    }
+                                }
+                            }                    // Selected Gunman gets failure notification
+                            privateEvents[selectedGunman.id] = {
+                                type: MESSAGES.EVENT_TYPES.KILL_FAILED,
+                                targetName: targetPlayer.name
+                            };                        // Chieftain gets failure notification
+                            privateEvents[chieftainPlayer.id] = {
+                                type: MESSAGES.EVENT_TYPES.ORDER_FAILED,
+                                targetName: targetPlayer.name
+                            };
+                        }
+                    } // Close the Bandit protection check
+                } // Close the target found check
 
                 // Other gunmen who weren't selected get informed they were not chosen
                 aliveGunmen.forEach(gunman => {
@@ -976,66 +992,75 @@ async function processNightActions(lobbyData, players) {
                     const selectedGunman = selectedGunmanData.player;
                     const targetId = selectedGunmanData.targetId;
 
-                    console.log(`🎲 Randomly selected ${selectedGunman.name} to execute independent kill`);
-
-                    const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
+                    console.log(`🎲 Randomly selected ${selectedGunman.name} to execute independent kill`); const targetIndex = updatedPlayers.findIndex(p => p.id === targetId);
                     if (targetIndex !== -1) {
                         const targetPlayer = updatedPlayers[targetIndex];
 
-                        // Check if target is protected by any doctor (if doctors are not blocked)
-                        let isProtected = false;
-                        if (roleDataUpdate.doctor) {
-                            for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
-                                if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
-                                    isProtected = true;
-                                    break;
-                                }
-                            }
-                        }
+                        // Check if target is a Bandit (Gunman or Chieftain) - Bandits cannot kill other Bandits
+                        if (targetPlayer.role === 'Gunman' || targetPlayer.role === 'Chieftain') {
+                            console.log(`🚫 Independent Bandit attempted to kill another Bandit - blocking kill`);
 
-                        if (!isProtected) {
-                            updatedPlayers[targetIndex] = {
-                                ...targetPlayer,
-                                isAlive: false,
-                                killedBy: 'Gunman',
-                                eliminatedBy: selectedGunman.name
-                            };
-
-                            nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
-
+                            // Notify Gunman that the target cannot be killed (they are a fellow Bandit)
                             privateEvents[selectedGunman.id] = {
-                                type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
-                                targetName: targetPlayer.name
-                            };
-
-                            // Death notification for the victim
-                            privateEvents[targetPlayer.id] = {
-                                type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
-                                killerTeam: 'Bandits',
-                                victimRole: targetPlayer.role
+                                type: MESSAGES.EVENT_TYPES.KILL_FAILED,
+                                targetName: targetPlayer.name,
+                                message: `You cannot harm a fellow Bandit.`
                             };
                         } else {
-                            // Find the doctor(s) who protected this target
+                            // Normal kill processing for non-Bandit targets
+                            // Check if target is protected by any doctor (if doctors are not blocked)
+                            let isProtected = false;
                             if (roleDataUpdate.doctor) {
                                 for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
                                     if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
-                                        const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
-                                        if (doctorPlayer) {
-                                            privateEvents[doctorPlayer.id] = {
-                                                type: MESSAGES.EVENT_TYPES.PROTECTION_SUCCESSFUL,
-                                                targetName: targetPlayer.name
-                                            };
-                                        }
+                                        isProtected = true;
+                                        break;
                                     }
                                 }
                             }
 
-                            privateEvents[selectedGunman.id] = {
-                                type: MESSAGES.EVENT_TYPES.KILL_FAILED,
-                                targetName: targetPlayer.name
-                            };
-                        }
-                    }
+                            if (!isProtected) {
+                                updatedPlayers[targetIndex] = {
+                                    ...targetPlayer,
+                                    isAlive: false,
+                                    killedBy: 'Gunman',
+                                    eliminatedBy: selectedGunman.name
+                                };
+
+                                nightEvents.push(`${targetPlayer.name} was killed by Bandits.`);
+
+                                privateEvents[selectedGunman.id] = {
+                                    type: MESSAGES.EVENT_TYPES.KILL_SUCCESS,
+                                    targetName: targetPlayer.name
+                                };
+
+                                // Death notification for the victim
+                                privateEvents[targetPlayer.id] = {
+                                    type: MESSAGES.EVENT_TYPES.PLAYER_DEATH,
+                                    killerTeam: 'Bandits',
+                                    victimRole: targetPlayer.role
+                                };
+                            } else {
+                                // Find the doctor(s) who protected this target
+                                if (roleDataUpdate.doctor) {
+                                    for (const [doctorUid, doctorData] of Object.entries(roleDataUpdate.doctor)) {
+                                        if (doctorData && doctorData.protectedId === targetId && !blockedPlayerIds.includes(doctorUid)) {
+                                            const doctorPlayer = players.find(p => p.id === doctorUid && p.role === 'Doctor');
+                                            if (doctorPlayer) {
+                                                privateEvents[doctorPlayer.id] = {
+                                                    type: MESSAGES.EVENT_TYPES.PROTECTION_SUCCESSFUL,
+                                                    targetName: targetPlayer.name
+                                                };
+                                            }
+                                        }
+                                    }
+                                } privateEvents[selectedGunman.id] = {
+                                    type: MESSAGES.EVENT_TYPES.KILL_FAILED,
+                                    targetName: targetPlayer.name
+                                };
+                            }
+                        } // Close the Bandit protection check
+                    } // Close the target found check
 
                     // Notify other gunmen that they were not selected
                     availableGunmenWithTargets.forEach(gunmanData => {
