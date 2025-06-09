@@ -203,7 +203,9 @@ class _EventSharePopupState extends State<EventSharePopup>
                         ),
                         const SizedBox(height: 20),                        // Navigation Buttons
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: _currentEventIndex > 0 
+                              ? MainAxisAlignment.spaceBetween 
+                              : MainAxisAlignment.center,
                           children: [
                             if (_currentEventIndex > 0)
                               ElevatedButton(
