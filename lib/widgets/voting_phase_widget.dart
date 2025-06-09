@@ -172,13 +172,13 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
           } else {
             crossAxisCount = 4;
           }
-
-          childAspectRatio = 0.85; // Slightly adjusted for voting buttons
+          childAspectRatio =
+              0.75; // Reduced to make room for larger text and buttons
           spacing = 8;
         } else {
           // Web layout - more columns with smaller avatars
           if (widget.players.length <= 4) {
-            crossAxisCount = 4;
+            crossAxisCount = 6;
           } else if (widget.players.length <= 9) {
             crossAxisCount = 6;
           } else if (widget.players.length <= 16) {
@@ -187,7 +187,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
             crossAxisCount = 10;
           }
 
-          childAspectRatio = 0.85; // Keep same ratio for vote buttons
+          childAspectRatio =
+              0.75; // Reduced to make room for larger text and buttons
           spacing = 12;
         }
 
@@ -220,9 +221,11 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                         border: Border.all(color: Colors.orange, width: 3),
                       )
                       : null,
-              child: Column(                children: [
-                  // Player Avatar
-                  Expanded(
+              child: Column(
+                children: [
+                  // Player Avatar - Fixed size instead of Expanded
+                  SizedBox(
+                    height: 60, // Fixed height for avatar
                     child: PlayerAvatar(
                       name: player.name,
                       isLeader: player.isLeader,
@@ -232,14 +235,15 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       currentUserRole: widget.myRole,
                     ),
                   ),
-                  // Player name
+                  const SizedBox(height: 4), // Space between avatar and name
+                  // Player name - Larger font
                   Padding(
-                    padding: const EdgeInsets.all(2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
                     child: Text(
                       player.name,
                       style: TextStyle(
                         fontFamily: 'Rye',
-                        fontSize: 8,
+                        fontSize: 12, // Increased from 8 to 12
                         color: player.isAlive ? Colors.white : Colors.grey,
                         fontWeight: FontWeight.bold,
                         decoration:
@@ -250,18 +254,15 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       maxLines: 1,
                     ),
                   ),
-                  // Vote Button
+                  const SizedBox(
+                    height: 4,
+                  ), // Space between name and button                  // Vote Button - Compact size
                   if (canVote)
                     Padding(
-                      padding: const EdgeInsets.only(
-                        top: 2.0,
-                        left: 4.0,
-                        right: 4.0,
-                        bottom: 2.0,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
                       child: SizedBox(
-                        width: double.infinity,
-                        height: 20,
+                        width: 50, // Fixed width instead of full width
+                        height: 28,
                         child: ElevatedButton(
                           onPressed: () => _toggleVote(player.id),
                           style: ElevatedButton.styleFrom(
@@ -271,19 +272,19 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                                     : const Color(0xFF8B4513),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 1,
+                              vertical: 2,
                               horizontal: 4,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            minimumSize: const Size(0, 20),
+                            minimumSize: const Size(0, 28),
                           ),
                           child: Text(
                             isSelected ? 'REMOVE' : 'VOTE',
                             style: const TextStyle(
                               fontFamily: 'Rye',
-                              fontSize: 7,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -292,7 +293,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                     )
                   else
                     // Placeholder for dead players or current user
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 28),
                 ],
               ),
             );
