@@ -16,6 +16,7 @@ class NightPhaseScreen extends StatefulWidget {
   final Function(String, String) onNightAction;
   final Function(String?) onSetNightActionResult;
   final int nightNumber; // Night number
+  final Map<String, dynamic>? roleData; // Add roleData parameter
 
   const NightPhaseScreen({
     super.key,
@@ -29,6 +30,7 @@ class NightPhaseScreen extends StatefulWidget {
     required this.onNightAction,
     required this.onSetNightActionResult,
     required this.nightNumber,
+    this.roleData, // Add to constructor
   });
 
   @override
@@ -154,14 +156,30 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         child: Wrap(
           spacing: MediaQuery.of(context).size.width > 800 ? 30 : 20,
           runSpacing: MediaQuery.of(context).size.width > 800 ? 30 : 20,
-          alignment: WrapAlignment.center,
-          children:
+          alignment: WrapAlignment.center,          children:
               widget.players
                   .where(
-                    (p) =>
-                        p.isAlive &&
-                        (widget.myRole == 'Doctor' ||
-                            p.id != widget.currentUserId),
+                    (p) {
+                      // Always show alive players
+                      if (!p.isAlive) return false;
+                      
+                      // For Doctor role, handle self-protection limitation
+                      if (widget.myRole == 'Doctor') {
+                        // Always show other players
+                        if (p.id != widget.currentUserId) return true;
+                        
+                        // For self (Doctor protecting themselves):
+                        // Check if doctor has already used self-protection
+                        final doctorData = widget.roleData?['doctor']?[widget.currentUserId] as Map<String, dynamic>?;
+                        final selfProtectionUsed = doctorData?['selfProtectionUsed'] ?? false;
+                        
+                        // Only show self if self-protection hasn't been used yet
+                        return !selfProtectionUsed;
+                      }
+                      
+                      // For other roles, don't show self
+                      return p.id != widget.currentUserId;
+                    },
                   )
                   .map(
                     (player) => GestureDetector(

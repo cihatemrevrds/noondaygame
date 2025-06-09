@@ -1440,9 +1440,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     switch (_currentGameState) {
       case 'role_reveal':
         // Show a waiting screen while role reveal popup is shown
-        return _buildWaitingScreen('Revealing roles...', Icons.visibility);
-
-      case 'night_phase':
+        return _buildWaitingScreen('Revealing roles...', Icons.visibility);      case 'night_phase':
         // Show night phase screen for night actions
         return NightPhaseScreen(
           lobbyCode: widget.lobbyCode,
@@ -1460,6 +1458,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onSetNightActionResult:
               (result) => setState(() => _nightActionResult = result),
           nightNumber: _dayCount,
+          roleData: _lobbyData?['roleData'] as Map<String, dynamic>?,
         );
 
       case 'night_outcome':
