@@ -202,17 +202,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
           itemBuilder: (context, index) {
             final player = widget.players[index];
 
-            // Find current user to check if they are alive
-            final currentUser = widget.players.firstWhere(
-              (p) => p.id == widget.currentUserId,
-              orElse: () => Player(name: '', id: '', isAlive: false),
-            );
-
-            // Can't vote if current user is dead, or voting for yourself, or voting for dead players
-            final canVote =
-                currentUser.isAlive &&
-                player.id != widget.currentUserId &&
-                player.isAlive;
+            // Can't vote for yourself or dead players
+            final canVote = player.id != widget.currentUserId && player.isAlive;
             final isSelected = _selectedPlayerId == player.id;
             final isCurrentUser = player.id == widget.currentUserId;
 
@@ -229,8 +220,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                         border: Border.all(color: Colors.orange, width: 3),
                       )
                       : null,
-              child: Column(
-                children: [
+              child: Column(                children: [
                   // Player Avatar
                   Expanded(
                     child: PlayerAvatar(
