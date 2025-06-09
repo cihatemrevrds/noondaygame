@@ -578,14 +578,12 @@ async function processNightActions(lobbyData, players) {
     console.log('📊 Lobby roleData:', JSON.stringify(lobbyData.roleData, null, 2));
     console.log('👥 Players count:', players.length);
 
-    // Check game settings for first night kill restriction    const gameSettings = lobbyData.gameSettings || {};
+    // Check game settings for first night kill restriction
+    const gameSettings = lobbyData.gameSettings || {};
     const allowFirstNightKill = gameSettings.allowFirstNightKill ?? false;
-    const dayCount = lobbyData.dayCount || 1;
-    const isFirstNight = dayCount === 1;
+    const dayCount = lobbyData.dayCount || 1; const isFirstNight = dayCount === 1;
 
     console.log(`🌙 Day ${dayCount}, First night: ${isFirstNight}, Allow first night kill: ${allowFirstNightKill}`);
-    console.log(`🔧 DEBUG: gameSettings.allowFirstNightKill = ${gameSettings.allowFirstNightKill}`);
-    console.log(`🔧 DEBUG: Game settings object:`, JSON.stringify(gameSettings, null, 2));
 
     // If it's the first night and first night kills are disabled, skip all kill actions
     if (isFirstNight && !allowFirstNightKill) {
@@ -821,9 +819,6 @@ async function processNightActions(lobbyData, players) {
 
     console.log(`🔫 Found ${aliveGunmen.length} alive gunmen`); if (chieftainTarget && chieftainPlayer && aliveGunmen.length > 0) {
         // Check if first night kills are disabled
-        console.log(`🎯 Evaluating Chieftain order: isFirstNight=${isFirstNight}, allowFirstNightKill=${allowFirstNightKill}`);
-        console.log(`🎯 Condition (isFirstNight && !allowFirstNightKill): ${isFirstNight && !allowFirstNightKill}`);
-
         if (isFirstNight && !allowFirstNightKill) {
             console.log(`🚫 First night kills disabled - blocking Chieftain order`);
             // Notify Chieftain that order was blocked due to first night restriction
@@ -832,8 +827,6 @@ async function processNightActions(lobbyData, players) {
                 message: `Kill orders are disabled on the first night. Your target was not harmed.`
             };
         } else {
-            console.log(`✅ Chieftain order allowed - proceeding with normal processing`);
-            console.log(`👑 Chieftain: ${chieftainPlayer.name}, Target: ${chieftainTarget}, First night: ${isFirstNight}, Kills allowed: ${allowFirstNightKill}`);
             // Normal Chieftain order processing
             // Chieftain gave orders and is not blocked - randomly select ONE gunman to execute
             const availableGunmen = aliveGunmen.filter(gunman => !blockedPlayerIds.includes(gunman.id));
