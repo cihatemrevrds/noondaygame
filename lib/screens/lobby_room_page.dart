@@ -472,13 +472,14 @@ class _LobbyRoomPageState extends State<LobbyRoomPage>
                                                 ),
                                                 leading: SizedBox(
                                                   width: 32,
-                                                  height: 32,
-                                                  child: PlayerAvatar(
+                                                  height: 32,                                                  child: PlayerAvatar(
                                                     name: player.name,
                                                     isLeader: player.isLeader,
                                                     isDead: !player.isAlive,
                                                     profilePicture:
                                                         player.profilePicture,
+                                                    playerRole: null, // No roles assigned in lobby
+                                                    currentUserRole: null,
                                                   ),
                                                 ),
                                                 trailing:

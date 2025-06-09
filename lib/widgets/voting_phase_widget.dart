@@ -220,8 +220,7 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                         border: Border.all(color: Colors.orange, width: 3),
                       )
                       : null,
-              child: Column(
-                children: [
+              child: Column(                children: [
                   // Player Avatar
                   Expanded(
                     child: PlayerAvatar(
@@ -229,6 +228,8 @@ class _VotingPhaseWidgetState extends State<VotingPhaseWidget> {
                       isLeader: player.isLeader,
                       isDead: !player.isAlive,
                       profilePicture: player.profilePicture,
+                      playerRole: player.role,
+                      currentUserRole: widget.myRole,
                     ),
                   ),
                   // Player name

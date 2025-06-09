@@ -190,12 +190,13 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                                         : Colors.transparent,
                                 width: 3,
                               ),
-                            ),
-                            child: PlayerAvatar(
+                            ),                            child: PlayerAvatar(
                               name: player.name,
                               isLeader: player.isLeader,
                               isDead: !player.isAlive,
                               profilePicture: player.profilePicture,
+                              playerRole: player.role,
+                              currentUserRole: widget.myRole,
                             ),
                           ),
                           const SizedBox(height: 8),

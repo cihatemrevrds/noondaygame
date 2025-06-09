@@ -533,12 +533,13 @@ class _MobileLobbyRoomPageState extends State<MobileLobbyRoomPage>
                         // Larger profile picture
                         SizedBox(
                           width: 48,
-                          height: 48,
-                          child: PlayerAvatar(
+                          height: 48,                          child: PlayerAvatar(
                             name: player.name,
                             isLeader: player.isLeader,
                             isDead: !player.isAlive,
                             profilePicture: player.profilePicture,
+                            playerRole: null, // No roles assigned in lobby
+                            currentUserRole: null,
                           ),
                         ),
                         const SizedBox(width: 12),
